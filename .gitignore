@@ -148,3 +148,4 @@ research/experiments/*/checkpoints/
 # Data dictionaries or large config files
 # ============================================================================
 data/
+archive/
