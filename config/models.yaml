@@ -1,0 +1,50 @@
+# Model Configuration
+# Paths and settings for AI models
+
+yolo:
+  # Chart detection model
+  path: "models/weights/chart_detector.pt"
+  device: "auto"  # auto, cpu, cuda, mps
+  input_size: 640
+  confidence_threshold: 0.5
+  iou_threshold: 0.45
+  max_detections: 10
+
+classifier:
+  # Chart type classification
+  path: "models/weights/chart_classifier.pt"
+  device: "auto"
+  classes:
+    - bar
+    - line
+    - pie
+    - scatter
+    - area
+    - unknown
+
+ocr:
+  # OCR engine configuration
+  engine: "paddleocr"  # paddleocr, tesseract
+  
+  paddleocr:
+    use_gpu: true
+    lang: "en"
+    show_log: false
+    use_angle_cls: true
+    
+  tesseract:
+    lang: "eng"
+    config: "--psm 6"
+    oem: 3
+
+slm:
+  # Small Language Model for reasoning
+  name: "Qwen/Qwen2.5-1.5B-Instruct"
+  device: "auto"
+  max_tokens: 512
+  temperature: 0.3
+  top_p: 0.9
+  
+  # Fallback to rules if SLM fails
+  fallback_to_rules: true
+  timeout_seconds: 30

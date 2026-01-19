@@ -1,0 +1,141 @@
+# Pipeline Configuration
+# Stage-specific settings
+
+pipeline:
+  name: "geo-slm-chart-analysis"
+  version: "3.0.0"
+  
+  # Enable/disable stages
+  stages:
+    ingestion:
+      enabled: true
+    detection:
+      enabled: true
+    extraction:
+      enabled: true
+    reasoning:
+      enabled: true
+    reporting:
+      enabled: true
+
+# Stage 1: Ingestion
+ingestion:
+  # Supported file types
+  supported_formats:
+    - pdf
+    - docx
+    - png
+    - jpg
+    - jpeg
+  
+  # PDF conversion
+  pdf:
+    dpi: 150
+    extract_text: true  # Also extract text positions
+    
+  # Image normalization
+  image:
+    max_size: 4096  # Max dimension in pixels
+    min_size: 100   # Min dimension
+    enhance_contrast: true
+    contrast_factor: 1.2
+    
+  # Quality validation
+  quality:
+    min_dpi: 72
+    blur_threshold: 100  # Laplacian variance
+    
+# Stage 2: Detection
+detection:
+  # YOLO settings (override models.yaml if needed)
+  confidence_threshold: 0.5
+  
+  # Multi-chart handling
+  multi_chart:
+    enabled: true
+    max_charts_per_page: 10
+    
+  # Cropping settings
+  crop:
+    padding: 10  # Pixels around bbox
+    save_format: "png"
+    
+# Stage 3: Extraction
+extraction:
+  # OCR settings
+  ocr:
+    min_confidence: 0.5
+    merge_nearby_text: true
+    merge_threshold: 20  # Pixels
+    
+  # Text role detection
+  role_detection:
+    title_region: [0, 0, 1, 0.15]      # Top 15%
+    xlabel_region: [0, 0.85, 1, 1]     # Bottom 15%
+    ylabel_region: [0, 0, 0.15, 1]     # Left 15%
+    legend_region: [0.7, 0, 1, 0.3]    # Top-right
+    
+  # Element detection
+  elements:
+    min_area: 100  # Minimum element area in pixels
+    color_clustering: true
+    n_colors: 8
+    
+  # Geometric analysis
+  geometric:
+    axis_detection: true
+    grid_detection: true
+    scale_estimation: true
+
+# Stage 4: Reasoning
+reasoning:
+  # SLM settings
+  use_slm: true
+  
+  # Prompt templates
+  prompts:
+    ocr_correction: "prompts/ocr_correction.txt"
+    value_mapping: "prompts/value_mapping.txt"
+    description: "prompts/description.txt"
+    
+  # Fallback rules
+  rules:
+    enabled: true
+    common_ocr_fixes:
+      "loo": "100"
+      "l00": "100"
+      "O": "0"
+      "o": "0"
+      "I": "1"
+      "l": "1"
+
+# Stage 5: Reporting
+reporting:
+  # Output format
+  output_format: "json"  # json, csv, markdown
+  
+  # Insights
+  insights:
+    enabled: true
+    types:
+      - trend
+      - comparison
+      - anomaly
+      - summary
+      
+  # Traceability
+  include_source_info: true
+  include_bbox_coords: true
+  include_confidence: true
+
+# Caching
+caching:
+  enabled: true
+  cache_dir: "data/cache"
+  ttl_hours: 24
+  
+  # What to cache
+  cache_stages:
+    detection: true
+    ocr: true
+    elements: false  # Too variable
