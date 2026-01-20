@@ -120,6 +120,18 @@ class ModelError(ChartAnalysisError):
         super().__init__(message)
 
 
+class ModelNotLoadedError(ModelError):
+    """Model failed to load."""
+    
+    def __init__(
+        self,
+        message: str,
+        model_name: Optional[str] = None,
+        model_path: Optional[str] = None,
+    ):
+        super().__init__(message, model_name=model_name, model_path=model_path)
+
+
 class OCRError(StageProcessingError):
     """OCR extraction failed."""
     
