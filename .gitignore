@@ -149,3 +149,4 @@ research/experiments/*/checkpoints/
 # ============================================================================
 data/
 archive/
+results/
