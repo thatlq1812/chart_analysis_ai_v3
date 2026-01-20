@@ -284,11 +284,35 @@ class PDFMiner:
             from io import BytesIO
             img = Image.open(BytesIO(img_data["bytes"]))
             
-            # Convert to RGB if necessary
-            if img.mode in ("RGBA", "P"):
-                img = img.convert("RGB")
+            # Convert to RGB if necessary (handles various image modes)
+            if img.mode not in ("RGB", "L"):
+                if img.mode in ("RGBA", "P", "LA", "PA"):
+                    img = img.convert("RGB")
+                else:
+                    # For any other mode, try to convert to RGB
+                    try:
+                        img = img.convert("RGB")
+                    except Exception:
+                        # If conversion fails, try through RGBA
+                        img = img.convert("RGBA").convert("RGB")
             
-            img.save(image_path, "PNG", optimize=True)
+            # Use BytesIO buffer to avoid file locking issues with PNG encoding
+            buffer = BytesIO()
+            try:
+                img.save(buffer, "PNG")
+                buffer.seek(0)
+                with open(image_path, "wb") as f:
+                    f.write(buffer.read())
+            except Exception as save_err:
+                logger.debug(f"PNG save failed for {image_id}: {save_err}, trying JPEG")
+                # Fallback: save as JPEG
+                buffer = BytesIO()
+                if img.mode == "L":
+                    img = img.convert("RGB")
+                img.save(buffer, "JPEG", quality=95)
+                buffer.seek(0)
+                with open(image_path, "wb") as f:
+                    f.write(buffer.read())
             
             # Get final size
             file_size = image_path.stat().st_size

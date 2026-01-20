@@ -186,6 +186,34 @@ class SyntheticChartGenerator:
         with open(annotation_path, "w") as f:
             json.dump(annotation, f, indent=2)
         
+        # Save YOLO format label (.txt file)
+        # Format: class_id x_center y_center width height (all normalized 0-1)
+        # For synthetic charts, the entire image IS the chart, so bbox = full image
+        yolo_label_path = ANNOTATIONS_DIR / f"{image_id}.txt"
+        
+        # Map chart type to class ID
+        class_mapping = {
+            ChartType.BAR: 0,
+            ChartType.LINE: 1,
+            ChartType.PIE: 2,
+            ChartType.SCATTER: 3,
+            ChartType.AREA: 4,
+        }
+        class_id = class_mapping.get(chart_type, 0)
+        
+        # For single-class detection, use class_id = 0 for all
+        # Full image bbox: center=(0.5, 0.5), size=(1.0, 1.0)
+        # But we add small margin to simulate realistic detection
+        margin = random.uniform(0.02, 0.08)
+        x_center = 0.5
+        y_center = 0.5
+        bbox_width = 1.0 - margin * 2
+        bbox_height = 1.0 - margin * 2
+        
+        with open(yolo_label_path, "w") as f:
+            # Single class mode: all charts are class 0
+            f.write(f"0 {x_center:.6f} {y_center:.6f} {bbox_width:.6f} {bbox_height:.6f}\n")
+        
         return chart_image
     
     def _generate_random_data(self, n_categories: int, n_series: int) -> List[np.ndarray]:

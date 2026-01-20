@@ -150,3 +150,5 @@ research/experiments/*/checkpoints/
 data/
 archive/
 results/
+nul
+*.pt

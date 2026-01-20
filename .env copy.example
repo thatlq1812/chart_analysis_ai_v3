@@ -1,0 +1,70 @@
+# ========================================
+# AI Chart Analysis - Environment Configuration
+# ========================================
+# Copy this file to .env and fill in actual values
+# NEVER commit .env file to git!
+
+# ========== GEMINI API ==========
+GEMINI_API_KEY=your_gemini_api_key_here
+# Model options: gemini-3-flash-preview, gemini-2.0-flash, gemini-1.5-pro
+GEMINI_MODEL=gemini-3-flash-preview
+# Temperature for generation (0.0 - 1.0)
+GEMINI_TEMPERATURE=0.1
+# Max output tokens
+GEMINI_MAX_TOKENS=4096
+
+# ========== GOOGLE SEARCH API (Optional) ==========
+# For Google Custom Search API (more reliable than web scraping)
+# Setup: https://console.cloud.google.com/ -> Enable "Custom Search API" -> Create API Key
+GOOGLE_API_KEY=your_google_api_key_here
+
+# Setup: https://programmablesearchengine.google.com/ -> Create Engine -> Enable "Image search"
+GOOGLE_CSE_ID=your_custom_search_engine_id_here
+
+# Legacy keys (kept for compatibility)
+GOOGLE_SEARCH_API_KEY=your_google_search_api_key_here
+GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
+
+# ========== IMAGE SEARCH APIs (Optional) ==========
+# Unsplash: https://unsplash.com/developers -> New Application -> Access Key
+UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
+
+# Pexels: https://www.pexels.com/api/new/ -> Get API Key
+PEXELS_API_KEY=your_pexels_api_key_here
+
+# ========== DATABASE ==========
+DB_URI=postgresql://chart_user:chart_password@localhost:5432/chart_db
+# Alternative: SQLite for development
+SQLITE_DB_PATH=./data/knowledge_base/main.db
+
+# ========== CLOUD STORAGE (Optional) ==========
+GCS_BUCKET_NAME=your_bucket_name
+GCS_PROJECT_ID=your_project_id
+
+# ========== YOLO CONFIG ==========
+YOLO_MACRO_MODEL=./models/weights/best.pt
+YOLO_MICRO_MODEL=./models/weights/yolo_micro.pt
+YOLO_FALLBACK_MODEL=yolov8n.pt
+YOLO_CONFIDENCE=0.5
+YOLO_IOU_THRESHOLD=0.45
+
+# ========== OCR CONFIG ==========
+OCR_ENGINE=paddleocr
+OCR_LANGUAGE=en
+OCR_CONFIDENCE=0.6
+
+# ========== PIPELINE CONFIG ==========
+PIPELINE_EXTRACTION_METHOD=hybrid
+# Options: hybrid, geometric, gemini
+PIPELINE_ENABLE_VERIFICATION=true
+PIPELINE_ENABLE_REPORT=true
+
+# ========== APP SETTINGS ==========
+DEBUG=false
+LOG_LEVEL=INFO
+OUTPUT_DIR=./output
+DATA_DIR=./data
+
+# ========== WEB UI ==========
+STREAMLIT_PORT=8501
+API_PORT=8000
