@@ -287,6 +287,113 @@ def cmd_run_all(args) -> int:
     return 0
 
 
+def cmd_classify(args) -> int:
+    """Classify images as charts using Gemini API."""
+    from .services.gemini_classifier import GeminiChartClassifier
+    from .services.qa_generator import ChartQAPipeline, QAPipelineConfig, get_pipeline_status
+    
+    config = QAPipelineConfig(
+        max_api_workers=args.workers,
+        checkpoint_frequency=args.checkpoint_freq,
+    )
+    
+    pipeline = ChartQAPipeline(config=config)
+    
+    # Source directory
+    source_dir = Path(args.input_dir) if args.input_dir else IMAGES_DIR
+    
+    # Run pipeline
+    progress = pipeline.run(
+        source_dir=source_dir,
+        session_id=args.session,
+        limit=args.limit,
+        show_progress=not args.quiet,
+    )
+    
+    logger.info(
+        f"Classification complete | charts={progress.charts_found} | "
+        f"non_charts={progress.non_charts} | errors={progress.errors}"
+    )
+    
+    return 0
+
+
+def cmd_generate_qa(args) -> int:
+    """Generate QA pairs for classified charts."""
+    from .services.qa_generator import (
+        ChartQAPipeline, 
+        QAPipelineConfig, 
+        collect_qa_dataset,
+        get_pipeline_status,
+    )
+    
+    # Show current status
+    status = get_pipeline_status()
+    print(f"\nCurrent status:")
+    print(f"  Charts classified: {status['directories']['charts']}")
+    print(f"  QA pairs generated: {status['directories']['qa_pairs']}")
+    
+    if args.collect_only:
+        # Just collect existing QA pairs into dataset
+        result = collect_qa_dataset()
+        print(f"\nDataset collected:")
+        print(f"  Total images: {result['total_images']}")
+        print(f"  Total QA pairs: {result['total_qa_pairs']}")
+        print(f"  Output: {result['output_path']}")
+        return 0
+    
+    config = QAPipelineConfig(
+        max_api_workers=args.workers,
+        checkpoint_frequency=args.checkpoint_freq,
+    )
+    
+    pipeline = ChartQAPipeline(config=config)
+    
+    source_dir = Path(args.input_dir) if args.input_dir else IMAGES_DIR
+    
+    progress = pipeline.run(
+        source_dir=source_dir,
+        session_id=args.session,
+        limit=args.limit,
+        show_progress=not args.quiet,
+    )
+    
+    # Collect into dataset
+    if args.collect:
+        collect_qa_dataset()
+    
+    logger.info(f"QA generation complete | qa_pairs={progress.qa_pairs_generated}")
+    return 0
+
+
+def cmd_qa_status(args) -> int:
+    """Show Chart QA pipeline status."""
+    from .services.qa_generator import get_pipeline_status, CHART_QA_DIR
+    
+    status = get_pipeline_status()
+    
+    print("\n" + "=" * 50)
+    print("CHART QA PIPELINE STATUS")
+    print("=" * 50)
+    
+    print(f"\n{'Category':<25} {'Count':>10}")
+    print("-" * 36)
+    print(f"{'Charts classified':<25} {status['directories']['charts']:>10}")
+    print(f"{'Non-charts':<25} {status['directories']['non_charts']:>10}")
+    print(f"{'QA pairs generated':<25} {status['directories']['qa_pairs']:>10}")
+    
+    if status['checkpoints']:
+        print(f"\n{'Recent Checkpoints':<25}")
+        print("-" * 36)
+        for cp in status['checkpoints'][-5:]:
+            print(f"  {cp['session']}: {cp['processed']} processed, {cp['charts']} charts")
+    
+    print(f"\nOutput directory: {CHART_QA_DIR}")
+    print("=" * 50)
+    
+    return 0
+
+
 def cmd_stats(args) -> int:
     """Show dataset statistics and generate manifest."""
     
@@ -401,6 +508,19 @@ Examples:
   
   # Show statistics
   python -m tools.data_factory.main stats
+  
+  # === CHART QA PIPELINE ===
+  # Classify images as charts using Gemini
+  python -m tools.data_factory.main classify --limit 100 --workers 10
+  
+  # Generate QA pairs for charts
+  python -m tools.data_factory.main generate-qa --limit 100 --collect
+  
+  # Collect existing QA pairs into dataset
+  python -m tools.data_factory.main generate-qa --collect-only
+  
+  # Check QA pipeline status
+  python -m tools.data_factory.main qa-status
         """,
     )
     
@@ -451,6 +571,27 @@ Examples:
     # Stats command
     stats_parser = subparsers.add_parser("stats", help="Show dataset statistics")
     
+    # Chart QA commands
+    classify_parser = subparsers.add_parser("classify", help="Classify images as charts using Gemini")
+    classify_parser.add_argument("--input-dir", help="Directory containing images")
+    classify_parser.add_argument("--limit", type=int, help="Maximum images to process")
+    classify_parser.add_argument("--workers", type=int, default=10, help="Number of API workers")
+    classify_parser.add_argument("--checkpoint-freq", type=int, default=100, help="Checkpoint frequency")
+    classify_parser.add_argument("--session", help="Session ID for checkpointing")
+    classify_parser.add_argument("--quiet", action="store_true", help="Disable progress bar")
+    
+    qa_parser = subparsers.add_parser("generate-qa", help="Generate QA pairs for charts")
+    qa_parser.add_argument("--input-dir", help="Directory containing images")
+    qa_parser.add_argument("--limit", type=int, help="Maximum images to process")
+    qa_parser.add_argument("--workers", type=int, default=10, help="Number of API workers")
+    qa_parser.add_argument("--checkpoint-freq", type=int, default=100, help="Checkpoint frequency")
+    qa_parser.add_argument("--session", help="Session ID for checkpointing")
+    qa_parser.add_argument("--quiet", action="store_true", help="Disable progress bar")
+    qa_parser.add_argument("--collect", action="store_true", help="Collect QA pairs into dataset after processing")
+    qa_parser.add_argument("--collect-only", action="store_true", help="Only collect existing QA pairs, don't process")
+    
+    qa_status_parser = subparsers.add_parser("qa-status", help="Show Chart QA pipeline status")
+    
     args = parser.parse_args()
     
     if args.verbose:
@@ -472,6 +613,9 @@ Examples:
         "generate": cmd_generate,
         "run-all": cmd_run_all,
         "stats": cmd_stats,
+        "classify": cmd_classify,
+        "generate-qa": cmd_generate_qa,
+        "qa-status": cmd_qa_status,
     }
     
     return commands[args.command](args)

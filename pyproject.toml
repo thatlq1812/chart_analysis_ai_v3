@@ -61,6 +61,7 @@ data-factory = [
     "roboflow>=1.1",               # Roboflow datasets
     "matplotlib>=3.8",             # Generate synthetic charts
     "scikit-learn>=1.3",           # Data splitting
+    "google-genai>=1.0.0",         # New Gemini API SDK for Chart QA
 ]
 
 dev = [

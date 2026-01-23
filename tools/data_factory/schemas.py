@@ -246,3 +246,88 @@ class RoboflowDataset(BaseModel):
     local_path: Optional[Path] = None
     images_count: int = 0
     status: ProcessingStatus = Field(default=ProcessingStatus.PENDING)
+
+
+# =============================================================================
+# CHART QA SCHEMAS
+# =============================================================================
+
+class ChartClassification(BaseModel):
+    """Result of chart classification."""
+    
+    is_chart: bool = Field(..., description="Whether the image is a chart")
+    chart_type: ChartType = Field(default=ChartType.UNKNOWN)
+    confidence: float = Field(default=0.0, ge=0, le=1)
+    
+    # Detected elements
+    has_title: bool = False
+    has_legend: bool = False
+    has_x_axis: bool = False
+    has_y_axis: bool = False
+    has_grid: bool = False
+    has_data_labels: bool = False
+    
+    brief_description: Optional[str] = None
+    error: Optional[str] = None
+
+
+class QuestionType(str, Enum):
+    """Types of questions for chart QA."""
+    
+    STRUCTURAL = "structural"    # Title, labels, legend
+    COUNTING = "counting"        # Number of elements
+    COMPARISON = "comparison"    # Max/min, differences
+    REASONING = "reasoning"      # Trends, patterns
+    EXTRACTION = "extraction"    # Specific data values
+
+
+class QAPair(BaseModel):
+    """A single question-answer pair."""
+    
+    question: str = Field(..., description="Question about the chart")
+    answer: str = Field(..., description="Answer to the question")
+    question_type: QuestionType = Field(..., description="Category of question")
+
+
+class ChartQARecord(BaseModel):
+    """Complete QA record for a single chart image."""
+    
+    # Identification
+    image_id: str = Field(..., description="Unique image identifier")
+    image_path: Path = Field(..., description="Path to the image file")
+    
+    # Classification
+    classification: ChartClassification = Field(..., description="Classification result")
+    
+    # QA pairs
+    qa_pairs: List[QAPair] = Field(default_factory=list)
+    
+    # Metadata
+    source_pdf: Optional[str] = None
+    page_number: Optional[int] = None
+    generated_at: datetime = Field(default_factory=datetime.now)
+    model_used: str = Field(default="gemini-3-flash-preview")
+    tokens_used: Optional[int] = None
+    processing_time_seconds: float = 0.0
+
+
+class ChartQADataset(BaseModel):
+    """Complete Chart QA dataset."""
+    
+    version: str = Field(default="1.0.0")
+    created_at: datetime = Field(default_factory=datetime.now)
+    
+    # Statistics
+    total_images: int = 0
+    total_charts: int = 0
+    total_qa_pairs: int = 0
+    
+    # By chart type
+    chart_type_distribution: Dict[str, int] = Field(default_factory=dict)
+    
+    # By question type
+    question_type_distribution: Dict[str, int] = Field(default_factory=dict)
+    
+    # Records
+    records: List[ChartQARecord] = Field(default_factory=list)
+
