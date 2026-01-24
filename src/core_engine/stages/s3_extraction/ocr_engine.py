@@ -33,8 +33,8 @@ class OCRConfig(BaseModel):
     
     # Engine selection
     engine: str = Field(
-        default="paddleocr",
-        description="OCR engine: 'paddleocr' or 'tesseract'"
+        default="easyocr",
+        description="OCR engine: 'easyocr', 'paddleocr', or 'tesseract'"
     )
     
     # Language settings
@@ -130,9 +130,6 @@ class OCREngine:
                 self._engine = PaddleOCR(
                     use_angle_cls=self.config.use_angle_cls,
                     lang=self.config.languages[0] if self.config.languages else "en",
-                    show_log=False,
-                    det_db_thresh=self.config.det_db_thresh,
-                    rec_batch_num=self.config.rec_batch_num,
                 )
                 self._initialized = True
                 self.logger.info("PaddleOCR engine initialized")
@@ -150,6 +147,21 @@ class OCREngine:
                 
             except ImportError:
                 self.logger.error("pytesseract not installed. Run: pip install pytesseract")
+                raise
+                
+        elif self.config.engine == "easyocr":
+            try:
+                import easyocr
+                # EasyOCR Reader initialization
+                self._engine = easyocr.Reader(
+                    self.config.languages if self.config.languages else ["en"],
+                    gpu=False,  # CPU mode for compatibility
+                )
+                self._initialized = True
+                self.logger.info("EasyOCR engine initialized")
+                
+            except ImportError:
+                self.logger.error("easyocr not installed. Run: pip install easyocr")
                 raise
         else:
             raise ValueError(f"Unknown OCR engine: {self.config.engine}")
@@ -184,6 +196,8 @@ class OCREngine:
         
         if self.config.engine == "paddleocr":
             raw_results = self._extract_paddleocr(image)
+        elif self.config.engine == "easyocr":
+            raw_results = self._extract_easyocr(image)
         else:
             raw_results = self._extract_tesseract(image)
         
@@ -235,7 +249,8 @@ class OCREngine:
         results = []
         
         # PaddleOCR returns: [[bbox, (text, confidence)], ...]
-        output = self._engine.ocr(image, cls=self.config.use_angle_cls)
+        # Note: New PaddleOCR API doesn't support cls parameter in ocr()
+        output = self._engine.ocr(image)
         
         if output is None or len(output) == 0:
             return results
@@ -292,6 +307,40 @@ class OCREngine:
                 "text": text,
                 "confidence": conf,
                 "bbox": (x, y, x + w, y + h),
+            })
+        
+        return results
+    
+    def _extract_easyocr(self, image: np.ndarray) -> List[dict]:
+        """Extract using EasyOCR."""
+        results = []
+        
+        # EasyOCR returns: [[bbox, text, confidence], ...]
+        # bbox format: [[x1,y1], [x2,y2], [x3,y3], [x4,y4]] (quadrilateral)
+        output = self._engine.readtext(image)
+        
+        if output is None or len(output) == 0:
+            return results
+        
+        for item in output:
+            if item is None or len(item) < 3:
+                continue
+            
+            bbox_points = item[0]  # [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
+            text = item[1]         # text string
+            confidence = item[2]   # confidence float
+            
+            if len(bbox_points) < 4:
+                continue
+            
+            # Convert quadrilateral to axis-aligned bbox
+            xs = [p[0] for p in bbox_points]
+            ys = [p[1] for p in bbox_points]
+            
+            results.append({
+                "text": text,
+                "confidence": confidence,
+                "bbox": (min(xs), min(ys), max(xs), max(ys)),
             })
         
         return results

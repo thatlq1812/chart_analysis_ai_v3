@@ -477,3 +477,77 @@ extraction:
 - Douglas, D.; Peucker, T. (1973). "Algorithms for the reduction of the number of points"
 - Lee, T.C.; Kashyap, R.L. (1994). "Building skeleton models via 3-D medial surface/axis thinning algorithms"
 - PaddleOCR: https://github.com/PaddlePaddle/PaddleOCR
+## 11. ML-Based Chart Classifier
+
+### 11.1. Overview
+
+In addition to rule-based classification, Stage 3 supports an ML-based classifier using Random Forest for improved accuracy.
+
+**Model:** Random Forest Classifier
+- **Classes:** bar, line, pie, other
+- **Test Accuracy:** ~70%
+- **Model Path:** `models/weights/chart_classifier_rf.pkl`
+
+### 11.2. Feature Engineering (11 Features)
+
+| Feature | Description | Bar | Line | Pie |
+| --- | --- | --- | --- | --- |
+| `aspect_ratio` | Width / Height | ~1.2 | ~1.5 | ~1.0 |
+| `mean_brightness` | Average pixel intensity | Med | Med | Med |
+| `std_brightness` | Brightness std dev | High | Low | Med |
+| `edge_density` | Edge pixels ratio | High | Med | Med |
+| `horizontal_line_ratio` | Horizontal line pixels | High | Med | Low |
+| `vertical_line_ratio` | Vertical line pixels | High | Low | Low |
+| `color_diversity` | Unique colors count | Med | Low | High |
+| `dominant_color_ratio` | Largest color cluster | Med | High | Med |
+| `circular_shape_ratio` | Circular contour area | Low | Low | High |
+| `grid_pattern_strength` | Hough intersections | High | High | Low |
+| `symmetry_score` | Vertical symmetry | Med | Med | High |
+
+### 11.3. Training
+
+```bash
+python scripts/train_classifier.py \
+    --data-dir data/academic_dataset/images \
+    --manifest-dir data/academic_dataset/manifests \
+    --output-dir models/weights
+```
+
+### 11.4. Configuration
+
+```python
+config = ExtractionConfig(
+    use_ml_classifier=True,
+    classifier_model_path=Path("models/weights/chart_classifier_rf.pkl"),
+)
+```
+
+## 12. OCR Engine Options
+
+### 12.1. Supported Engines
+
+| Engine | Platform | Speed | Accuracy | Installation |
+| --- | --- | --- | --- | --- |
+| **EasyOCR** | All | Slow (~6s) | Good | `pip install easyocr` |
+| **PaddleOCR** | Linux/Mac | Fast (~1s) | Best | `pip install paddleocr` |
+| **Tesseract** | All | Fast (~0.5s) | Medium | System install required |
+
+### 12.2. Platform Recommendations
+
+| Platform | Recommended Engine | Notes |
+| --- | --- | --- |
+| Windows | EasyOCR | PaddleOCR has OneDNN issues |
+| Linux | PaddleOCR | Best accuracy, GPU support |
+| macOS | EasyOCR or PaddleOCR | Both work well |
+
+### 12.3. Configuration
+
+```yaml
+# config/pipeline.yaml
+extraction:
+  ocr_engine: "easyocr"  # "easyocr", "paddleocr", or "tesseract"
+  ocr:
+    languages: ["en"]
+    min_confidence: 0.5
+    classify_roles: true
+```

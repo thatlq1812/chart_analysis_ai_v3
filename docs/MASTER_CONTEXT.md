@@ -2,6 +2,7 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 1.2.1 | 2026-01-24 | That Le | Stage 3 tested on academic dataset |
 | 1.2.0 | 2026-01-25 | That Le | Stage 3 implementation complete |
 | 1.1.0 | 2026-01-24 | That Le | Phase 1 complete, moving to Phase 2 |
 | 1.0.0 | 2026-01-19 | That Le | Initial master context for V3 |
@@ -248,6 +249,7 @@ chart_analysis_ai_v3/
 | Task | Status | Notes |
 | --- | --- | --- |
 | Stage 3: Extraction | [DONE] | Geo-SLM hybrid approach implemented |
+| Stage 3 Testing | [DONE] | Tested on 15 arXiv chart images |
 | Stage 4: Reasoning | [TODO] | SLM integration - NEXT |
 | Stage 5: Reporting | [TODO] | Output formatting |
 
@@ -262,8 +264,23 @@ chart_analysis_ai_v3/
 | Geometric Mapper | [DONE] | Axis calibration, pixel-to-value |
 | Element Detector | [DONE] | Bars, markers, pie slices |
 | Classifier | [DONE] | Feature-based type determination |
-| Unit Tests | [DONE] | 7 test modules, 100+ test cases |
+| Unit Tests | [DONE] | 7 test modules, 129 test cases |
 | Documentation | [DONE] | STAGE3_EXTRACTION.md created |
+| Academic Dataset Test | [DONE] | 15/15 images processed successfully |
+
+**Stage 3 Academic Dataset Test Results (2026-01-24):**
+
+| Metric | Value |
+| --- | --- |
+| Total Images Tested | 15 |
+| Success Rate | 100% |
+| Avg Processing Time | 3,533 ms |
+| Classification: Line | 11 (73.3%) |
+| Classification: Scatter | 4 (26.7%) |
+
+Reports generated:
+- [ACADEMIC_DATASET_TEST_REPORT.md](reports/ACADEMIC_DATASET_TEST_REPORT.md)
+- [STAGE3_VISUALIZATION.md](reports/STAGE3_VISUALIZATION.md)
 
 ### 5.3. Upcoming Phases
 

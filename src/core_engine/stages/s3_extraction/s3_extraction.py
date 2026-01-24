@@ -48,6 +48,7 @@ from ..base import BaseStage
 from .classifier import ChartClassifier, ClassifierConfig
 from .element_detector import ElementDetector, ElementDetectorConfig
 from .geometric_mapper import GeometricMapper, MapperConfig
+from .ml_classifier import MLChartClassifier
 from .ocr_engine import OCREngine, OCRConfig
 from .preprocessor import ImagePreprocessor, PreprocessConfig
 from .skeletonizer import Skeletonizer, SkeletonConfig
@@ -58,6 +59,12 @@ logger = logging.getLogger(__name__)
 
 class ExtractionConfig(BaseModel):
     """Configuration for Stage 3: Extraction."""
+    
+    # OCR engine selection (shorthand - passed to OCRConfig)
+    ocr_engine: str = Field(
+        default="paddleocr",
+        description="OCR engine: 'paddleocr' or 'tesseract'"
+    )
     
     # Submodule configs
     preprocess: PreprocessConfig = Field(default_factory=PreprocessConfig)
@@ -81,6 +88,10 @@ class ExtractionConfig(BaseModel):
     enable_classification: bool = Field(
         default=True,
         description="Enable automatic chart type classification"
+    )
+    use_ml_classifier: bool = Field(
+        default=True,
+        description="Use ML-based classifier instead of rule-based"
     )
     
     # Output options
@@ -132,10 +143,24 @@ class Stage3Extraction(BaseStage):
         self.preprocessor = ImagePreprocessor(config.preprocess)
         self.skeletonizer = Skeletonizer(config.skeleton)
         self.vectorizer = Vectorizer(config.vectorize)
-        self.ocr_engine = OCREngine(config.ocr)
+        
+        # Build OCR config with engine selection
+        ocr_config = config.ocr.model_copy()
+        ocr_config.engine = config.ocr_engine
+        self.ocr_engine = OCREngine(ocr_config)
+        
         self.mapper = GeometricMapper(config.mapper)
         self.element_detector = ElementDetector(config.elements)
         self.classifier = ChartClassifier(config.classifier)
+        
+        # ML classifier (optional, used if use_ml_classifier=True)
+        self.ml_classifier = None
+        if config.use_ml_classifier:
+            try:
+                self.ml_classifier = MLChartClassifier()
+                self.logger.info("ML classifier loaded successfully")
+            except Exception as e:
+                self.logger.warning(f"Failed to load ML classifier: {e}. Using rule-based.")
         
         self.logger.info("Stage3Extraction initialized")
     
@@ -200,6 +225,81 @@ class Stage3Extraction(BaseStage):
         """Validate input is Stage2Output."""
         return isinstance(input_data, Stage2Output)
     
+    def process_image(self, image_bgr: np.ndarray, chart_id: str = "test") -> RawMetadata:
+        """
+        Process a raw image directly (for testing/standalone use).
+        
+        Args:
+            image_bgr: BGR image array
+            chart_id: Identifier for logging
+        
+        Returns:
+            RawMetadata with extracted information
+        """
+        h, w = image_bgr.shape[:2]
+        
+        # Use ML classifier if available
+        chart_type = ChartType.UNKNOWN
+        if self.config.enable_classification:
+            if self.ml_classifier is not None:
+                try:
+                    ml_result = self.ml_classifier.classify(image_bgr, chart_id=chart_id)
+                    chart_type = ml_result.chart_type
+                except Exception as e:
+                    self.logger.warning(f"ML classification failed: {e}")
+        
+        # Preprocessing
+        preprocess_result = self.preprocessor.process(image_bgr, chart_id)
+        
+        # Vectorization
+        polylines = []
+        if self.config.enable_vectorization:
+            skeleton_result = self.skeletonizer.process(
+                preprocess_result.binary_image,
+                chart_id=chart_id,
+            )
+            paths = self.skeletonizer.trace_paths(
+                skeleton_result.skeleton,
+                skeleton_result.keypoints,
+            )
+            vector_result = self.vectorizer.process(
+                paths,
+                stroke_width_map=skeleton_result.stroke_width_map,
+                grayscale_image=preprocess_result.grayscale_image,
+                chart_id=chart_id,
+            )
+            polylines = vector_result.polylines
+        
+        # Element detection
+        bars = []
+        markers = []
+        slices = []
+        elements = []
+        if self.config.enable_element_detection:
+            element_result = self.element_detector.detect(
+                preprocess_result.binary_image,
+                color_image=image_bgr,
+                chart_id=chart_id,
+            )
+            bars = element_result.bars
+            markers = element_result.markers
+            slices = element_result.slices
+            elements = self._convert_elements(bars, markers, slices)
+        
+        # OCR
+        texts = []
+        if self.config.enable_ocr:
+            ocr_result = self.ocr_engine.extract_text(image_bgr, chart_id)
+            texts = ocr_result.texts
+        
+        return RawMetadata(
+            chart_id=chart_id,
+            chart_type=chart_type,
+            texts=texts,
+            elements=elements,
+            axis_info=None,
+        )
+
     def _process_single_chart(self, chart) -> RawMetadata:
         """
         Process a single chart through extraction pipeline.
@@ -290,16 +390,38 @@ class Stage3Extraction(BaseStage):
         # Step 8: Chart type classification
         chart_type = ChartType.UNKNOWN
         if self.config.enable_classification:
-            class_result = self.classifier.classify(
-                bars=bars,
-                polylines=polylines,
-                markers=markers,
-                slices=slices,
-                texts=texts,
-                image_shape=(h, w),
-                chart_id=chart_id,
-            )
-            chart_type = class_result.chart_type
+            # Use ML classifier if available, otherwise fall back to rule-based
+            if self.ml_classifier is not None:
+                try:
+                    ml_result = self.ml_classifier.classify(image_bgr, chart_id=chart_id)
+                    chart_type = ml_result.chart_type
+                    self.logger.debug(
+                        f"ML classification | chart_id={chart_id} | "
+                        f"type={chart_type.value} | confidence={ml_result.confidence:.2f}"
+                    )
+                except Exception as e:
+                    self.logger.warning(f"ML classification failed: {e}. Using rule-based.")
+                    class_result = self.classifier.classify(
+                        bars=bars,
+                        polylines=polylines,
+                        markers=markers,
+                        slices=slices,
+                        texts=texts,
+                        image_shape=(h, w),
+                        chart_id=chart_id,
+                    )
+                    chart_type = class_result.chart_type
+            else:
+                class_result = self.classifier.classify(
+                    bars=bars,
+                    polylines=polylines,
+                    markers=markers,
+                    slices=slices,
+                    texts=texts,
+                    image_shape=(h, w),
+                    chart_id=chart_id,
+                )
+                chart_type = class_result.chart_type
         
         # Build RawMetadata
         return RawMetadata(

@@ -1,0 +1,1967 @@
+{
+  "accuracy": 0.0,
+  "total": 90,
+  "correct": 0,
+  "class_stats": {
+    "line": {
+      "correct": 0,
+      "total": 10
+    },
+    "scatter": {
+      "correct": 0,
+      "total": 10
+    },
+    "histogram": {
+      "correct": 0,
+      "total": 10
+    },
+    "bar": {
+      "correct": 0,
+      "total": 10
+    },
+    "pie": {
+      "correct": 0,
+      "total": 10
+    },
+    "heatmap": {
+      "correct": 0,
+      "total": 10
+    },
+    "other": {
+      "correct": 0,
+      "total": 10
+    },
+    "area": {
+      "correct": 0,
+      "total": 10
+    },
+    "box": {
+      "correct": 0,
+      "total": 10
+    }
+  },
+  "confusion": {
+    "line": {
+      "unknown": 10,
+      "area": 0,
+      "bar": 0,
+      "box": 0,
+      "heatmap": 0,
+      "histogram": 0,
+      "line": 0,
+      "other": 0,
+      "pie": 0,
+      "scatter": 0
+    },
+    "scatter": {
+      "unknown": 10,
+      "area": 0,
+      "bar": 0,
+      "box": 0,
+      "heatmap": 0,
+      "histogram": 0,
+      "line": 0,
+      "other": 0,
+      "pie": 0,
+      "scatter": 0
+    },
+    "histogram": {
+      "unknown": 10,
+      "area": 0,
+      "bar": 0,
+      "box": 0,
+      "heatmap": 0,
+      "histogram": 0,
+      "line": 0,
+      "other": 0,
+      "pie": 0,
+      "scatter": 0
+    },
+    "bar": {
+      "unknown": 10,
+      "area": 0,
+      "bar": 0,
+      "box": 0,
+      "heatmap": 0,
+      "histogram": 0,
+      "line": 0,
+      "other": 0,
+      "pie": 0,
+      "scatter": 0
+    },
+    "pie": {
+      "unknown": 10,
+      "area": 0,
+      "bar": 0,
+      "box": 0,
+      "heatmap": 0,
+      "histogram": 0,
+      "line": 0,
+      "other": 0,
+      "pie": 0,
+      "scatter": 0
+    },
+    "heatmap": {
+      "unknown": 10,
+      "area": 0,
+      "bar": 0,
+      "box": 0,
+      "heatmap": 0,
+      "histogram": 0,
+      "line": 0,
+      "other": 0,
+      "pie": 0,
+      "scatter": 0
+    },
+    "other": {
+      "unknown": 9,
+      "bar": 1,
+      "area": 0,
+      "box": 0,
+      "heatmap": 0,
+      "histogram": 0,
+      "line": 0,
+      "other": 0,
+      "pie": 0,
+      "scatter": 0
+    },
+    "area": {
+      "unknown": 10,
+      "area": 0,
+      "bar": 0,
+      "box": 0,
+      "heatmap": 0,
+      "histogram": 0,
+      "line": 0,
+      "other": 0,
+      "pie": 0,
+      "scatter": 0
+    },
+    "box": {
+      "unknown": 10,
+      "area": 0,
+      "bar": 0,
+      "box": 0,
+      "heatmap": 0,
+      "histogram": 0,
+      "line": 0,
+      "other": 0,
+      "pie": 0,
+      "scatter": 0
+    },
+    "unknown": {
+      "area": 0,
+      "bar": 0,
+      "box": 0,
+      "heatmap": 0,
+      "histogram": 0,
+      "line": 0,
+      "other": 0,
+      "pie": 0,
+      "scatter": 0,
+      "unknown": 0
+    }
+  },
+  "errors": [
+    {
+      "image_id": "arxiv_2005_14165v4_p66_img05",
+      "actual": "line",
+      "predicted": "unknown",
+      "confidence": 0.4098689380114461,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 160.0,
+        "num_markers": 5.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.03289646003815363,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.7047652827406743,
+        "has_circular_structure": 0.26189734864470293,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_07942v1_p08_img01",
+      "actual": "line",
+      "predicted": "unknown",
+      "confidence": 0.49999999999999994,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 678.0,
+        "num_markers": 10.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.798431714935359,
+        "line_coverage": 0.022987018849853366,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.49243482879379274,
+        "has_circular_structure": 0.6085867206195268,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2512_12713v1_p06_img02",
+      "actual": "line",
+      "predicted": "unknown",
+      "confidence": 0.4090001916445744,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 156.0,
+        "num_markers": 12.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.7320728840125392,
+        "line_coverage": 0.030000638815247928,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5971943804985907,
+        "has_circular_structure": 0.6904891138644306,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2512_15008v1_p10_img01",
+      "actual": "line",
+      "predicted": "unknown",
+      "confidence": 0.418216571528432,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 155.0,
+        "num_markers": 1.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.0007259206798866856,
+        "line_coverage": 0.06072190509477321,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2005_14165v4_p64_img02",
+      "actual": "line",
+      "predicted": "unknown",
+      "confidence": 0.4088335377324939,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 154.0,
+        "num_markers": 4.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.029445125774979757,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.367390861371222,
+        "has_circular_structure": 0.7848227557295442,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_11108v1_p07_img00",
+      "actual": "line",
+      "predicted": "unknown",
+      "confidence": 0.4087146678970953,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 184.0,
+        "num_markers": 3.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.029048892990317654,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.299467611359344,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_08404v1_p28_img00",
+      "actual": "line",
+      "predicted": "unknown",
+      "confidence": 0.49999999999999994,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 273.0,
+        "num_markers": 30.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.765835566903775,
+        "line_coverage": 0.03514399231644796,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.48529975967343675,
+        "has_circular_structure": 0.7247338112410024,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2207_07243v1_p03_img01",
+      "actual": "line",
+      "predicted": "unknown",
+      "confidence": 0.4,
+      "features": {
+        "num_bars": 4.0,
+        "num_polylines": 178.0,
+        "num_markers": 13.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.2433813023944365,
+        "line_coverage": 0.027435052557762834,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.7753145807874342,
+        "has_circular_structure": 0.45988958834091076,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2005_14165v4_p66_img07",
+      "actual": "line",
+      "predicted": "unknown",
+      "confidence": 0.41004728661250195,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 108.0,
+        "num_markers": 6.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.03349095537500635,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.6216985294592794,
+        "has_circular_structure": 0.8355761680685936,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2005_14165v4_p67_img06",
+      "actual": "line",
+      "predicted": "unknown",
+      "confidence": 0.49999999999999994,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 145.0,
+        "num_markers": 6.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.0377659168184113,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.3973885745326325,
+        "has_circular_structure": 0.6778287485529609,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_07942v1_p06_img01",
+      "actual": "scatter",
+      "predicted": "unknown",
+      "confidence": 0.412119037765254,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 205.0,
+        "num_markers": 7.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.040396792550846494,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5231073209230785,
+        "has_circular_structure": 0.6698859779826614,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2512_14563v1_p08_img00",
+      "actual": "scatter",
+      "predicted": "unknown",
+      "confidence": 0.4047675979631882,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 117.0,
+        "num_markers": 2.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.01589199321062716,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2512_00752v1_p27_img12",
+      "actual": "scatter",
+      "predicted": "unknown",
+      "confidence": 0.4047406358727951,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 93.0,
+        "num_markers": 3.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.015802119575983584,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.6160327717833463,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2507_03866v2_p05_img00",
+      "actual": "scatter",
+      "predicted": "unknown",
+      "confidence": 0.41199906227028826,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 118.0,
+        "num_markers": 19.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.03999687423429413,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5286524803414027,
+        "has_circular_structure": 0.6161521902565443,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2112_03485v1_p02_img00",
+      "actual": "scatter",
+      "predicted": "unknown",
+      "confidence": 0.49999999999999994,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 23.0,
+        "num_markers": 8.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.0630726089451771,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.49261840083862435,
+        "has_circular_structure": 0.5660511635993521,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2010_02319v1_p11_img02",
+      "actual": "scatter",
+      "predicted": "unknown",
+      "confidence": 0.40466940166435417,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 90.0,
+        "num_markers": 3.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.015564672214513853,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.0852511654181346,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_11222v1_p27_img01",
+      "actual": "scatter",
+      "predicted": "unknown",
+      "confidence": 0.49999999999999994,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 462.0,
+        "num_markers": 121.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.017131133487458497,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.48152439322515955,
+        "has_circular_structure": 0.6767230006892994,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09287v1_p08_img08",
+      "actual": "scatter",
+      "predicted": "unknown",
+      "confidence": 0.49999999999999994,
+      "features": {
+        "num_bars": 34.0,
+        "num_polylines": 125.0,
+        "num_markers": 6.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.5510548452220727,
+        "line_coverage": 0.09678687200949228,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.48531019292950417,
+        "has_circular_structure": 0.5369845882979072,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_10810v1_p08_img00",
+      "actual": "scatter",
+      "predicted": "unknown",
+      "confidence": 0.49999999999999994,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 90.0,
+        "num_markers": 5.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.017168873295229977,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.47520000340502433,
+        "has_circular_structure": 0.6315178317298845,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09287v1_p08_img12",
+      "actual": "scatter",
+      "predicted": "unknown",
+      "confidence": 0.41854475233856575,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 156.0,
+        "num_markers": 1.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.8758153078202995,
+        "line_coverage": 0.061815841128552394,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_06704v1_p05_img03",
+      "actual": "histogram",
+      "predicted": "unknown",
+      "confidence": 0.4084069013011988,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 133.0,
+        "num_markers": 9.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.028023004337329165,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5894169562195813,
+        "has_circular_structure": 0.7976753282516651,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_10114v1_p02_img04",
+      "actual": "histogram",
+      "predicted": "unknown",
+      "confidence": 0.4060087285749587,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 61.0,
+        "num_markers": 2.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.02002909524986222,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09636v1_p04_img16",
+      "actual": "histogram",
+      "predicted": "unknown",
+      "confidence": 0.4161195359061096,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 158.0,
+        "num_markers": 5.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.05373178635369875,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5981709684410756,
+        "has_circular_structure": 0.7778151238764172,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_07892v1_p16_img04",
+      "actual": "histogram",
+      "predicted": "unknown",
+      "confidence": 0.42056553952169656,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 123.0,
+        "num_markers": 21.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.06855179840565512,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.7814300587744447,
+        "has_circular_structure": 0.135804457744521,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_07892v1_p14_img03",
+      "actual": "histogram",
+      "predicted": "unknown",
+      "confidence": 0.40973451975864533,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 118.0,
+        "num_markers": 8.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.0324483991954844,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.6946301941610179,
+        "has_circular_structure": 0.3235335216199061,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_07892v1_p14_img01",
+      "actual": "histogram",
+      "predicted": "unknown",
+      "confidence": 0.4084884257645818,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 89.0,
+        "num_markers": 11.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.028294752548605914,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.6334516443736489,
+        "has_circular_structure": 0.4042685831639342,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_11154v1_p07_img00",
+      "actual": "histogram",
+      "predicted": "unknown",
+      "confidence": 0.4138342476097589,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 280.0,
+        "num_markers": 1.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.04611415869919624,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_07892v1_p16_img02",
+      "actual": "histogram",
+      "predicted": "unknown",
+      "confidence": 0.40896048149206843,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 56.0,
+        "num_markers": 10.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.029868271640227994,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.629845505726172,
+        "has_circular_structure": 0.32427793118986437,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2512_12713v1_p11_img00",
+      "actual": "histogram",
+      "predicted": "unknown",
+      "confidence": 0.4098967040369851,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 77.0,
+        "num_markers": 11.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.7683838899986064,
+        "line_coverage": 0.0329890134566169,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.6757772067961618,
+        "has_circular_structure": 0.5407582020246439,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_1704_06687v1_p10_img00",
+      "actual": "histogram",
+      "predicted": "unknown",
+      "confidence": 0.4117902669243356,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 36.0,
+        "num_markers": 1.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.03930088974778536,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2307_09288v2_p58_img00",
+      "actual": "bar",
+      "predicted": "unknown",
+      "confidence": 0.41279433800352644,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 67.0,
+        "num_markers": 1.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.0426477933450881,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_07876v1_p76_img01",
+      "actual": "bar",
+      "predicted": "unknown",
+      "confidence": 0.403965427714696,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 97.0,
+        "num_markers": 1.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.01321809238231997,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_11217v1_p19_img02",
+      "actual": "bar",
+      "predicted": "unknown",
+      "confidence": 0.40936824670974026,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 156.0,
+        "num_markers": 11.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.0312274890324675,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.6296328092155352,
+        "has_circular_structure": 0.7017764311919098,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2010_02319v1_p10_img19",
+      "actual": "bar",
+      "predicted": "unknown",
+      "confidence": 0.4088004230764557,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 48.0,
+        "num_markers": 0.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.029334743588185542,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2512_00752v1_p27_img16",
+      "actual": "bar",
+      "predicted": "unknown",
+      "confidence": 0.4179618588127339,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 23.0,
+        "num_markers": 0.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.059872862709112976,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_07876v1_p74_img00",
+      "actual": "bar",
+      "predicted": "unknown",
+      "confidence": 0.4025781235570046,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 105.0,
+        "num_markers": 2.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.008593745190015307,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_1801_08163v2_p04_img02",
+      "actual": "bar",
+      "predicted": "unknown",
+      "confidence": 0.4066525969597547,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 84.0,
+        "num_markers": 4.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.022175323199182258,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5053587217603344,
+        "has_circular_structure": 0.7082782594517912,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_10120v1_p07_img00",
+      "actual": "bar",
+      "predicted": "unknown",
+      "confidence": 0.40675,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 2.0,
+        "num_markers": 0.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.0225,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2010_02319v1_p10_img22",
+      "actual": "bar",
+      "predicted": "unknown",
+      "confidence": 0.4672299685685395,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 15.0,
+        "num_markers": 2.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.224099895228465,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09613v1_p08_img09",
+      "actual": "bar",
+      "predicted": "unknown",
+      "confidence": 0.40656740805839436,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 31.0,
+        "num_markers": 0.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.021891360194647748,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_11036v1_p04_img00",
+      "actual": "pie",
+      "predicted": "unknown",
+      "confidence": 0.40304123809345155,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 72.0,
+        "num_markers": 0.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.01013746031150506,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_10951v1_p09_img02",
+      "actual": "pie",
+      "predicted": "unknown",
+      "confidence": 0.49999999999999994,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 69.0,
+        "num_markers": 5.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.9945750452079566,
+        "line_coverage": 0.0337949267600342,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.4622631241071424,
+        "has_circular_structure": 0.8130173251933988,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_10896v1_p08_img02",
+      "actual": "pie",
+      "predicted": "unknown",
+      "confidence": 0.40320578733831675,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 113.0,
+        "num_markers": 3.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.01068595779438909,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.19163288260008762,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "chartqa_paper_p14_img05",
+      "actual": "pie",
+      "predicted": "unknown",
+      "confidence": 0.4050617540210169,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 98.0,
+        "num_markers": 1.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.012092198581560284,
+        "line_coverage": 0.016872513403389633,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2510_05091v1_p21_img62",
+      "actual": "pie",
+      "predicted": "unknown",
+      "confidence": 0.41337570507484184,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 18.0,
+        "num_markers": 0.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.04458568358280601,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_10951v1_p09_img04",
+      "actual": "pie",
+      "predicted": "unknown",
+      "confidence": 0.49999999999999994,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 96.0,
+        "num_markers": 9.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.9842634854771785,
+        "line_coverage": 0.05051030763721124,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.49563230595209506,
+        "has_circular_structure": 0.747711340191326,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09636v1_p14_img01",
+      "actual": "pie",
+      "predicted": "unknown",
+      "confidence": 0.49999999999999994,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 88.0,
+        "num_markers": 5.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.016033700842938738,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.4955178833668446,
+        "has_circular_structure": 0.7703340566041039,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2510_05091v1_p22_img09",
+      "actual": "pie",
+      "predicted": "unknown",
+      "confidence": 0.49999999999999994,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 133.0,
+        "num_markers": 5.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.016925180871393393,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.3728789956761145,
+        "has_circular_structure": 0.666099154562666,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_1710_07300v2_p17_img00",
+      "actual": "pie",
+      "predicted": "unknown",
+      "confidence": 0.42793525730874293,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 17.0,
+        "num_markers": 3.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.06102739726027397,
+        "line_coverage": 0.09311752436247644,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.3446667737687901,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_1908_01801v2_p13_img17",
+      "actual": "pie",
+      "predicted": "unknown",
+      "confidence": 0.40591178031356223,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 32.0,
+        "num_markers": 0.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.019705934378540672,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_06472v1_p20_img02",
+      "actual": "heatmap",
+      "predicted": "unknown",
+      "confidence": 0.4231591540333864,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 48.0,
+        "num_markers": 1.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.07719718011128782,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_11222v1_p20_img02",
+      "actual": "heatmap",
+      "predicted": "unknown",
+      "confidence": 0.4080025505651661,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 73.0,
+        "num_markers": 24.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.02667516855055367,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5893930190140484,
+        "has_circular_structure": 0.5928593858078657,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09439v1_p07_img00",
+      "actual": "heatmap",
+      "predicted": "unknown",
+      "confidence": 0.40492554900501204,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 377.0,
+        "num_markers": 16.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.016418496683373324,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5052303790826305,
+        "has_circular_structure": 0.5959527585279627,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_11222v1_p25_img00",
+      "actual": "heatmap",
+      "predicted": "unknown",
+      "confidence": 0.41384534693410313,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 71.0,
+        "num_markers": 10.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.04615115644701029,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.6512301271925416,
+        "has_circular_structure": 0.7971222285258008,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_08404v1_p13_img03",
+      "actual": "heatmap",
+      "predicted": "unknown",
+      "confidence": 0.49999999999999994,
+      "features": {
+        "num_bars": 34.0,
+        "num_polylines": 699.0,
+        "num_markers": 102.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.4723218789407314,
+        "line_coverage": 0.026593825863276164,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.4875610302956697,
+        "has_circular_structure": 0.6381241162871997,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_11222v1_p17_img01",
+      "actual": "heatmap",
+      "predicted": "unknown",
+      "confidence": 0.4115071725705809,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 124.0,
+        "num_markers": 19.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.03835724190193619,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.6093845973594024,
+        "has_circular_structure": 0.6628388288755418,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_08183v2_p35_img00",
+      "actual": "heatmap",
+      "predicted": "unknown",
+      "confidence": 0.40263696822411293,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 235.0,
+        "num_markers": 8.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.008789894080376445,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5847037941591647,
+        "has_circular_structure": 0.6316553762483301,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_11222v1_p23_img00",
+      "actual": "heatmap",
+      "predicted": "unknown",
+      "confidence": 0.42433912168463833,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 64.0,
+        "num_markers": 15.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.081130405615461,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.8209540622058663,
+        "has_circular_structure": 0.4475101873079975,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2511_22937v1_p03_img00",
+      "actual": "heatmap",
+      "predicted": "unknown",
+      "confidence": 0.40551335527887084,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 19.0,
+        "num_markers": 1.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.0183778509295693,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_11222v1_p24_img04",
+      "actual": "heatmap",
+      "predicted": "unknown",
+      "confidence": 0.4104885407194509,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 93.0,
+        "num_markers": 33.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.034961802398169636,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.6051924136073716,
+        "has_circular_structure": 0.5825752010026105,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2512_13935v1_p39_img00",
+      "actual": "other",
+      "predicted": "unknown",
+      "confidence": 0.49999999999999994,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 205.0,
+        "num_markers": 6.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.02165425702353883,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.44632697377702124,
+        "has_circular_structure": 0.536639118038724,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09008v1_p14_img04",
+      "actual": "other",
+      "predicted": "unknown",
+      "confidence": 0.4136164753385471,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 67.0,
+        "num_markers": 6.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.045388251128490334,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5129929990139664,
+        "has_circular_structure": 0.6209441494799723,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_08183v2_p44_img02",
+      "actual": "other",
+      "predicted": "unknown",
+      "confidence": 0.41031741000464805,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 210.0,
+        "num_markers": 17.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.7057239057239058,
+        "line_coverage": 0.03439136668216007,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.7307512085793854,
+        "has_circular_structure": 0.2682203507183908,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09236v2_p18_img02",
+      "actual": "other",
+      "predicted": "bar",
+      "confidence": 0.6985,
+      "features": {
+        "num_bars": 2.0,
+        "num_polylines": 198.0,
+        "num_markers": 10.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.4631405472636816,
+        "line_coverage": 0.024997842727705416,
+        "bars_aligned": 0.995,
+        "markers_clustered": 0.595784101578372,
+        "has_circular_structure": 0.4946726826328146,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_10321v2_p08_img03",
+      "actual": "other",
+      "predicted": "unknown",
+      "confidence": 0.40798127901819536,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 45.0,
+        "num_markers": 1.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.026604263393984553,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09439v1_p06_img00",
+      "actual": "other",
+      "predicted": "unknown",
+      "confidence": 0.4,
+      "features": {
+        "num_bars": 7.0,
+        "num_polylines": 190.0,
+        "num_markers": 21.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.3763422818791946,
+        "line_coverage": 0.0415038161925621,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5729916390968012,
+        "has_circular_structure": 0.45622345177052903,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_10485v1_p09_img02",
+      "actual": "other",
+      "predicted": "unknown",
+      "confidence": 0.49999999999999994,
+      "features": {
+        "num_bars": 0.0,
+        "num_polylines": 111.0,
+        "num_markers": 20.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.0,
+        "line_coverage": 0.06762839206765742,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.47840989278367024,
+        "has_circular_structure": 0.6225751303752365,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_01260v1_p19_img00",
+      "actual": "other",
+      "predicted": "unknown",
+      "confidence": 0.40586479089206423,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 68.0,
+        "num_markers": 2.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.019549302973547338,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09696v1_p22_img00",
+      "actual": "other",
+      "predicted": "unknown",
+      "confidence": 0.40836403416746864,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 84.0,
+        "num_markers": 0.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.02788011389156202,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_11147v1_p05_img00",
+      "actual": "other",
+      "predicted": "unknown",
+      "confidence": 0.40629967644943815,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 481.0,
+        "num_markers": 14.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.020998921498127123,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5492698018201858,
+        "has_circular_structure": 0.741550224460033,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_11421v1_p05_img09",
+      "actual": "area",
+      "predicted": "unknown",
+      "confidence": 0.49999999999999994,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 219.0,
+        "num_markers": 17.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.03274095949056602,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.4618704846803959,
+        "has_circular_structure": 0.74716516980136,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_08668v1_p18_img03",
+      "actual": "area",
+      "predicted": "unknown",
+      "confidence": 0.4082353492315754,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 153.0,
+        "num_markers": 6.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.02745116410525122,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5775498774772867,
+        "has_circular_structure": 0.4281655987219082,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_08668v1_p16_img07",
+      "actual": "area",
+      "predicted": "unknown",
+      "confidence": 0.4086133017214544,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 125.0,
+        "num_markers": 13.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.028711005738181184,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5662371833265121,
+        "has_circular_structure": 0.5055549472898211,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_08668v1_p23_img06",
+      "actual": "area",
+      "predicted": "unknown",
+      "confidence": 0.4068048847158936,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 164.0,
+        "num_markers": 22.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.022682949052978633,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5075601124607794,
+        "has_circular_structure": 0.7150461849316662,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_08668v1_p25_img02",
+      "actual": "area",
+      "predicted": "unknown",
+      "confidence": 0.4065214953845082,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 181.0,
+        "num_markers": 11.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.02173831794836071,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.511295491268699,
+        "has_circular_structure": 0.7676817426966632,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2510_05091v1_p07_img01",
+      "actual": "area",
+      "predicted": "unknown",
+      "confidence": 0.40675353477927373,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 152.0,
+        "num_markers": 10.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.022511782597579078,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.614731299128722,
+        "has_circular_structure": 0.5196396691080927,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_08668v1_p18_img00",
+      "actual": "area",
+      "predicted": "unknown",
+      "confidence": 0.40911246834789833,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 147.0,
+        "num_markers": 9.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.030374894492994308,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.6360759984603865,
+        "has_circular_structure": 0.2781233104347195,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_08668v1_p24_img05",
+      "actual": "area",
+      "predicted": "unknown",
+      "confidence": 0.4058277016198517,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 144.0,
+        "num_markers": 8.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.019425672066172316,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5972636740242778,
+        "has_circular_structure": 0.8677633148176908,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_08668v1_p22_img08",
+      "actual": "area",
+      "predicted": "unknown",
+      "confidence": 0.4108345052284266,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 150.0,
+        "num_markers": 9.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.03611501742808864,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5395151394056767,
+        "has_circular_structure": 0.6801477479906437,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09881v1_p04_img00",
+      "actual": "area",
+      "predicted": "unknown",
+      "confidence": 0.4083305762106477,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 4.0,
+        "num_markers": 0.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.027768587368825644,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2410_02637v2_p44_img00",
+      "actual": "box",
+      "predicted": "unknown",
+      "confidence": 0.40980458496815153,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 348.0,
+        "num_markers": 13.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.03268194989383845,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.6103879723773604,
+        "has_circular_structure": 0.8701324606044764,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09250v1_p07_img01",
+      "actual": "box",
+      "predicted": "unknown",
+      "confidence": 0.41640367128007433,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 101.0,
+        "num_markers": 1.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.05467890426691428,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2512_00752v1_p27_img03",
+      "actual": "box",
+      "predicted": "unknown",
+      "confidence": 0.41577032580400863,
+      "features": {
+        "num_bars": 0.0,
+        "num_polylines": 178.0,
+        "num_markers": 0.0,
+        "num_slices": 0.0,
+        "bar_coverage": 0.0,
+        "line_coverage": 0.05256775268002862,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2410_02637v2_p07_img00",
+      "actual": "box",
+      "predicted": "unknown",
+      "confidence": 0.41035048822806486,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 306.0,
+        "num_markers": 13.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.03450162742688271,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.6122613609870786,
+        "has_circular_structure": 0.5323145632981059,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09833v1_p17_img09",
+      "actual": "box",
+      "predicted": "unknown",
+      "confidence": 0.4103867156185212,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 93.0,
+        "num_markers": 12.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.03462238539507052,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.6307096927711349,
+        "has_circular_structure": 0.34934115643416574,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09833v1_p17_img11",
+      "actual": "box",
+      "predicted": "unknown",
+      "confidence": 0.40883339432565396,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 79.0,
+        "num_markers": 10.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.029444647752179733,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.7442662637419827,
+        "has_circular_structure": 0.1655702292827811,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_10180v1_p07_img00",
+      "actual": "box",
+      "predicted": "unknown",
+      "confidence": 0.4088731619218374,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 267.0,
+        "num_markers": 4.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.02957720640612475,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.4786394341981093,
+        "has_circular_structure": 0.6673084993236869,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09833v1_p17_img17",
+      "actual": "box",
+      "predicted": "unknown",
+      "confidence": 0.4090817421800622,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 99.0,
+        "num_markers": 1.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.030272473933540572,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_09833v1_p17_img14",
+      "actual": "box",
+      "predicted": "unknown",
+      "confidence": 0.4087887893444249,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 85.0,
+        "num_markers": 0.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.029295964481416404,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.5,
+        "has_circular_structure": 0.0,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    },
+    {
+      "image_id": "arxiv_2601_07637v1_p28_img00",
+      "actual": "box",
+      "predicted": "unknown",
+      "confidence": 0.4058820280216712,
+      "features": {
+        "num_bars": 1.0,
+        "num_polylines": 262.0,
+        "num_markers": 18.0,
+        "num_slices": 0.0,
+        "bar_coverage": 1.0,
+        "line_coverage": 0.01960676007223733,
+        "bars_aligned": 0.0,
+        "markers_clustered": 0.7080402073983377,
+        "has_circular_structure": 0.568993958564143,
+        "has_percentage_labels": 0.0,
+        "has_axis_labels": 0.0
+      },
+      "correct": false
+    }
+  ]
+}
