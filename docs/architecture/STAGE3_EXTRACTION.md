@@ -551,3 +551,212 @@ extraction:
     min_confidence: 0.5
     classify_roles: true
 ```
+
+## 13. Element Detector v2.0 - Advanced Bar Separation
+
+### 13.1. Problem Statement
+
+The original contour-based approach fails when bars touch or merge:
+
+```
+Original Problem:
++---+---+---+    Contour detection sees
+|   |   |   |    this as ONE large contour
+|   |   |   |    instead of 3 separate bars
++---+---+---+
+```
+
+### 13.2. Solution: Multi-Method Detection
+
+Version 2.0 implements 5 bar separation methods:
+
+| Method | Description | Best For |
+| --- | --- | --- |
+| `CONTOUR_ONLY` | Original simple contour detection | Well-separated bars |
+| `WATERSHED` | Watershed segmentation with distance transform | Touching bars with clear gaps |
+| `PROJECTION` | Vertical/Horizontal pixel projection analysis | Regular bar spacing |
+| `MORPHOLOGICAL` | Erosion-based separation | Slightly overlapping bars |
+| `HYBRID` | Combines all methods with voting | General use (default) |
+
+### 13.3. Configuration
+
+```python
+from src.core_engine.stages.s3_extraction.element_detector import (
+    ElementDetector, 
+    ElementDetectorConfig,
+    BarSeparationMethod
+)
+
+config = ElementDetectorConfig(
+    detect_bars=True,
+    bar_separation_method=BarSeparationMethod.HYBRID,  # Default
+    min_bar_gap=3,
+    projection_threshold=0.2,
+    watershed_markers_dist=10,
+)
+
+detector = ElementDetector(config)
+result = detector.detect(binary_image, color_image)
+```
+
+### 13.4. Method Details
+
+**Watershed Segmentation:**
+```mermaid
+flowchart LR
+    A[Binary Image] --> B[Distance Transform]
+    B --> C[Threshold to find centers]
+    C --> D[Mark sure foreground]
+    D --> E[Apply watershed]
+    E --> F[Extract individual regions]
+```
+
+**Projection Analysis:**
+```mermaid
+flowchart TD
+    A[Binary Image] --> B[Project pixels vertically]
+    B --> C[Find density peaks/valleys]
+    C --> D[Segment at valleys]
+    D --> E[Extract bar regions]
+```
+
+## 14. Simple Classifier v2.0 - Grayscale-Robust Features
+
+### 14.1. Problem Statement
+
+Original classifier relied heavily on color features:
+- `n_colors`: Number of distinct colors
+- `color_coverage`: Colored pixel ratio
+
+**Impact**: Grayscale/scanned images cause accuracy drop.
+
+### 14.2. Solution: Grayscale-Robust Features
+
+Added 12 new features that work on grayscale images:
+
+| Feature | Description | Chart Signal |
+| --- | --- | --- |
+| `texture_uniformity` | LBP histogram uniformity | Pie slices have uniform textures |
+| `texture_contrast` | LBP variance | Bar charts have high contrast |
+| `hu_elongation` | Shape elongation from moments | Line charts are elongated |
+| `hu_compactness` | Shape compactness (4*pi*A/P^2) | Pie charts are compact |
+| `grad_h_ratio` | Horizontal gradient ratio | Bar charts have H/V gradients |
+| `grad_v_ratio` | Vertical gradient ratio | |
+| `n_components` | Connected component count | Scatter plots have many |
+| `avg_component_area` | Average component area | Scatter points are small |
+| `has_x_axis` | X-axis line detected | Line/Bar/Scatter have axes |
+| `has_y_axis` | Y-axis line detected | |
+| `symmetry_score` | Radial symmetry (90/180 deg) | Pie charts are symmetric |
+| `is_grayscale` | Image is grayscale flag | Adjusts scoring weights |
+
+### 14.3. Feature Extraction
+
+**Local Binary Patterns (LBP):**
+```python
+# Compare center pixel with 8 neighbors at radius r
+# Generate 8-bit pattern based on >= comparison
+# Histogram of patterns captures texture
+
+lbp_pattern = sum(
+    (neighbor >= center) << i 
+    for i, neighbor in enumerate(8_neighbors)
+)
+```
+
+**Gradient Histogram:**
+```python
+# Sobel gradients
+grad_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0)
+grad_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1)
+
+# Direction analysis
+direction = arctan2(grad_y, grad_x)
+# Horizontal: direction near 0 or 180
+# Vertical: direction near 90 or -90
+```
+
+### 14.4. Scoring Adjustments
+
+```python
+def _score_bar(features):
+    is_grayscale = features["is_grayscale"] > 0.5
+    
+    # Original edge-based scoring
+    score += 0.25 * edge_ratio * 3
+    
+    # NEW: Gradient-based (grayscale-robust)
+    grad_ratio = max(features["grad_h_ratio"], features["grad_v_ratio"])
+    score += 0.15 * grad_ratio * 2
+    
+    if not is_grayscale:
+        # Color features only when available
+        if features["n_colors"] >= 2:
+            score += 0.1
+    
+    # NEW: Axis presence helps
+    if features["has_x_axis"] or features["has_y_axis"]:
+        score += 0.1
+```
+
+### 14.5. Configuration
+
+```python
+from src.core_engine.stages.s3_extraction.simple_classifier import (
+    SimpleChartClassifier,
+    SimpleClassifierConfig
+)
+
+config = SimpleClassifierConfig(
+    use_texture_features=True,   # Enable LBP features
+    use_shape_features=True,     # Enable Hu moments
+    lbp_radius=3,                # LBP neighbor radius
+    lbp_points=24,               # LBP neighbor count
+)
+
+classifier = SimpleChartClassifier(config)
+result = classifier.classify(image)
+
+# Access new features
+print(f"Is Grayscale: {result.features['is_grayscale']}")
+print(f"Texture Uniformity: {result.features['texture_uniformity']:.3f}")
+print(f"Has Axes: X={result.features['has_x_axis']}, Y={result.features['has_y_axis']}")
+```
+
+## 15. Testing Stage 3 Improvements
+
+### 15.1. Test Script
+
+```bash
+python scripts/test_stage3_improvements.py
+```
+
+### 15.2. Expected Output
+
+```
+TEST 1: Element Detector - Bar Separation Methods
+  contour_only   : 5 bars detected
+  watershed      : 5 bars detected
+  projection     : 4 bars detected
+  morphological  : 5 bars detected
+  hybrid         : 5 bars detected
+
+TEST 2: Simple Classifier - Grayscale-Robust Features
+  Grayscale Bar Chart:
+    Type: bar
+    Confidence: 0.99
+    Is Grayscale: True
+
+  Color Bar Chart (control):
+    Type: bar
+    Confidence: 1.00
+    Is Grayscale: False
+```
+
+## 16. Future Improvements
+
+| Area | Improvement | Priority |
+| --- | --- | --- |
+| Bar Detection | Deep learning-based instance segmentation | High |
+| Classifier | Retrain ML model with new features | High |
+| OCR | Fine-tune on chart-specific text | Medium |
+| Pie Detection | Improve radial slice extraction | Medium |

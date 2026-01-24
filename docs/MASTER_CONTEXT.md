@@ -2,8 +2,9 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 1.3.0 | 2026-01-25 | That Le | Documentation restructured, Stage 4/5 docs added |
 | 1.2.1 | 2026-01-24 | That Le | Stage 3 tested on academic dataset |
-| 1.2.0 | 2026-01-25 | That Le | Stage 3 implementation complete |
+| 1.2.0 | 2026-01-24 | That Le | Stage 3 implementation complete |
 | 1.1.0 | 2026-01-24 | That Le | Phase 1 complete, moving to Phase 2 |
 | 1.0.0 | 2026-01-19 | That Le | Initial master context for V3 |
 
@@ -163,6 +164,12 @@ chart_analysis_ai_v3/
 |
 +-- .github/
 |   +-- instructions/           # AI Agent guidelines
+|       +-- coding-standards.instructions.md
+|       +-- docs.instructions.md
+|       +-- pipeline.instructions.md
+|       +-- project.instructions.md
+|       +-- research.instructions.md
+|       +-- system.instructions.md
 |
 +-- config/
 |   +-- base.yaml               # Shared configuration
@@ -171,27 +178,27 @@ chart_analysis_ai_v3/
 |   +-- secrets/                # API keys (gitignored)
 |
 +-- data/
+|   +-- academic_dataset/       # Arxiv chart images + metadata
 |   +-- raw/                    # Input files (PDF, images)
 |   +-- processed/              # Pipeline outputs
 |   +-- cache/                  # Intermediate results
-|   +-- training/               # Training datasets
+|   +-- output/                 # Stage reports
 |   +-- samples/                # Demo/test samples
 |
-+-- docs/
++-- docs/                       # Documentation (see docs/README.md)
 |   +-- MASTER_CONTEXT.md       # This file
 |   +-- architecture/           # System design docs
-|   +-- research/               # Paper notes, experiments
 |   +-- guides/                 # How-to guides
-|   +-- reports/                # Weekly/thesis reports
+|   +-- research/               # Research methodology
+|   +-- reports/                # Test reports & benchmarks
+|   +-- archive/                # Historical docs
 |
 +-- models/
 |   +-- weights/                # Trained model files
-|   +-- registry/               # Model versioning
 |
 +-- notebooks/
-|   +-- 01_exploration.ipynb    # Data exploration
-|   +-- 02_training.ipynb       # Model training
-|   +-- 03_evaluation.ipynb     # Result analysis
+|   +-- 01_data_exploration.ipynb
+|   +-- 02_stage3_visualization.ipynb
 |
 +-- research/
 |   +-- experiments/            # Experiment scripts
@@ -204,26 +211,24 @@ chart_analysis_ai_v3/
 |       +-- pipeline.py         # Main orchestrator
 |       +-- exceptions.py       # Custom exceptions
 |       +-- schemas/            # Pydantic models
-|       +-- stages/             # Pipeline stages
-|       +-- utils/              # Helper functions
+|       +-- stages/             # Pipeline stages (s1-s5)
+|       +-- validators/         # Input validators
 |
-+-- interface/
-|   +-- cli.py                  # Command line interface
-|   +-- api/                    # FastAPI server
-|   +-- demo/                   # Streamlit app
++-- interface/                  # Interface layer (future)
 |
 +-- tests/
 |   +-- conftest.py             # Shared fixtures
-|   +-- test_schemas/
-|   +-- test_stages/
+|   +-- test_schemas.py
+|   +-- test_s3_extraction/     # Stage 3 tests
 |   +-- fixtures/               # Test data
 |
-+-- scripts/
-|   +-- setup_env.py            # Environment setup
-|   +-- download_models.py      # Download weights
++-- scripts/                    # Utility scripts
+|   +-- benchmark_classifier.py
+|   +-- generate_stage3_report.py
+|   +-- test_stage3_academic_dataset.py
+|   +-- train_yolo.py
 |
-+-- .env.example
-+-- .gitignore
++-- logs/                       # Log files
 +-- pyproject.toml
 +-- README.md
 +-- Makefile

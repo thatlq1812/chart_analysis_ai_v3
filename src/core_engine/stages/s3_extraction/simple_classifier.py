@@ -4,8 +4,18 @@ Simple Image-based Chart Classifier.
 Uses image-level features instead of detected elements for classification.
 This approach is more robust when element detection is weak.
 
+Features (v2.0):
+- Edge orientation (horizontal vs vertical vs diagonal)
+- Color distribution (number of distinct colors)
+- Circular structure detection
+- Grid pattern detection
+- **NEW** Texture features (grayscale-robust)
+- **NEW** Local Binary Patterns (LBP)
+- **NEW** Shape descriptors (Hu moments)
+
 Author: That Le
 Date: 2025-01-21
+Updated: 2025-01-XX - Added grayscale-robust features
 """
 
 import logging
@@ -46,6 +56,12 @@ class SimpleClassifierConfig(BaseModel):
     pie_circularity_threshold: float = Field(default=0.4, ge=0, le=1)
     bar_edge_ratio_threshold: float = Field(default=1.5, ge=1)
     scatter_marker_threshold: int = Field(default=10, ge=3)
+    
+    # Grayscale-robust features (v2.0)
+    use_texture_features: bool = Field(default=True, description="Use LBP and GLCM features")
+    use_shape_features: bool = Field(default=True, description="Use Hu moments")
+    lbp_radius: int = Field(default=3, ge=1, description="LBP radius")
+    lbp_points: int = Field(default=24, ge=8, description="LBP neighbor points")
 
 
 @dataclass
@@ -131,7 +147,7 @@ class SimpleChartClassifier:
         )
     
     def _compute_features(self, image: np.ndarray) -> Dict[str, float]:
-        """Compute image-level features."""
+        """Compute image-level features including grayscale-robust features."""
         h, w = image.shape[:2]
         total_pixels = h * w
         
@@ -139,11 +155,14 @@ class SimpleChartClassifier:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         
+        # Detect if image is grayscale
+        is_grayscale = self._is_grayscale(image)
+        
         # 1. Edge orientation analysis
         edges = cv2.Canny(gray, self.config.edge_canny_low, self.config.edge_canny_high)
         h_ratio, v_ratio, d_ratio = self._analyze_edge_orientation(edges)
         
-        # 2. Color analysis
+        # 2. Color analysis (reduced weight for grayscale)
         n_colors, color_coverage = self._analyze_colors(hsv)
         
         # 3. Circular structure detection
@@ -158,7 +177,32 @@ class SimpleChartClassifier:
         # 6. Rectangular region detection
         n_rects, rect_coverage = self._detect_rectangles(gray)
         
+        # === NEW: Grayscale-robust features (v2.0) ===
+        
+        # 7. Texture features (LBP-based)
+        texture_uniformity, texture_contrast = 0.0, 0.0
+        if self.config.use_texture_features:
+            texture_uniformity, texture_contrast = self._compute_texture_features(gray)
+        
+        # 8. Shape features (Hu moments)
+        hu_elongation, hu_compactness = 0.0, 0.0
+        if self.config.use_shape_features:
+            hu_elongation, hu_compactness = self._compute_shape_features(gray)
+        
+        # 9. Gradient histogram (grayscale-robust edge direction)
+        grad_h_ratio, grad_v_ratio = self._compute_gradient_histogram(gray)
+        
+        # 10. Connected component statistics
+        n_components, avg_component_area = self._analyze_connected_components(gray)
+        
+        # 11. Axis line detection (for line/bar charts)
+        has_x_axis, has_y_axis = self._detect_axes(gray, edges)
+        
+        # 12. Symmetry score (pie charts are often symmetric)
+        symmetry_score = self._compute_symmetry(gray)
+        
         return {
+            # Original features
             "h_edge_ratio": h_ratio,
             "v_edge_ratio": v_ratio,
             "d_edge_ratio": d_ratio,
@@ -170,7 +214,302 @@ class SimpleChartClassifier:
             "n_markers": float(n_markers),
             "n_rectangles": float(n_rects),
             "rect_coverage": rect_coverage,
+            # New grayscale-robust features
+            "texture_uniformity": texture_uniformity,
+            "texture_contrast": texture_contrast,
+            "hu_elongation": hu_elongation,
+            "hu_compactness": hu_compactness,
+            "grad_h_ratio": grad_h_ratio,
+            "grad_v_ratio": grad_v_ratio,
+            "n_components": float(n_components),
+            "avg_component_area": avg_component_area,
+            "has_x_axis": float(has_x_axis),
+            "has_y_axis": float(has_y_axis),
+            "symmetry_score": symmetry_score,
+            "is_grayscale": float(is_grayscale),
         }
+    
+    # ========== NEW: Grayscale-robust Feature Methods ==========
+    
+    def _is_grayscale(self, image: np.ndarray) -> bool:
+        """Check if image is effectively grayscale."""
+        if len(image.shape) == 2:
+            return True
+        
+        # Check if RGB channels are nearly identical
+        b, g, r = cv2.split(image)
+        diff_rg = np.mean(np.abs(r.astype(float) - g.astype(float)))
+        diff_rb = np.mean(np.abs(r.astype(float) - b.astype(float)))
+        
+        return diff_rg < 10 and diff_rb < 10
+    
+    def _compute_texture_features(
+        self,
+        gray: np.ndarray,
+    ) -> Tuple[float, float]:
+        """
+        Compute texture features using Local Binary Patterns (LBP).
+        
+        These features work on grayscale images and capture local texture patterns.
+        
+        Returns:
+            Tuple of (uniformity, contrast)
+        """
+        h, w = gray.shape
+        
+        # Simple LBP implementation
+        radius = self.config.lbp_radius
+        padded = cv2.copyMakeBorder(gray, radius, radius, radius, radius, cv2.BORDER_REFLECT)
+        
+        # Sample 8 neighbors at radius distance
+        center = padded[radius:-radius, radius:-radius]
+        
+        # Compare with neighbors
+        lbp = np.zeros_like(center, dtype=np.uint8)
+        
+        # 8 neighbor positions
+        for i, (dy, dx) in enumerate([
+            (-radius, 0), (-radius, radius), (0, radius), (radius, radius),
+            (radius, 0), (radius, -radius), (0, -radius), (-radius, -radius)
+        ]):
+            neighbor = padded[radius+dy:h+radius+dy, radius+dx:w+radius+dx]
+            lbp += (neighbor >= center).astype(np.uint8) * (1 << i)
+        
+        # Compute LBP histogram
+        hist, _ = np.histogram(lbp.ravel(), bins=256, range=(0, 256))
+        hist = hist.astype(float) / hist.sum()
+        
+        # Uniformity: sum of squared histogram values (higher = more uniform texture)
+        uniformity = np.sum(hist ** 2)
+        
+        # Contrast: weighted variance based on LBP values
+        bin_centers = np.arange(256)
+        mean_val = np.sum(hist * bin_centers)
+        contrast = np.sqrt(np.sum(hist * (bin_centers - mean_val) ** 2))
+        contrast = contrast / 128  # Normalize to ~[0, 1]
+        
+        return uniformity, min(1.0, contrast)
+    
+    def _compute_shape_features(
+        self,
+        gray: np.ndarray,
+    ) -> Tuple[float, float]:
+        """
+        Compute shape features using Hu moments.
+        
+        Returns:
+            Tuple of (elongation, compactness)
+        """
+        # Threshold to get binary
+        _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        
+        # Find largest contour
+        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        if not contours:
+            return 0.0, 0.0
+        
+        # Use moments from the entire image
+        moments = cv2.moments(binary)
+        
+        if moments["m00"] == 0:
+            return 0.0, 0.0
+        
+        # Compute Hu moments
+        hu_moments = cv2.HuMoments(moments).flatten()
+        
+        # Log transform (Hu moments can vary by many orders of magnitude)
+        hu_log = -np.sign(hu_moments) * np.log10(np.abs(hu_moments) + 1e-10)
+        
+        # Elongation: ratio of principal axes (from central moments)
+        mu20 = moments["mu20"] / moments["m00"]
+        mu02 = moments["mu02"] / moments["m00"]
+        mu11 = moments["mu11"] / moments["m00"]
+        
+        # Eigenvalues of covariance matrix
+        delta = np.sqrt(4 * mu11**2 + (mu20 - mu02)**2)
+        lambda1 = (mu20 + mu02 + delta) / 2
+        lambda2 = (mu20 + mu02 - delta) / 2
+        
+        if lambda2 > 0:
+            elongation = np.sqrt(lambda1 / lambda2)
+            elongation = min(10.0, elongation) / 10  # Normalize
+        else:
+            elongation = 1.0
+        
+        # Compactness: 4*pi*area / perimeter^2
+        # For largest contour
+        largest_contour = max(contours, key=cv2.contourArea)
+        area = cv2.contourArea(largest_contour)
+        perimeter = cv2.arcLength(largest_contour, True)
+        
+        if perimeter > 0:
+            compactness = 4 * math.pi * area / (perimeter ** 2)
+        else:
+            compactness = 0.0
+        
+        return elongation, min(1.0, compactness)
+    
+    def _compute_gradient_histogram(
+        self,
+        gray: np.ndarray,
+    ) -> Tuple[float, float]:
+        """
+        Compute gradient direction histogram.
+        
+        More robust than Canny edges for grayscale analysis.
+        
+        Returns:
+            Tuple of (horizontal_ratio, vertical_ratio)
+        """
+        # Compute gradients
+        grad_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+        grad_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+        
+        # Magnitude and direction
+        magnitude = np.sqrt(grad_x**2 + grad_y**2)
+        direction = np.arctan2(grad_y, grad_x) * 180 / np.pi  # -180 to 180
+        
+        # Only consider significant gradients
+        mag_threshold = np.percentile(magnitude, 90)
+        mask = magnitude > mag_threshold
+        
+        if np.sum(mask) < 10:
+            return 0.33, 0.33
+        
+        significant_dirs = direction[mask]
+        
+        # Count horizontal (near 0 or 180), vertical (near 90 or -90)
+        h_count = np.sum(
+            (np.abs(significant_dirs) < 20) | 
+            (np.abs(significant_dirs) > 160)
+        )
+        v_count = np.sum(
+            (np.abs(significant_dirs - 90) < 20) | 
+            (np.abs(significant_dirs + 90) < 20)
+        )
+        
+        total = len(significant_dirs)
+        
+        return h_count / total, v_count / total
+    
+    def _analyze_connected_components(
+        self,
+        gray: np.ndarray,
+    ) -> Tuple[int, float]:
+        """
+        Analyze connected components in thresholded image.
+        
+        Returns:
+            Tuple of (num_components, avg_area_ratio)
+        """
+        h, w = gray.shape
+        total_area = h * w
+        
+        # Threshold
+        _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        
+        # Find connected components
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
+        
+        # Exclude background (label 0)
+        if num_labels <= 1:
+            return 0, 0.0
+        
+        areas = stats[1:, cv2.CC_STAT_AREA]  # Exclude background
+        
+        # Filter tiny components (noise)
+        significant_areas = areas[areas > 50]
+        
+        n_components = len(significant_areas)
+        avg_area = np.mean(significant_areas) if n_components > 0 else 0
+        
+        return n_components, avg_area / total_area
+    
+    def _detect_axes(
+        self,
+        gray: np.ndarray,
+        edges: np.ndarray,
+    ) -> Tuple[bool, bool]:
+        """
+        Detect presence of X and Y axes.
+        
+        Uses Hough line detection to find long horizontal/vertical lines
+        near image edges (typical axis locations).
+        
+        Returns:
+            Tuple of (has_x_axis, has_y_axis)
+        """
+        h, w = edges.shape
+        
+        # Detect lines
+        lines = cv2.HoughLinesP(
+            edges, 
+            rho=1, 
+            theta=np.pi/180, 
+            threshold=50,
+            minLineLength=w // 4,
+            maxLineGap=10
+        )
+        
+        has_x_axis = False
+        has_y_axis = False
+        
+        if lines is None:
+            return False, False
+        
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            
+            # Check if horizontal (X axis)
+            if abs(y2 - y1) < 10 and abs(x2 - x1) > w // 4:
+                # X axis typically in bottom half
+                if y1 > h // 2:
+                    has_x_axis = True
+            
+            # Check if vertical (Y axis)
+            if abs(x2 - x1) < 10 and abs(y2 - y1) > h // 4:
+                # Y axis typically in left quarter
+                if x1 < w // 3:
+                    has_y_axis = True
+        
+        return has_x_axis, has_y_axis
+    
+    def _compute_symmetry(
+        self,
+        gray: np.ndarray,
+    ) -> float:
+        """
+        Compute radial symmetry score.
+        
+        Pie charts typically have high radial symmetry.
+        
+        Returns:
+            Symmetry score (0-1)
+        """
+        h, w = gray.shape
+        
+        # Crop to center square for symmetry analysis
+        size = min(h, w)
+        y_off = (h - size) // 2
+        x_off = (w - size) // 2
+        center_crop = gray[y_off:y_off+size, x_off:x_off+size]
+        
+        # Compare with 180-degree rotation
+        rotated_180 = cv2.rotate(center_crop, cv2.ROTATE_180)
+        diff_180 = np.mean(np.abs(center_crop.astype(float) - rotated_180.astype(float)))
+        
+        # Compare with 90-degree rotation (4-fold symmetry)
+        rotated_90 = cv2.rotate(center_crop, cv2.ROTATE_90_CLOCKWISE)
+        diff_90 = np.mean(np.abs(center_crop.astype(float) - rotated_90.astype(float)))
+        
+        # Normalize (lower diff = higher symmetry)
+        symmetry_180 = 1 - min(1.0, diff_180 / 128)
+        symmetry_90 = 1 - min(1.0, diff_90 / 128)
+        
+        return (symmetry_180 + symmetry_90) / 2
+    
+    # ========== End Grayscale-robust Features ==========
     
     def _analyze_edge_orientation(
         self,
@@ -431,18 +770,29 @@ class SimpleChartClassifier:
         return rect_count, coverage
     
     def _score_pie(self, features: Dict[str, float]) -> float:
-        """Score likelihood of pie chart."""
+        """Score likelihood of pie chart (v2.0 with grayscale support)."""
         score = 0.0
+        is_grayscale = features.get("is_grayscale", 0) > 0.5
         
         # Strong indicator: circular structure
-        score += 0.5 * features["circularity"]
+        score += 0.4 * features["circularity"]
         
-        # Multiple colors typical
-        if features["n_colors"] >= 3:
-            score += 0.2
+        # Symmetry (strong for pie charts)
+        score += 0.2 * features.get("symmetry_score", 0)
         
-        # High color coverage
-        score += 0.2 * features["color_coverage"]
+        # Shape compactness (pie charts are compact)
+        score += 0.15 * features.get("hu_compactness", 0)
+        
+        if not is_grayscale:
+            # Multiple colors typical
+            if features["n_colors"] >= 3:
+                score += 0.15
+            # High color coverage
+            score += 0.1 * features["color_coverage"]
+        else:
+            # For grayscale: rely more on texture uniformity
+            # Pie slices often have distinct uniform textures
+            score += 0.15 * (1 - features.get("texture_uniformity", 0.5))
         
         # Penalty for grid pattern (rare in pie charts)
         score -= 0.2 * features["grid_score"]
@@ -451,23 +801,42 @@ class SimpleChartClassifier:
         if features["n_rectangles"] > 3:
             score -= 0.2
         
+        # Penalty for axis presence (pie charts don't have axes)
+        if features.get("has_x_axis", 0) or features.get("has_y_axis", 0):
+            score -= 0.15
+        
         return max(0.0, min(1.0, score))
     
     def _score_bar(self, features: Dict[str, float]) -> float:
-        """Score likelihood of bar chart."""
+        """Score likelihood of bar chart (v2.0 with grayscale support)."""
         score = 0.0
+        is_grayscale = features.get("is_grayscale", 0) > 0.5
         
         # Strong indicator: vertical or horizontal edges dominant
         edge_ratio = max(features["v_edge_ratio"], features["h_edge_ratio"])
-        score += 0.3 * edge_ratio * 3  # Amplify
+        score += 0.25 * edge_ratio * 3  # Amplify
+        
+        # Gradient-based edge direction (grayscale-robust)
+        grad_ratio = max(features.get("grad_h_ratio", 0), features.get("grad_v_ratio", 0))
+        score += 0.15 * grad_ratio * 2
         
         # Rectangles detected
         if features["n_rectangles"] >= 2:
-            score += 0.3
-        score += 0.2 * min(1.0, features["rect_coverage"] * 5)
+            score += 0.25
+        score += 0.15 * min(1.0, features["rect_coverage"] * 5)
         
-        # Multiple colors
-        if features["n_colors"] >= 2:
+        # Connected components (bar charts have distinct bars)
+        n_comp = features.get("n_components", 0)
+        if 2 <= n_comp <= 15:
+            score += 0.1
+        
+        if not is_grayscale:
+            # Multiple colors
+            if features["n_colors"] >= 2:
+                score += 0.1
+        
+        # Axis presence (bar charts typically have axes)
+        if features.get("has_x_axis", 0) or features.get("has_y_axis", 0):
             score += 0.1
         
         # Penalty for circular structure
@@ -480,42 +849,68 @@ class SimpleChartClassifier:
         return max(0.0, min(1.0, score))
     
     def _score_line(self, features: Dict[str, float]) -> float:
-        """Score likelihood of line chart."""
+        """Score likelihood of line chart (v2.0 with grayscale support)."""
         score = 0.0
+        is_grayscale = features.get("is_grayscale", 0) > 0.5
         
         # Grid pattern common in line charts
-        score += 0.3 * features["grid_score"]
+        score += 0.25 * features["grid_score"]
         
         # Diagonal edges (lines are often diagonal)
-        score += 0.2 * features["d_edge_ratio"] * 5
+        score += 0.15 * features["d_edge_ratio"] * 5
         
         # Some markers (data points)
         if 3 <= features["n_markers"] <= 30:
             score += 0.2
         
-        # Few distinct colors
-        if features["n_colors"] <= 4:
-            score += 0.1
+        # Axis presence (line charts typically have axes)
+        if features.get("has_x_axis", 0) and features.get("has_y_axis", 0):
+            score += 0.15
+        elif features.get("has_x_axis", 0) or features.get("has_y_axis", 0):
+            score += 0.08
+        
+        # Shape elongation (line charts have elongated patterns)
+        score += 0.1 * features.get("hu_elongation", 0)
+        
+        if not is_grayscale:
+            # Few distinct colors
+            if features["n_colors"] <= 4:
+                score += 0.1
         
         # Penalty for circular structure
         score -= 0.3 * features["circularity"]
         
         # Penalty for many rectangles
         if features["n_rectangles"] > 5:
-            score -= 0.2
+            score -= 0.15
         
         return max(0.0, min(1.0, score))
     
     def _score_scatter(self, features: Dict[str, float]) -> float:
-        """Score likelihood of scatter plot."""
+        """Score likelihood of scatter plot (v2.0 with grayscale support)."""
         score = 0.0
+        is_grayscale = features.get("is_grayscale", 0) > 0.5
         
         # Strong indicator: many small markers
         if features["n_markers"] >= self.config.scatter_marker_threshold:
-            score += 0.4 * min(1.0, features["n_markers"] / 50)
+            score += 0.35 * min(1.0, features["n_markers"] / 50)
         
         # Grid pattern common
-        score += 0.2 * features["grid_score"]
+        score += 0.15 * features["grid_score"]
+        
+        # Axis presence (scatter plots typically have axes)
+        if features.get("has_x_axis", 0) and features.get("has_y_axis", 0):
+            score += 0.15
+        
+        # Many connected components (individual points)
+        n_comp = features.get("n_components", 0)
+        if n_comp > 10:
+            score += 0.15
+        
+        # Small average component area (points are small)
+        avg_area = features.get("avg_component_area", 0)
+        if 0 < avg_area < 0.01:
+            score += 0.1
         
         # Few rectangles
         if features["n_rectangles"] <= 2:
@@ -527,7 +922,7 @@ class SimpleChartClassifier:
         # Penalty for dominant edge orientation (scatter is more random)
         max_edge = max(features["h_edge_ratio"], features["v_edge_ratio"])
         if max_edge > 0.5:
-            score -= 0.2
+            score -= 0.15
         
         return max(0.0, min(1.0, score))
     
@@ -537,31 +932,54 @@ class SimpleChartClassifier:
         scores: Dict[ChartType, float],
         best_type: ChartType,
     ) -> str:
-        """Generate human-readable reasoning."""
+        """Generate human-readable reasoning (v2.0 with grayscale info)."""
         reasons = []
+        is_grayscale = features.get("is_grayscale", 0) > 0.5
+        
+        # Note if grayscale
+        if is_grayscale:
+            reasons.append("Grayscale image (using texture/shape features)")
         
         if best_type == ChartType.PIE:
             if features["circularity"] > 0.3:
-                reasons.append(f"Strong circular structure (score={features['circularity']:.2f})")
-            if features["n_colors"] >= 3:
-                reasons.append(f"Multiple colors detected ({int(features['n_colors'])})")
+                reasons.append(f"Strong circular structure ({features['circularity']:.2f})")
+            if features.get("symmetry_score", 0) > 0.5:
+                reasons.append(f"High symmetry ({features.get('symmetry_score', 0):.2f})")
+            if not is_grayscale and features["n_colors"] >= 3:
+                reasons.append(f"Multiple colors ({int(features['n_colors'])})")
+            if features.get("hu_compactness", 0) > 0.5:
+                reasons.append(f"Compact shape ({features.get('hu_compactness', 0):.2f})")
         
         elif best_type == ChartType.BAR:
             if features["n_rectangles"] >= 2:
-                reasons.append(f"Rectangular regions detected ({int(features['n_rectangles'])})")
+                reasons.append(f"Rectangles detected ({int(features['n_rectangles'])})")
             edge_ratio = max(features["v_edge_ratio"], features["h_edge_ratio"])
             if edge_ratio > 0.3:
-                reasons.append(f"Strong H/V edges (ratio={edge_ratio:.2f})")
+                reasons.append(f"Strong H/V edges ({edge_ratio:.2f})")
+            grad_ratio = max(features.get("grad_h_ratio", 0), features.get("grad_v_ratio", 0))
+            if grad_ratio > 0.3:
+                reasons.append(f"Gradient direction ({grad_ratio:.2f})")
+            if features.get("has_x_axis", 0) or features.get("has_y_axis", 0):
+                reasons.append("Axes detected")
         
         elif best_type == ChartType.LINE:
             if features["grid_score"] > 0.3:
-                reasons.append(f"Grid pattern detected (score={features['grid_score']:.2f})")
+                reasons.append(f"Grid pattern ({features['grid_score']:.2f})")
             if features["d_edge_ratio"] > 0.1:
-                reasons.append(f"Diagonal edges present (ratio={features['d_edge_ratio']:.2f})")
+                reasons.append(f"Diagonal edges ({features['d_edge_ratio']:.2f})")
+            if features.get("has_x_axis", 0) and features.get("has_y_axis", 0):
+                reasons.append("Both axes detected")
+            if features.get("hu_elongation", 0) > 0.5:
+                reasons.append(f"Elongated pattern ({features.get('hu_elongation', 0):.2f})")
         
         elif best_type == ChartType.SCATTER:
             if features["n_markers"] >= 10:
-                reasons.append(f"Many small markers ({int(features['n_markers'])})")
+                reasons.append(f"Many markers ({int(features['n_markers'])})")
+            n_comp = features.get("n_components", 0)
+            if n_comp > 10:
+                reasons.append(f"Many components ({int(n_comp)})")
+            if features.get("has_x_axis", 0) and features.get("has_y_axis", 0):
+                reasons.append("Both axes detected")
         
         if not reasons:
             reasons.append("Classification based on combined feature scores")

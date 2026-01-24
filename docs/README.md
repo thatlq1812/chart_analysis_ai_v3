@@ -1,73 +1,147 @@
-# Documentation Directory
+# Documentation Index
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 2.0.0 | 2026-01-25 | That Le | Restructured documentation with full navigation |
 | 1.1.0 | 2026-01-24 | That Le | Updated to reflect Phase 1 completion |
 | 1.0.0 | 2026-01-19 | That Le | Documentation structure for V3 |
 
 ## Overview
 
-This directory contains all technical documentation for the Geo-SLM Chart Analysis project.
+This directory contains all technical documentation for the **Geo-SLM Chart Analysis** project - a hybrid AI system for extracting structured data from chart images.
 
-## Current Structure
+---
+
+## Quick Navigation
+
+| Need to... | Go to |
+| --- | --- |
+| Understand the project | [MASTER_CONTEXT.md](MASTER_CONTEXT.md) |
+| Get started quickly | [guides/QUICK_START.md](guides/QUICK_START.md) |
+| Set up development | [guides/DEVELOPMENT.md](guides/DEVELOPMENT.md) |
+| Understand pipeline flow | [architecture/PIPELINE_FLOW.md](architecture/PIPELINE_FLOW.md) |
+| See test results | [reports/ACADEMIC_DATASET_TEST_REPORT.md](reports/ACADEMIC_DATASET_TEST_REPORT.md) |
+
+---
+
+## Directory Structure
 
 ```
 docs/
 |
-+-- MASTER_CONTEXT.md           # Project overview for AI agents
-+-- SESSION_LOG_2026_01_24.md   # Session log: Stage 3 testing
++-- MASTER_CONTEXT.md           # Project overview (START HERE)
++-- README.md                   # This file
 |
 +-- architecture/               # System design documentation
 |   +-- SYSTEM_OVERVIEW.md      # High-level architecture
-|   +-- PIPELINE_FLOW.md        # Stage-by-stage data flow (with mermaid)
-|   +-- STAGE3_EXTRACTION.md    # Stage 3 module documentation
+|   +-- PIPELINE_FLOW.md        # Stage-by-stage data flow
+|   +-- STAGE3_EXTRACTION.md    # Stage 3: Extraction details
+|   +-- STAGE4_REASONING.md     # Stage 4: SLM Reasoning (planned)
+|   +-- STAGE5_REPORTING.md     # Stage 5: Reporting (planned)
 |
 +-- guides/                     # How-to guides
+|   +-- QUICK_START.md          # Getting started guide
+|   +-- DEVELOPMENT.md          # Development setup
 |   +-- ARXIV_DOWNLOAD_GUIDE.md # PDF download from Arxiv
-|   +-- CHART_QA_GUIDE.md       # Chart QA generation guide
+|   +-- CHART_QA_GUIDE.md       # Chart QA dataset guide
 |
-+-- reports/                    # Generated reports
-|   +-- STAGE3_VISUALIZATION.md     # Stage 3 visualization report
-|   +-- ACADEMIC_DATASET_TEST_REPORT.md  # Academic dataset test
++-- research/                   # Research documentation
+|   +-- METHODOLOGY.md          # Research methodology
 |
-+-- images/                     # Generated images
-|   +-- stage3_report/          # Stage 3 unit test visualizations
-|   +-- stage3_academic/        # Academic dataset test visualizations
++-- reports/                    # Generated reports & benchmarks
+|   +-- ACADEMIC_DATASET_TEST_REPORT.md
+|   +-- STAGE3_VISUALIZATION.md
+|   +-- CLASSIFIER_IMPROVEMENTS.md
+|   +-- *.json                  # Benchmark results
 |
-+-- archive/                    # Completed/deprecated docs
-    +-- CONFIRM_CHART_QA_PIPELINE.md  # [COMPLETED] QA pipeline proposal
++-- images/                     # Generated visualizations
+|   +-- stage3/                 # Stage 3 test outputs
+|   +-- stage3_academic/        # Academic dataset outputs
+|
++-- archive/                    # Historical/completed docs
+    +-- CONFIRM_CHART_QA_PIPELINE.md
+    +-- SESSION_LOG_*.md
+    +-- instruction_p2_*.md
 ```
+
+---
 
 ## Key Documents
 
-| Document | Purpose | Status |
+### Core Documentation
+
+| Document | Description | Status |
 | --- | --- | --- |
-| [MASTER_CONTEXT.md](MASTER_CONTEXT.md) | Project overview for AI | [CURRENT] v1.2.1 |
-| [architecture/PIPELINE_FLOW.md](architecture/PIPELINE_FLOW.md) | Pipeline stages detail | [CURRENT] |
-| [architecture/SYSTEM_OVERVIEW.md](architecture/SYSTEM_OVERVIEW.md) | System architecture | [CURRENT] |
-| [architecture/STAGE3_EXTRACTION.md](architecture/STAGE3_EXTRACTION.md) | Stage 3 modules | [NEW] |
-| [guides/CHART_QA_GUIDE.md](guides/CHART_QA_GUIDE.md) | Chart QA generation | [CURRENT] |
-| [guides/ARXIV_DOWNLOAD_GUIDE.md](guides/ARXIV_DOWNLOAD_GUIDE.md) | Arxiv PDF download | [CURRENT] |
-| [reports/ACADEMIC_DATASET_TEST_REPORT.md](reports/ACADEMIC_DATASET_TEST_REPORT.md) | Stage 3 test results | [NEW] |
-| [SESSION_LOG_2026_01_24.md](SESSION_LOG_2026_01_24.md) | Session log | [NEW] |
+| [MASTER_CONTEXT.md](MASTER_CONTEXT.md) | Project overview, architecture, status | [CURRENT] |
+| [architecture/SYSTEM_OVERVIEW.md](architecture/SYSTEM_OVERVIEW.md) | System design philosophy | [CURRENT] |
+| [architecture/PIPELINE_FLOW.md](architecture/PIPELINE_FLOW.md) | Data flow diagrams | [CURRENT] |
+
+### Stage Documentation
+
+| Stage | Document | Status |
+| --- | --- | --- |
+| Stage 1-2 | [architecture/SYSTEM_OVERVIEW.md](architecture/SYSTEM_OVERVIEW.md) | [DONE] |
+| Stage 3 | [architecture/STAGE3_EXTRACTION.md](architecture/STAGE3_EXTRACTION.md) | [DONE] |
+| Stage 4 | [architecture/STAGE4_REASONING.md](architecture/STAGE4_REASONING.md) | [PLANNED] |
+| Stage 5 | [architecture/STAGE5_REPORTING.md](architecture/STAGE5_REPORTING.md) | [PLANNED] |
+
+### Guides
+
+| Guide | Purpose | Audience |
+| --- | --- | --- |
+| [QUICK_START.md](guides/QUICK_START.md) | Get up and running | All users |
+| [DEVELOPMENT.md](guides/DEVELOPMENT.md) | Dev environment setup | Developers |
+| [ARXIV_DOWNLOAD_GUIDE.md](guides/ARXIV_DOWNLOAD_GUIDE.md) | Download academic PDFs | Data collection |
+| [CHART_QA_GUIDE.md](guides/CHART_QA_GUIDE.md) | Generate QA dataset | ML training |
+
+### Research
+
+| Document | Description |
+| --- | --- |
+| [research/METHODOLOGY.md](research/METHODOLOGY.md) | Research approach and contributions |
+
+---
 
 ## Project Progress
 
-| Phase | Status | Key Deliverables |
+| Phase | Status | Documentation |
 | --- | --- | --- |
-| Phase 1: Foundation | [COMPLETED] | Dataset: 2,852 charts, 13,297 QA pairs |
-| Phase 2: Core Engine | [IN PROGRESS] | Stage 3 DONE, Stage 4-5 pending |
-| Phase 3: Optimization | [PLANNED] | Model fine-tuning, benchmarking |
-| Phase 4: Presentation | [PLANNED] | Demo UI, thesis document |
+| Phase 1: Foundation | [COMPLETED] | Dataset: 2,852 charts |
+| Phase 2: Core Engine | [IN PROGRESS] | Stage 3 done, 4-5 pending |
+| Phase 3: Optimization | [PLANNED] | Benchmarking, fine-tuning |
+| Phase 4: Presentation | [PLANNED] | Demo, thesis |
+
+---
 
 ## Documentation Standards
 
-All documentation follows the standards defined in:
-`.github/instructions/docs.instructions.md`
+All documentation follows standards in: `.github/instructions/docs.instructions.md`
 
-Key rules:
-1. Every file must have a version header table
-2. Use mermaid for diagrams
-3. No emojis - use text indicators: [DONE], [TODO], [IN PROGRESS]
-4. Code blocks must specify language
-5. Update docs when code changes
+### Key Rules
+
+1. **Version Header**: Every file must start with a version table
+2. **Mermaid Diagrams**: Use mermaid for flow/architecture diagrams
+3. **No Emojis**: Use text indicators `[DONE]`, `[TODO]`, `[IN PROGRESS]`
+4. **Code Blocks**: Always specify language
+5. **Keep Updated**: Update docs when code changes
+
+---
+
+## Related Files
+
+| File | Location | Purpose |
+| --- | --- | --- |
+| AI Instructions | `.github/instructions/` | Guidelines for AI agents |
+| Configuration | `config/` | YAML config files |
+| Source Code | `src/core_engine/` | Implementation |
+| Tests | `tests/` | Test suite |
+| Notebooks | `notebooks/` | Interactive exploration |
+
+---
+
+## Contributing to Documentation
+
+1. Follow the standards in `.github/instructions/docs.instructions.md`
+2. Update this README when adding new docs
+3. Keep `MASTER_CONTEXT.md` current with project status
+4. Archive completed/obsolete docs in `archive/`
