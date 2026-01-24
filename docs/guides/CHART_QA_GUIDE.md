@@ -2,7 +2,17 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 1.1.0 | 2026-01-24 | That Le | Updated with final statistics |
 | 1.0.0 | 2026-01-23 | That Le | Complete guide for Chart QA pipeline |
+
+## Status: [COMPLETED]
+
+**Final Statistics:**
+| Metric | Value |
+| --- | --- |
+| Total Images Processed | 2,852 |
+| Total QA Pairs Generated | 13,297 |
+| Dataset Location | `data/academic_dataset/chart_qa/dataset.json` |
 
 ## 1. Overview
 

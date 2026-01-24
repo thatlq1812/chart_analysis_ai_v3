@@ -2,6 +2,8 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 1.2.0 | 2026-01-25 | That Le | Stage 3 implementation complete |
+| 1.1.0 | 2026-01-24 | That Le | Phase 1 complete, moving to Phase 2 |
 | 1.0.0 | 2026-01-19 | That Le | Initial master context for V3 |
 
 ---
@@ -15,7 +17,7 @@
 | **Core Philosophy** | Hybrid Intelligence (Neural + Symbolic) |
 | **Primary Method** | YOLO Detection + Geometric Mapping + SLM Reasoning |
 | **Language** | Python 3.11+ |
-| **Current Phase** | Phase 1 - Foundation |
+| **Current Phase** | Phase 2 - Core Engine |
 | **Target** | Academic Thesis + Research Paper |
 
 ---
@@ -230,20 +232,44 @@ chart_analysis_ai_v3/
 
 ## 5. Current Status
 
-### 5.1. Phase 1: Foundation [IN PROGRESS]
+### 5.1. Phase 1: Foundation [COMPLETED]
 
 | Task | Status | Notes |
 | --- | --- | --- |
 | Project structure setup | [DONE] | V3 initialized |
 | Documentation framework | [DONE] | Instructions created |
-| Stage 1: Ingestion | [TODO] | Next priority |
-| Stage 2: Detection | [TODO] | After Stage 1 |
+| Data collection pipeline | [DONE] | PDF mining + Gemini classification |
+| Chart QA dataset | [DONE] | 2,852 charts, 13,297 QA pairs |
+| Stage 1: Ingestion | [DONE] | PDF/Image loading implemented |
+| Stage 2: Detection | [DONE] | YOLO integration complete |
 
-### 5.2. Upcoming Phases
+### 5.2. Phase 2: Core Engine [IN PROGRESS]
+
+| Task | Status | Notes |
+| --- | --- | --- |
+| Stage 3: Extraction | [DONE] | Geo-SLM hybrid approach implemented |
+| Stage 4: Reasoning | [TODO] | SLM integration - NEXT |
+| Stage 5: Reporting | [TODO] | Output formatting |
+
+**Stage 3 Implementation Details:**
+
+| Submodule | Status | Description |
+| --- | --- | --- |
+| Preprocessor | [DONE] | Negative image + adaptive threshold |
+| Skeletonizer | [DONE] | Lee algorithm, keypoint detection |
+| Vectorizer | [DONE] | RDP algorithm, subpixel refinement |
+| OCR Engine | [DONE] | PaddleOCR with role classification |
+| Geometric Mapper | [DONE] | Axis calibration, pixel-to-value |
+| Element Detector | [DONE] | Bars, markers, pie slices |
+| Classifier | [DONE] | Feature-based type determination |
+| Unit Tests | [DONE] | 7 test modules, 100+ test cases |
+| Documentation | [DONE] | STAGE3_EXTRACTION.md created |
+
+### 5.3. Upcoming Phases
 
 | Phase | Focus | Timeline |
 | --- | --- | --- |
-| Phase 2 | Core Engine (Stages 3-5) | Week 2-4 |
+| Phase 2 (cont.) | Stage 4-5 implementation | Week 3-4 |
 | Phase 3 | Optimization & Benchmarking | Week 5-6 |
 | Phase 4 | Demo & Documentation | Week 7-8 |
 
@@ -259,6 +285,10 @@ chart_analysis_ai_v3/
 | Pydantic v2 for schemas | Type safety, validation, serialization | 2026-01-19 |
 | Local SLM over API | Offline capability, cost, privacy | 2026-01-19 |
 | Qwen-2.5 as default SLM | Best performance/size ratio | 2026-01-19 |
+| Negative image preprocessing | Better skeleton extraction from charts | 2026-01-25 |
+| RDP vectorization | Preserves data points, reduces noise | 2026-01-25 |
+| Spatial OCR role classification | Context-aware text extraction | 2026-01-25 |
+| Hybrid bar+line detection | Contours for bars, skeleton for lines | 2026-01-25 |
 
 ---
 
