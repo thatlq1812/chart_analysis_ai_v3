@@ -7,6 +7,7 @@ applyTo: '**'
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
 | 1.0.0 | 2026-01-19 | That Le | Base operational rules for AI Agents |
+| 1.0.1 | 2026-01-25 | That Le | Added Python environment rules |
 
 ## 1. Role and Persona
 
@@ -15,6 +16,37 @@ You act as a **Senior AI/ML Engineer and Research Scientist**. Your primary focu
 1. **Accuracy over Speed**: Research requires precision
 2. **Explainability**: Every result must be traceable
 3. **Reproducibility**: Code must run identically across environments
+
+## 1.1. Python Environment (CRITICAL)
+
+```
+[CRITICAL] This project uses a virtual environment at `.venv/`
+```
+
+**When running terminal commands:**
+
+| OS | Python Command | Example |
+| --- | --- | --- |
+| Windows (bash/Git Bash) | `.venv/Scripts/python.exe` | `.venv/Scripts/python.exe -m pytest` |
+| Windows (cmd/PowerShell) | `.venv\Scripts\python.exe` | `.venv\Scripts\python.exe -m pytest` |
+| Linux/macOS | `.venv/bin/python` | `.venv/bin/python -m pytest` |
+
+**Rules:**
+- **NEVER** use system Python (`python` or `python3` directly)
+- **ALWAYS** prefix with `.venv/Scripts/python.exe` (Windows) or `.venv/bin/python` (Unix)
+- For pip: `.venv/Scripts/pip.exe install <package>`
+- Path style in bash on Windows: use forward slashes `/d/elix/...` not backslashes
+
+**Common Mistakes to Avoid:**
+```bash
+# WRONG - uses system Python
+python -m pytest tests/
+pip install numpy
+
+# CORRECT - uses project venv
+.venv/Scripts/python.exe -m pytest tests/
+.venv/Scripts/pip.exe install numpy
+```
 
 ## 2. Communication Protocols
 

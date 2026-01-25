@@ -2,6 +2,7 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 1.4.0 | 2026-01-26 | That Le | ResNet-18 classifier integrated and validated |
 | 1.3.0 | 2026-01-25 | That Le | Documentation restructured, Stage 4/5 docs added |
 | 1.2.1 | 2026-01-24 | That Le | Stage 3 tested on academic dataset |
 | 1.2.0 | 2026-01-24 | That Le | Stage 3 implementation complete |
@@ -19,7 +20,7 @@
 | **Core Philosophy** | Hybrid Intelligence (Neural + Symbolic) |
 | **Primary Method** | YOLO Detection + Geometric Mapping + SLM Reasoning |
 | **Language** | Python 3.11+ |
-| **Current Phase** | Phase 2 - Core Engine |
+| **Current Phase** | Phase 2 - Core Engine (Week 1 Complete: ResNet-18) |
 | **Target** | Academic Thesis + Research Paper |
 
 ---
@@ -268,12 +269,25 @@ chart_analysis_ai_v3/
 | OCR Engine | [DONE] | PaddleOCR with role classification |
 | Geometric Mapper | [DONE] | Axis calibration, pixel-to-value |
 | Element Detector | [DONE] | Bars, markers, pie slices |
-| Classifier | [DONE] | Feature-based type determination |
+| Classifier | [UPGRADED] | ResNet-18 (94.66% accuracy, replacing 37.5% baseline) |
 | Unit Tests | [DONE] | 7 test modules, 129 test cases |
 | Documentation | [DONE] | STAGE3_EXTRACTION.md created |
 | Academic Dataset Test | [DONE] | 15/15 images processed successfully |
+| Production Integration | [DONE] | ResNet18Classifier wrapper ready |
 
-**Stage 3 Academic Dataset Test Results (2026-01-24):**
+**ResNet-18 Classifier (Week 1 Complete - 2026-01-26):**
+
+| Metric | Value |
+| --- | --- |
+| Training Accuracy | 94.66% |
+| Integration Test Accuracy | 93.75% (15/16 samples) |
+| Training Time | 27 minutes (NVIDIA GPU) |
+| Inference Speed (ONNX) | 6.90ms mean (CPU), 144.9 img/sec |
+| Model Size | 42.64 MB (ONNX format) |
+| Classes | 8 types (area, bar, box, heatmap, histogram, line, pie, scatter) |
+| Explainability | Grad-CAM visualizations (9 files) |
+
+**Stage 3 Academic Dataset Test Results (2026-01-26):**
 
 | Metric | Value |
 | --- | --- |

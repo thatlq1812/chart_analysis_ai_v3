@@ -12,15 +12,21 @@ yolo:
 
 classifier:
   # Chart type classification
-  path: "models/weights/chart_classifier.pt"
+  # UPDATED: Now using ResNet-18 (94.66% accuracy vs 37.5% baseline)
+  model: "resnet18"  # resnet18, simple
+  path: "models/weights/resnet18_chart_classifier_best.pt"
+  onnx_path: "models/onnx/resnet18_chart_classifier.onnx"  # Optional ONNX version
   device: "auto"
+  confidence_threshold: 0.5
   classes:
+    - area
     - bar
+    - box
+    - heatmap
+    - histogram
     - line
     - pie
     - scatter
-    - area
-    - unknown
 
 ocr:
   # OCR engine configuration

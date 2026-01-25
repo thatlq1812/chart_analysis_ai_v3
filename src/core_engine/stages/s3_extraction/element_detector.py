@@ -57,8 +57,14 @@ class ElementDetectorConfig(BaseModel):
     # Bar detection
     detect_bars: bool = Field(default=True, description="Detect bar rectangles")
     min_bar_area: int = Field(default=100, ge=1, description="Minimum bar area in pixels")
-    bar_aspect_ratio_min: float = Field(default=0.1, gt=0, description="Min aspect ratio for bars")
-    bar_aspect_ratio_max: float = Field(default=10.0, gt=0, description="Max aspect ratio for bars")
+    max_bar_area_ratio: float = Field(
+        default=0.4,
+        ge=0.01,
+        le=1.0,
+        description="Maximum bar area as ratio of image area (filter background)"
+    )
+    bar_aspect_ratio_min: float = Field(default=0.03, gt=0, description="Min aspect ratio for bars")
+    bar_aspect_ratio_max: float = Field(default=30.0, gt=0, description="Max aspect ratio for bars")
     
     # Advanced bar separation
     bar_separation_method: BarSeparationMethod = Field(
@@ -87,6 +93,18 @@ class ElementDetectorConfig(BaseModel):
     
     # Color extraction
     extract_colors: bool = Field(default=True, description="Extract dominant colors")
+    
+    # [FIX] Color-based bar detection (better for bar charts)
+    use_color_segmentation: bool = Field(
+        default=True,
+        description="Use color segmentation to detect colored bars (recommended for bar charts)"
+    )
+    color_saturation_threshold: int = Field(
+        default=30,
+        ge=0,
+        le=255,
+        description="Minimum saturation to consider as colored (not grayscale)"
+    )
 
 
 @dataclass
@@ -127,6 +145,7 @@ class ElementDetector:
         binary_image: np.ndarray,
         color_image: Optional[np.ndarray] = None,
         chart_id: str = "unknown",
+        chart_type: Optional[str] = None,
     ) -> ElementDetectionResult:
         """
         Detect all discrete elements.
@@ -135,18 +154,30 @@ class ElementDetector:
             binary_image: Binary image (foreground=255)
             color_image: Optional BGR image for color extraction
             chart_id: Chart identifier for logging
+            chart_type: Optional chart type hint for routing detection strategy
         
         Returns:
             ElementDetectionResult with detected elements
         """
-        self.logger.debug(f"Element detection started | chart_id={chart_id}")
+        self.logger.debug(f"Element detection started | chart_id={chart_id} | chart_type={chart_type}")
         
         bars = []
         markers = []
         slices = []
         
-        # Use advanced bar detection if configured
-        if self.config.detect_bars:
+        # [FIX] Route detection based on chart type to avoid false positives
+        # Skip bar detection for chart types that don't have bars
+        skip_bar_detection = chart_type in ("line", "scatter", "pie", "area")
+        
+        # [FIX] Additional heuristic: if chart_type is unknown, check if image looks like line/scatter
+        # This helps when classifier fails but visual features are clear
+        if not skip_bar_detection and chart_type in (None, "unknown") and color_image is not None:
+            if self._looks_like_line_or_scatter(binary_image, color_image, chart_id):
+                skip_bar_detection = True
+                self.logger.debug(f"Heuristic detected line/scatter pattern | chart_id={chart_id}")
+        
+        # Use advanced bar detection if configured and appropriate for chart type
+        if self.config.detect_bars and not skip_bar_detection:
             method = self.config.bar_separation_method
             
             if method == BarSeparationMethod.HYBRID:
@@ -492,19 +523,541 @@ class ElementDetector:
         self.logger.debug(f"Morphological method found {len(bars)} bars | chart_id={chart_id}")
         return bars
     
+    def _detect_bars_by_color(
+        self,
+        color_image: np.ndarray,
+        chart_id: str,
+    ) -> List[BarRectangle]:
+        """
+        Detect bars using color segmentation in HSV space.
+        
+        [NEW] This method is specifically designed for colored bar charts.
+        It identifies saturated (colored) regions and filters them by
+        rectangular shape and size constraints.
+        
+        Algorithm:
+        1. Convert to HSV color space
+        2. Create mask for saturated pixels (colors, not grayscale)
+        3. Find contours in the saturation mask
+        4. Filter contours by area and aspect ratio
+        5. Return valid bar rectangles
+        
+        Args:
+            color_image: BGR color image
+            chart_id: For logging context
+            
+        Returns:
+            List of detected bar rectangles
+        """
+        bars = []
+        h, w = color_image.shape[:2]
+        
+        # Convert to HSV
+        hsv = cv2.cvtColor(color_image, cv2.COLOR_BGR2HSV)
+        
+        # Saturation channel - high saturation = colored pixels
+        saturation = hsv[:, :, 1]
+        
+        # Threshold saturation to find colored regions
+        sat_threshold = self.config.color_saturation_threshold
+        _, sat_mask = cv2.threshold(saturation, sat_threshold, 255, cv2.THRESH_BINARY)
+        
+        # Clean up with morphological operations (conservative to avoid merging thin bars)
+        kernel_small = np.ones((2, 2), np.uint8)
+        sat_mask = cv2.morphologyEx(sat_mask, cv2.MORPH_CLOSE, kernel_small, iterations=1)
+        sat_mask = cv2.morphologyEx(sat_mask, cv2.MORPH_OPEN, kernel_small, iterations=1)
+        
+        # Find contours
+        contours, _ = cv2.findContours(sat_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        img_area = h * w
+        max_bar_area = img_area * self.config.max_bar_area_ratio
+        
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            
+            # Skip too small or too large
+            if area < self.config.min_bar_area:
+                continue
+            if area > max_bar_area:
+                continue
+            
+            # Get bounding box
+            x, y, bw, bh = cv2.boundingRect(contour)
+            
+            # Check aspect ratio (allow both vertical and horizontal bars)
+            aspect = bw / bh if bh > 0 else 0
+            inv_aspect = bh / bw if bw > 0 else 0
+            
+            # Valid bar: either wide-short or tall-narrow
+            is_valid_aspect = (
+                self.config.bar_aspect_ratio_min <= aspect <= self.config.bar_aspect_ratio_max
+                or self.config.bar_aspect_ratio_min <= inv_aspect <= self.config.bar_aspect_ratio_max
+            )
+            
+            if not is_valid_aspect:
+                continue
+            
+            # Check fill ratio (bar should be mostly filled)
+            rect_area = bw * bh
+            fill_ratio = area / rect_area if rect_area > 0 else 0
+            if fill_ratio < 0.5:  # Must be at least 50% filled
+                continue
+            
+            # [FIX] Filter out legend boxes
+            # Legend boxes are typically:
+            # 1. Small and nearly square (aspect ratio close to 1)
+            # 2. Located at the right edge or top of the chart
+            is_legend_like = self._is_likely_legend_box(x, y, bw, bh, w, h, area)
+            if is_legend_like:
+                self.logger.debug(
+                    f"Skipping legend-like box | x={x}, y={y}, w={bw}, h={bh}, area={area}"
+                )
+                continue
+            
+            # Extract dominant color
+            color = self._extract_dominant_color(contour, color_image)
+            
+            bar = BarRectangle(
+                x_min=float(x),
+                y_min=float(y),
+                x_max=float(x + bw),
+                y_max=float(y + bh),
+                color=color,
+            )
+            bars.append(bar)
+        
+        self.logger.debug(
+            f"Color segmentation found {len(bars)} bars | "
+            f"chart_id={chart_id} | sat_threshold={sat_threshold}"
+        )
+        return bars
+    
+    def _is_likely_legend_box(
+        self,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        img_width: int,
+        img_height: int,
+        area: float,
+    ) -> bool:
+        """
+        Check if a detected box is likely a legend indicator, not a bar.
+        
+        Legend boxes are typically:
+        1. Small and nearly square (aspect ratio close to 1)
+        2. Located at the right edge (legend column) or top-right corner
+        3. Much smaller than typical bars
+        
+        Args:
+            x, y, w, h: Bounding box of the detected region
+            img_width, img_height: Image dimensions
+            area: Contour area
+            
+        Returns:
+            True if the box appears to be a legend indicator
+        """
+        # Check aspect ratio (legend boxes are usually square or nearly square)
+        aspect_ratio = w / h if h > 0 else 0
+        is_nearly_square = 0.7 <= aspect_ratio <= 1.4
+        
+        # Check size (legend boxes are typically small, under 500-1000 pixels area)
+        is_small = area < 800  # Legend boxes are usually ~200-400 pixels
+        
+        # Check position (legend is usually on the right side of the chart)
+        right_margin_threshold = img_width * 0.75
+        is_on_right_side = x > right_margin_threshold
+        
+        # Combined check: small, square, and on the right = legend
+        if is_nearly_square and is_small and is_on_right_side:
+            return True
+        
+        # Also check for very small boxes anywhere (likely labels/markers)
+        if is_nearly_square and area < 400:
+            return True
+        
+        return False
+    
+    def _is_likely_stacked(
+        self,
+        bars: List[BarRectangle],
+        color_image: np.ndarray,
+    ) -> bool:
+        """
+        Detect if the bar chart is likely a stacked bar chart.
+        
+        Stacked bar characteristics:
+        1. Multiple distinct colors in the image
+        2. Bars that are very tall relative to width (multiple segments merged)
+        3. Each detected bar contains multiple colors
+        
+        Args:
+            bars: Currently detected bars
+            color_image: Original color image
+            
+        Returns:
+            True if the chart appears to be stacked
+        """
+        if len(bars) < 2:
+            return False
+        
+        try:
+            from sklearn.cluster import KMeans
+        except ImportError:
+            return False
+        
+        h, w = color_image.shape[:2]
+        
+        # Check 1: Look for multiple colors WITHIN each bar region
+        # This is the key indicator for stacked bars - each bar contains multiple colors
+        bars_with_multiple_colors = 0
+        
+        for bar in bars:
+            x1, y1 = max(0, int(bar.x_min)), max(0, int(bar.y_min))
+            x2, y2 = min(w, int(bar.x_max)), min(h, int(bar.y_max))
+            
+            if x2 <= x1 or y2 <= y1:
+                continue
+            
+            region = color_image[y1:y2, x1:x2]
+            pixels = region.reshape(-1, 3)
+            
+            if len(pixels) < 100:
+                continue
+            
+            # Sample pixels for K-Means
+            n_samples = min(1000, len(pixels))
+            sample_idx = np.random.choice(len(pixels), n_samples, replace=False)
+            sample_pixels = pixels[sample_idx]
+            
+            try:
+                # Try k=4 clusters per bar
+                kmeans = KMeans(n_clusters=4, random_state=42, n_init=5)
+                kmeans.fit(sample_pixels)
+                centers = kmeans.cluster_centers_.astype(np.uint8)
+                
+                # Count non-background colors in this bar
+                bar_colors = 0
+                for c in centers:
+                    b_val, g_val, r_val = int(c[0]), int(c[1]), int(c[2])
+                    # Skip white, black, gray
+                    if min(b_val, g_val, r_val) > 240:
+                        continue
+                    if max(b_val, g_val, r_val) < 20:
+                        continue
+                    if abs(b_val - g_val) < 20 and abs(g_val - r_val) < 20 and abs(b_val - r_val) < 20:
+                        continue
+                    bar_colors += 1
+                
+                if bar_colors >= 2:  # This bar has 2+ distinct colors = stacked
+                    bars_with_multiple_colors += 1
+                    
+            except Exception:
+                continue
+        
+        # If most bars have multiple colors, it's stacked
+        if bars_with_multiple_colors >= len(bars) * 0.5:
+            self.logger.debug(
+                f"Stacked detection: {bars_with_multiple_colors}/{len(bars)} bars have multiple colors"
+            )
+            return True
+        
+        # Check 2: Bars are unusually tall (height > 2x width) - merged segments
+        tall_bars = sum(1 for bar in bars if (bar.y_max - bar.y_min) > 2 * (bar.x_max - bar.x_min))
+        if tall_bars >= len(bars) * 0.5:
+            self.logger.debug(
+                f"Stacked detection: {tall_bars}/{len(bars)} bars are very tall"
+            )
+            return True
+        
+        return False
+
+    def _detect_stacked_bars_by_kmeans(
+        self,
+        color_image: np.ndarray,
+        chart_id: str,
+        n_colors: int = 8,
+        min_area: int = 500,
+    ) -> List[BarRectangle]:
+        """
+        Detect stacked bar segments using K-Means color clustering.
+        
+        [NEW] This method uses K-Means to cluster pixels by color,
+        then finds contours within each color cluster. This allows
+        separation of stacked segments that share boundaries.
+        
+        Algorithm:
+        1. Apply K-Means clustering on pixel colors
+        2. For each color cluster (excluding white/black):
+           a. Create binary mask for that color
+           b. Find contours in the mask
+           c. Filter by area and shape
+        3. Return all detected bar segments
+        
+        Args:
+            color_image: BGR color image
+            chart_id: For logging context
+            n_colors: Number of K-Means clusters
+            min_area: Minimum segment area
+            
+        Returns:
+            List of detected bar rectangles with color info
+        """
+        try:
+            from sklearn.cluster import KMeans
+        except ImportError:
+            self.logger.warning(
+                "scikit-learn not available for K-Means detection | "
+                f"chart_id={chart_id}"
+            )
+            return []
+        
+        bars = []
+        h, w = color_image.shape[:2]
+        
+        # Reshape image for K-Means
+        pixels = color_image.reshape(-1, 3).astype(np.float32)
+        
+        # Apply K-Means (use k=8 to oversegment, then filter)
+        try:
+            kmeans = KMeans(n_clusters=n_colors, random_state=42, n_init=10)
+            labels = kmeans.fit_predict(pixels)
+            centers = kmeans.cluster_centers_.astype(np.uint8)
+        except Exception as e:
+            self.logger.warning(
+                f"K-Means failed | chart_id={chart_id} | error={e}"
+            )
+            return []
+        
+        # Create label image
+        labels_2d = labels.reshape(h, w)
+        
+        img_area = h * w
+        max_bar_area = img_area * self.config.max_bar_area_ratio
+        
+        # Process each color cluster
+        for cluster_idx in range(n_colors):
+            center_color = centers[cluster_idx]
+            b_val, g_val, r_val = int(center_color[0]), int(center_color[1]), int(center_color[2])
+            
+            # Skip white background (high values in all channels)
+            if b_val > 240 and g_val > 240 and r_val > 240:
+                continue
+            
+            # Skip black (axis lines)
+            if b_val < 15 and g_val < 15 and r_val < 15:
+                continue
+            
+            # Skip gray (text, minor elements)
+            if abs(b_val - g_val) < 20 and abs(g_val - r_val) < 20 and b_val < 200:
+                continue
+            
+            # Create mask for this cluster
+            mask = (labels_2d == cluster_idx).astype(np.uint8) * 255
+            
+            # Find contours in this color mask
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            for cnt in contours:
+                area = cv2.contourArea(cnt)
+                if area < min_area:
+                    continue
+                if area > max_bar_area:
+                    continue
+                
+                x, y, bw, bh = cv2.boundingRect(cnt)
+                
+                # Filter by aspect ratio
+                aspect = bw / bh if bh > 0 else 0
+                if aspect > 5 or aspect < 0.1:  # Too horizontal or vertical = noise
+                    continue
+                
+                # Skip legend-like boxes
+                if self._is_likely_legend_box(x, y, bw, bh, w, h, area):
+                    continue
+                
+                # Create color object
+                color = Color(r=r_val, g=g_val, b=b_val)
+                
+                bar = BarRectangle(
+                    x_min=float(x),
+                    y_min=float(y),
+                    x_max=float(x + bw),
+                    y_max=float(y + bh),
+                    color=color,
+                )
+                bars.append(bar)
+        
+        self.logger.debug(
+            f"K-Means stacked detection found {len(bars)} segments | "
+            f"chart_id={chart_id} | n_colors={n_colors}"
+        )
+        return bars
+    
+    def _detect_pie_slices_by_kmeans(
+        self,
+        color_image: np.ndarray,
+        chart_id: str,
+        n_colors: int = 8,
+        min_area: int = 1000,
+    ) -> List[PieSlice]:
+        """
+        Detect pie chart slices using K-Means color clustering.
+        
+        [NEW] Similar to stacked bar detection, but returns PieSlice
+        objects with angular information.
+        
+        Args:
+            color_image: BGR color image
+            chart_id: For logging context
+            n_colors: Number of K-Means clusters
+            min_area: Minimum slice area
+            
+        Returns:
+            List of detected pie slices with color and angle info
+        """
+        try:
+            from sklearn.cluster import KMeans
+        except ImportError:
+            self.logger.warning(
+                "scikit-learn not available for K-Means detection | "
+                f"chart_id={chart_id}"
+            )
+            return []
+        
+        slices = []
+        h, w = color_image.shape[:2]
+        center_x, center_y = w // 2, h // 2
+        
+        # Estimate pie radius (use half of smaller dimension)
+        estimated_radius = min(h, w) // 2 - 20
+        
+        # Reshape image for K-Means
+        pixels = color_image.reshape(-1, 3).astype(np.float32)
+        
+        try:
+            kmeans = KMeans(n_clusters=n_colors, random_state=42, n_init=10)
+            labels = kmeans.fit_predict(pixels)
+            centers = kmeans.cluster_centers_.astype(np.uint8)
+        except Exception as e:
+            self.logger.warning(
+                f"K-Means failed for pie slices | chart_id={chart_id} | error={e}"
+            )
+            return []
+        
+        labels_2d = labels.reshape(h, w)
+        
+        for cluster_idx in range(n_colors):
+            center_color = centers[cluster_idx]
+            b_val, g_val, r_val = int(center_color[0]), int(center_color[1]), int(center_color[2])
+            
+            # Skip white/black/gray
+            if b_val > 240 and g_val > 240 and r_val > 240:
+                continue
+            if b_val < 15 and g_val < 15 and r_val < 15:
+                continue
+            if abs(b_val - g_val) < 20 and abs(g_val - r_val) < 20 and b_val < 200:
+                continue
+            
+            mask = (labels_2d == cluster_idx).astype(np.uint8) * 255
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            for cnt in contours:
+                area = cv2.contourArea(cnt)
+                if area < min_area:
+                    continue
+                
+                # Calculate centroid
+                M = cv2.moments(cnt)
+                if M["m00"] == 0:
+                    continue
+                cx = int(M["m10"] / M["m00"])
+                cy = int(M["m01"] / M["m00"])
+                
+                # Calculate angle from pie center (in radians for schema)
+                angle_start = math.atan2(cy - center_y, cx - center_x)
+                
+                # Estimate slice proportion based on area
+                total_area = math.pi * estimated_radius * estimated_radius
+                proportion = area / total_area if total_area > 0 else 0
+                angle_span = proportion * 2 * math.pi
+                angle_end = angle_start + angle_span
+                
+                color = Color(r=r_val, g=g_val, b=b_val)
+                
+                # Create PieSlice matching schema
+                slice_obj = PieSlice(
+                    center=PointFloat(x=float(center_x), y=float(center_y)),
+                    radius_outer=float(estimated_radius),
+                    radius_inner=0.0,  # Full pie, not donut
+                    angle_start=angle_start,
+                    angle_end=angle_end,
+                    color=color,
+                )
+                slices.append(slice_obj)
+        
+        self.logger.debug(
+            f"K-Means pie detection found {len(slices)} slices | chart_id={chart_id}"
+        )
+        return slices
+    
     def _detect_bars_hybrid(
         self,
         binary_image: np.ndarray,
         color_image: Optional[np.ndarray],
         chart_id: str,
+        chart_type: Optional[str] = None,
     ) -> List[BarRectangle]:
         """
         Combine multiple methods and vote on results.
         
-        Uses contour, watershed, and projection methods,
+        [FIX] Updated to prioritize color segmentation for colored bar charts.
+        [NEW] Uses K-Means for stacked bars when chart_type indicates stacking.
+        [NEW] Auto-detects stacked bars when color segmentation finds few bars
+              but image has multiple distinct colors.
+        Uses contour, watershed, projection, and color methods,
         then merges results based on overlap and confidence.
         """
-        # Try each method
+        h, w = binary_image.shape[:2]
+        
+        # [NEW] For stacked charts, use K-Means color clustering
+        # K-Means can separate touching segments by color
+        if chart_type in ("stacked", "stacked_bar", "100_stacked") and color_image is not None:
+            kmeans_bars = self._detect_stacked_bars_by_kmeans(color_image, chart_id)
+            if len(kmeans_bars) >= 3:  # Stacked should have multiple segments
+                self.logger.debug(
+                    f"K-Means stacked detection found {len(kmeans_bars)} bars | chart_id={chart_id}"
+                )
+                return kmeans_bars
+        
+        # [FIX] Try color segmentation first (best for bar charts with colored bars)
+        color_bars = []
+        if self.config.use_color_segmentation and color_image is not None:
+            color_bars = self._detect_bars_by_color(color_image, chart_id)
+            if len(color_bars) >= 2:
+                self.logger.debug(f"Color segmentation found {len(color_bars)} bars | chart_id={chart_id}")
+                
+                # [NEW] Auto-detect stacked bars:
+                # If we found few bars but they might be stacked (overlapping X positions),
+                # try K-Means for better separation
+                if self._is_likely_stacked(color_bars, color_image):
+                    self.logger.debug(
+                        f"Auto-detected stacked pattern | chart_id={chart_id} | "
+                        f"trying K-Means for better separation"
+                    )
+                    kmeans_bars = self._detect_stacked_bars_by_kmeans(color_image, chart_id)
+                    if len(kmeans_bars) > len(color_bars):
+                        self.logger.debug(
+                            f"K-Means improved detection: {len(color_bars)} -> {len(kmeans_bars)} bars | "
+                            f"chart_id={chart_id}"
+                        )
+                        return kmeans_bars
+                
+                return color_bars
+        
+        # Try each traditional method
         contour_bars = self._detect_bars_contour(binary_image, color_image, chart_id)
         watershed_bars = self._detect_bars_watershed(binary_image, color_image, chart_id)
         projection_bars = self._detect_bars_projection(binary_image, color_image, chart_id)
@@ -600,6 +1153,7 @@ class ElementDetector:
         h: int,
         contour: Optional[np.ndarray],
         color_image: Optional[np.ndarray],
+        image_shape: Optional[Tuple[int, int]] = None,
     ) -> Optional[BarRectangle]:
         """Create BarRectangle from bounding box if valid."""
         if w <= 0 or h <= 0:
@@ -612,9 +1166,31 @@ class ElementDetector:
             if not (self.config.bar_aspect_ratio_min <= inv_aspect <= self.config.bar_aspect_ratio_max):
                 return None
         
+        bar_area = w * h
+        
         # Check minimum area
-        if w * h < self.config.min_bar_area:
+        if bar_area < self.config.min_bar_area:
             return None
+        
+        # [FIX] Check maximum area (filter background/oversized contours)
+        if image_shape is not None:
+            img_h, img_w = image_shape
+            img_area = img_h * img_w
+            max_bar_area = img_area * self.config.max_bar_area_ratio
+            if bar_area > max_bar_area:
+                self.logger.debug(
+                    f"Rejected oversized bar: {w}x{h} = {bar_area} > max {max_bar_area:.0f}"
+                )
+                return None
+        elif color_image is not None:
+            img_h, img_w = color_image.shape[:2]
+            img_area = img_h * img_w
+            max_bar_area = img_area * self.config.max_bar_area_ratio
+            if bar_area > max_bar_area:
+                self.logger.debug(
+                    f"Rejected oversized bar: {w}x{h} = {bar_area} > max {max_bar_area:.0f}"
+                )
+                return None
         
         # Extract color
         color = None
@@ -877,3 +1453,90 @@ class ElementDetector:
             return None
         
         return (cx, cy, radius)
+
+    def _looks_like_line_or_scatter(
+        self,
+        binary_image: np.ndarray,
+        color_image: np.ndarray,
+        chart_id: str,
+    ) -> bool:
+        """
+        Heuristic to detect if an image looks like a line or scatter chart.
+        
+        Used when classifier returns 'unknown' to avoid false positive bars.
+        Key insight: Line charts have colored regions with LOW SOLIDITY
+        (thin lines with gaps) while bar charts have HIGH SOLIDITY (filled rectangles).
+        
+        Returns:
+            True if image appears to be line/scatter chart
+        """
+        h, w = binary_image.shape[:2]
+        
+        # Use color segmentation to find colored elements
+        hsv = cv2.cvtColor(color_image, cv2.COLOR_BGR2HSV)
+        saturation = hsv[:, :, 1]
+        
+        # Detect colored regions (saturation > 30)
+        color_mask = (saturation > 30).astype(np.uint8) * 255
+        
+        # Find contours of colored regions
+        contours, _ = cv2.findContours(
+            color_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
+        
+        if not contours:
+            return False
+        
+        # Analyze colored contours
+        total_colored_area = 0
+        low_solidity_area = 0
+        high_solidity_rectangles = 0
+        
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area < 100:  # Too small to analyze
+                continue
+            
+            total_colored_area += area
+            
+            # Get convex hull to compute solidity
+            hull = cv2.convexHull(contour)
+            hull_area = cv2.contourArea(hull)
+            solidity = area / hull_area if hull_area > 0 else 0
+            
+            # Get bounding rect properties
+            x, y, bw, bh = cv2.boundingRect(contour)
+            rect_area = bw * bh
+            extent = area / rect_area if rect_area > 0 else 0
+            
+            # Classify based on solidity:
+            # - Low solidity (< 0.3) = line pattern (thin with gaps)
+            # - High solidity (> 0.7) + high extent = filled rectangle = bar
+            
+            if solidity < 0.3:
+                low_solidity_area += area
+            elif solidity > 0.7 and extent > 0.7 and area > 500:
+                high_solidity_rectangles += 1
+        
+        # Heuristic decision:
+        # If most colored area has low solidity → line/scatter chart
+        # If many high-solidity rectangles → bar chart
+        
+        if total_colored_area == 0:
+            return False
+        
+        low_solidity_ratio = low_solidity_area / total_colored_area
+        
+        looks_like_line = (
+            low_solidity_ratio > 0.5  # More than half is line-like
+            or (low_solidity_ratio > 0.3 and high_solidity_rectangles == 0)
+        )
+        
+        if looks_like_line:
+            self.logger.debug(
+                f"Line/scatter heuristic triggered | chart_id={chart_id} | "
+                f"low_solidity_ratio={low_solidity_ratio:.2f} | "
+                f"high_solidity_rects={high_solidity_rectangles}"
+            )
+        
+        return looks_like_line

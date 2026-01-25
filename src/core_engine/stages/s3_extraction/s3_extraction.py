@@ -75,6 +75,13 @@ class ExtractionConfig(BaseModel):
     elements: ElementDetectorConfig = Field(default_factory=ElementDetectorConfig)
     classifier: ClassifierConfig = Field(default_factory=ClassifierConfig)
     
+    # [FIX] Shortcut for element detector color segmentation
+    # This is forwarded to elements.use_color_segmentation during init
+    use_color_segmentation: bool = Field(
+        default=True,
+        description="Use color-based detection instead of binary contours"
+    )
+    
     # Processing options
     enable_vectorization: bool = Field(
         default=True,
@@ -92,6 +99,16 @@ class ExtractionConfig(BaseModel):
     use_ml_classifier: bool = Field(
         default=True,
         description="Use ML-based classifier instead of rule-based"
+    )
+    
+    # [FIX] Post-negative cleaning options
+    use_cleaned_for_skeleton: bool = Field(
+        default=True,
+        description="Use cleaned binary (grid/noise removed) for skeletonization"
+    )
+    mask_text_before_skeleton: bool = Field(
+        default=True,
+        description="Run OCR first and mask text regions before skeletonization"
     )
     
     # Output options
@@ -150,7 +167,13 @@ class Stage3Extraction(BaseStage):
         self.ocr_engine = OCREngine(ocr_config)
         
         self.mapper = GeometricMapper(config.mapper)
-        self.element_detector = ElementDetector(config.elements)
+        
+        # [FIX] Forward use_color_segmentation shortcut to element detector
+        element_config = config.elements.model_copy(
+            update={"use_color_segmentation": config.use_color_segmentation}
+        )
+        self.element_detector = ElementDetector(element_config)
+        
         self.classifier = ChartClassifier(config.classifier)
         
         # ML classifier (optional, used if use_ml_classifier=True)
@@ -229,6 +252,8 @@ class Stage3Extraction(BaseStage):
         """
         Process a raw image directly (for testing/standalone use).
         
+        [FIX] Updated to use cleaned image and OCR-first flow for skeletonization.
+        
         Args:
             image_bgr: BGR image array
             chart_id: Identifier for logging
@@ -251,11 +276,33 @@ class Stage3Extraction(BaseStage):
         # Preprocessing
         preprocess_result = self.preprocessor.process(image_bgr, chart_id)
         
-        # Vectorization
+        # [FIX] OCR first (for text masking)
+        texts = []
+        if self.config.enable_ocr:
+            ocr_result = self.ocr_engine.extract_text(image_bgr, chart_id)
+            texts = ocr_result.texts
+        
+        # [FIX] Prepare skeleton input with cleaning
+        if self.config.use_cleaned_for_skeleton:
+            skeleton_input = preprocess_result.cleaned_image.copy()
+        else:
+            skeleton_input = preprocess_result.binary_image.copy()
+        
+        # [FIX] Apply text masking if enabled
+        if self.config.mask_text_before_skeleton and texts:
+            text_boxes = self.preprocessor.extract_text_boxes_for_masking(texts)
+            if text_boxes:
+                skeleton_input, _ = self.preprocessor.clean_for_skeleton(
+                    skeleton_input,
+                    text_boxes=text_boxes,
+                    chart_id=chart_id,
+                )
+        
+        # Vectorization (using cleaned input)
         polylines = []
         if self.config.enable_vectorization:
             skeleton_result = self.skeletonizer.process(
-                preprocess_result.binary_image,
+                skeleton_input,  # [FIX] Use cleaned image
                 chart_id=chart_id,
             )
             paths = self.skeletonizer.trace_paths(
@@ -270,7 +317,7 @@ class Stage3Extraction(BaseStage):
             )
             polylines = vector_result.polylines
         
-        # Element detection
+        # Element detection (uses original binary)
         bars = []
         markers = []
         slices = []
@@ -286,12 +333,6 @@ class Stage3Extraction(BaseStage):
             slices = element_result.slices
             elements = self._convert_elements(bars, markers, slices)
         
-        # OCR
-        texts = []
-        if self.config.enable_ocr:
-            ocr_result = self.ocr_engine.extract_text(image_bgr, chart_id)
-            texts = ocr_result.texts
-        
         return RawMetadata(
             chart_id=chart_id,
             chart_type=chart_type,
@@ -303,6 +344,16 @@ class Stage3Extraction(BaseStage):
     def _process_single_chart(self, chart) -> RawMetadata:
         """
         Process a single chart through extraction pipeline.
+        
+        [FIX] Updated flow to address "Post-Negative Issue":
+        1. Preprocess (negative + threshold + grid/noise cleaning)
+        2. OCR (extract text first for masking)
+        3. Text masking (optional, mask OCR regions in binary)
+        4. Skeletonize (on cleaned image)
+        5. Vectorize
+        6. Element detection
+        7. Axis calibration
+        8. Classification
         
         Args:
             chart: DetectedChart from Stage 2
@@ -323,31 +374,58 @@ class Stage3Extraction(BaseStage):
         
         h, w = image_bgr.shape[:2]
         
-        # Step 1: Preprocessing (negative image + thresholding)
+        # Step 1: Preprocessing (negative image + thresholding + initial cleaning)
         preprocess_result = self.preprocessor.process(image_bgr, chart_id)
         
         # Save debug images if configured
         if self.config.save_debug_images and self.config.debug_output_dir:
             self._save_debug_images(chart_id, preprocess_result)
         
-        # Step 2: Skeleton extraction
+        # [FIX] Step 2: OCR text extraction (run BEFORE skeletonization for text masking)
+        texts = []
+        if self.config.enable_ocr:
+            ocr_result = self.ocr_engine.extract_text(image_bgr, chart_id)
+            texts = ocr_result.texts
+        
+        # [FIX] Step 3: Prepare binary image for skeletonization
+        # Choose between original binary or cleaned version
+        if self.config.use_cleaned_for_skeleton:
+            skeleton_input = preprocess_result.cleaned_image.copy()
+        else:
+            skeleton_input = preprocess_result.binary_image.copy()
+        
+        # [FIX] Apply text masking if enabled and we have OCR results
+        if self.config.mask_text_before_skeleton and texts:
+            text_boxes = self.preprocessor.extract_text_boxes_for_masking(texts)
+            if text_boxes:
+                skeleton_input, mask_stats = self.preprocessor.clean_for_skeleton(
+                    skeleton_input,
+                    text_boxes=text_boxes,
+                    chart_id=chart_id,
+                )
+                self.logger.debug(
+                    f"Text masking applied | chart_id={chart_id} | "
+                    f"regions_masked={mask_stats['text_regions_masked']}"
+                )
+        
+        # Step 4: Skeleton extraction (now using cleaned input)
         skeleton_result = None
         polylines = []
         keypoints = []
         
         if self.config.enable_vectorization:
             skeleton_result = self.skeletonizer.process(
-                preprocess_result.binary_image,
+                skeleton_input,  # [FIX] Use cleaned image instead of raw binary
                 chart_id=chart_id,
             )
             
-            # Step 3: Trace paths from skeleton
+            # Step 5: Trace paths from skeleton
             paths = self.skeletonizer.trace_paths(
                 skeleton_result.skeleton,
                 skeleton_result.keypoints,
             )
             
-            # Step 4: Vectorize paths with RDP
+            # Step 6: Vectorize paths with RDP
             vector_result = self.vectorizer.process(
                 paths,
                 stroke_width_map=skeleton_result.stroke_width_map,
@@ -358,7 +436,23 @@ class Stage3Extraction(BaseStage):
             polylines = vector_result.polylines
             keypoints = skeleton_result.keypoints
         
-        # Step 5: Detect discrete elements (bars, markers)
+        # Step 7: Early chart type classification (before element detection)
+        # [FIX] Classify chart type FIRST so we can route element detection appropriately
+        chart_type = ChartType.UNKNOWN
+        if self.config.enable_classification and self.ml_classifier is not None:
+            try:
+                ml_result = self.ml_classifier.classify(image_bgr, chart_id=chart_id)
+                chart_type = ml_result.chart_type
+                self.logger.debug(
+                    f"Early ML classification | chart_id={chart_id} | "
+                    f"type={chart_type.value} | confidence={ml_result.confidence:.2f}"
+                )
+            except Exception as e:
+                self.logger.warning(f"Early ML classification failed: {e}. Will classify after detection.")
+        
+        # Step 8: Detect discrete elements (bars, markers)
+        # Note: Uses original binary_image (not cleaned) to preserve element shapes
+        # [FIX] Pass chart_type to enable routing (skip bar detection for line/scatter/pie)
         elements = []
         bars = []
         markers = []
@@ -369,6 +463,7 @@ class Stage3Extraction(BaseStage):
                 preprocess_result.binary_image,
                 color_image=image_bgr,
                 chart_id=chart_id,
+                chart_type=chart_type.value if chart_type != ChartType.UNKNOWN else None,
             )
             
             bars = element_result.bars
@@ -378,18 +473,15 @@ class Stage3Extraction(BaseStage):
             # Convert to ChartElement format
             elements = self._convert_elements(bars, markers, slices)
         
-        # Step 6: OCR text extraction
-        texts = []
-        if self.config.enable_ocr:
-            ocr_result = self.ocr_engine.extract_text(image_bgr, chart_id)
-            texts = ocr_result.texts
+        # [FIX] Note: OCR already extracted in Step 2 (before skeletonization)
+        # No duplicate extraction needed
         
-        # Step 7: Axis calibration from OCR
+        # Step 9: Axis calibration from OCR
         axis_info = self._calibrate_axes(texts, w, h)
         
-        # Step 8: Chart type classification
-        chart_type = ChartType.UNKNOWN
-        if self.config.enable_classification:
+        # Step 10: Final chart type classification (if not already determined)
+        # [FIX] Skip if early classification already determined chart type
+        if chart_type == ChartType.UNKNOWN and self.config.enable_classification:
             # Use ML classifier if available, otherwise fall back to rule-based
             if self.ml_classifier is not None:
                 try:

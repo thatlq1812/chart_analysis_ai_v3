@@ -2,18 +2,19 @@
 
 | Property | Value |
 |----------|-------|
-| Generated | 2026-01-24 23:35:41 |
+| Generated | 2026-01-26 02:26:57 |
 | Dataset | Academic arXiv Charts |
 | Total Images | 15 |
 | Successful | 15 (100.0%) |
-| Average Processing Time | 3533.4 ms |
+| Average Processing Time | 7600.9 ms |
 
 ## Classification Distribution
 
 | Chart Type | Count | Percentage |
 |------------|-------|------------|
-| line | 11 | 73.3% |
+| bar | 10 | 66.7% |
 | scatter | 4 | 26.7% |
+| line | 1 | 6.7% |
 
 ## Individual Results
 
@@ -22,11 +23,11 @@
 ![Result](../images/stage3_academic/result_00_arxiv_1301_3342v2_p05_img01.png)
 
 - **Status**: Success
-- **Processing Time**: 4066.67 ms
+- **Processing Time**: 3687.31 ms
 - **Image Size**: 1476x1143
 - **Chart Type**: line
 - **Confidence**: 40.8%
-- **Preprocessing Steps**: 5
+- **Preprocessing Steps**: 7
 - **Keypoints**: 449
 - **Polylines**: 168
 
@@ -35,11 +36,11 @@
 ![Result](../images/stage3_academic/result_01_arxiv_1704_06687v1_p02_img00.png)
 
 - **Status**: Success
-- **Processing Time**: 11735.38 ms
+- **Processing Time**: 33625.98 ms
 - **Image Size**: 2992x2022
-- **Chart Type**: line
-- **Confidence**: 40.2%
-- **Preprocessing Steps**: 5
+- **Chart Type**: bar
+- **Confidence**: 40.0%
+- **Preprocessing Steps**: 7
 - **Keypoints**: 4666
 - **Polylines**: 991
 
@@ -48,11 +49,11 @@
 ![Result](../images/stage3_academic/result_02_arxiv_1710_07300v2_p04_img00.png)
 
 - **Status**: Success
-- **Processing Time**: 446.57 ms
+- **Processing Time**: 441.07 ms
 - **Image Size**: 402x400
-- **Chart Type**: line
-- **Confidence**: 41.2%
-- **Preprocessing Steps**: 5
+- **Chart Type**: bar
+- **Confidence**: 40.0%
+- **Preprocessing Steps**: 7
 - **Keypoints**: 335
 - **Polylines**: 60
 
@@ -61,11 +62,11 @@
 ![Result](../images/stage3_academic/result_03_arxiv_1801_08163v2_p01_img00.png)
 
 - **Status**: Success
-- **Processing Time**: 6459.65 ms
+- **Processing Time**: 14734.27 ms
 - **Image Size**: 1856x1346
-- **Chart Type**: line
-- **Confidence**: 40.3%
-- **Preprocessing Steps**: 5
+- **Chart Type**: bar
+- **Confidence**: 40.0%
+- **Preprocessing Steps**: 7
 - **Keypoints**: 3766
 - **Polylines**: 969
 
@@ -74,11 +75,11 @@
 ![Result](../images/stage3_academic/result_04_arxiv_1906_11906v1_p08_img01.png)
 
 - **Status**: Success
-- **Processing Time**: 2066.08 ms
+- **Processing Time**: 6076.89 ms
 - **Image Size**: 1825x573
 - **Chart Type**: scatter
 - **Confidence**: 50.0%
-- **Preprocessing Steps**: 5
+- **Preprocessing Steps**: 7
 - **Keypoints**: 2083
 - **Polylines**: 318
 
@@ -87,11 +88,11 @@
 ![Result](../images/stage3_academic/result_05_arxiv_1907_12635v1_p01_img00.png)
 
 - **Status**: Success
-- **Processing Time**: 2852.48 ms
+- **Processing Time**: 5253.42 ms
 - **Image Size**: 1840x502
-- **Chart Type**: line
-- **Confidence**: 40.2%
-- **Preprocessing Steps**: 5
+- **Chart Type**: bar
+- **Confidence**: 40.0%
+- **Preprocessing Steps**: 7
 - **Keypoints**: 3296
 - **Polylines**: 362
 
@@ -100,11 +101,11 @@
 ![Result](../images/stage3_academic/result_06_arxiv_1908_01801v2_p03_img01.png)
 
 - **Status**: Success
-- **Processing Time**: 365.75 ms
+- **Processing Time**: 373.27 ms
 - **Image Size**: 532x400
-- **Chart Type**: line
-- **Confidence**: 40.3%
-- **Preprocessing Steps**: 5
+- **Chart Type**: bar
+- **Confidence**: 41.6%
+- **Preprocessing Steps**: 7
 - **Keypoints**: 204
 - **Polylines**: 29
 
@@ -113,11 +114,11 @@
 ![Result](../images/stage3_academic/result_07_arxiv_1911_09375v1_p02_img00.png)
 
 - **Status**: Success
-- **Processing Time**: 914.11 ms
+- **Processing Time**: 2786.57 ms
 - **Image Size**: 902x545
-- **Chart Type**: line
-- **Confidence**: 40.9%
-- **Preprocessing Steps**: 5
+- **Chart Type**: bar
+- **Confidence**: 41.8%
+- **Preprocessing Steps**: 7
 - **Keypoints**: 562
 - **Polylines**: 189
 
@@ -126,11 +127,11 @@
 ![Result](../images/stage3_academic/result_08_arxiv_1912_05471v1_p03_img02.png)
 
 - **Status**: Success
-- **Processing Time**: 1593.36 ms
+- **Processing Time**: 1662.91 ms
 - **Image Size**: 1125x795
-- **Chart Type**: line
-- **Confidence**: 41.4%
-- **Preprocessing Steps**: 5
+- **Chart Type**: bar
+- **Confidence**: 40.0%
+- **Preprocessing Steps**: 7
 - **Keypoints**: 816
 - **Polylines**: 54
 
@@ -139,11 +140,11 @@
 ![Result](../images/stage3_academic/result_09_arxiv_2005_14165v4_p04_img00.png)
 
 - **Status**: Success
-- **Processing Time**: 16028.98 ms
+- **Processing Time**: 34220.01 ms
 - **Image Size**: 3392x1888
-- **Chart Type**: line
-- **Confidence**: 40.5%
-- **Preprocessing Steps**: 5
+- **Chart Type**: bar
+- **Confidence**: 40.0%
+- **Preprocessing Steps**: 7
 - **Keypoints**: 3986
 - **Polylines**: 246
 
@@ -152,11 +153,11 @@
 ![Result](../images/stage3_academic/result_10_arxiv_2009_02491v1_p03_img00.png)
 
 - **Status**: Success
-- **Processing Time**: 2165.58 ms
+- **Processing Time**: 5774.58 ms
 - **Image Size**: 1011x873
-- **Chart Type**: line
-- **Confidence**: 40.9%
-- **Preprocessing Steps**: 5
+- **Chart Type**: bar
+- **Confidence**: 40.0%
+- **Preprocessing Steps**: 7
 - **Keypoints**: 2782
 - **Polylines**: 302
 
@@ -165,11 +166,11 @@
 ![Result](../images/stage3_academic/result_11_arxiv_2010_02319v1_p02_img00.png)
 
 - **Status**: Success
-- **Processing Time**: 777.51 ms
+- **Processing Time**: 627.51 ms
 - **Image Size**: 640x480
-- **Chart Type**: line
-- **Confidence**: 41.1%
-- **Preprocessing Steps**: 5
+- **Chart Type**: bar
+- **Confidence**: 40.4%
+- **Preprocessing Steps**: 7
 - **Keypoints**: 370
 - **Polylines**: 93
 
@@ -178,11 +179,11 @@
 ![Result](../images/stage3_academic/result_12_arxiv_2010_14476v1_p11_img00.png)
 
 - **Status**: Success
-- **Processing Time**: 2179.53 ms
+- **Processing Time**: 2664.37 ms
 - **Image Size**: 1325x950
 - **Chart Type**: scatter
 - **Confidence**: 50.0%
-- **Preprocessing Steps**: 5
+- **Preprocessing Steps**: 7
 - **Keypoints**: 1450
 - **Polylines**: 276
 
@@ -191,11 +192,11 @@
 ![Result](../images/stage3_academic/result_13_arxiv_2111_14103v1_p01_img03.png)
 
 - **Status**: Success
-- **Processing Time**: 920.28 ms
+- **Processing Time**: 866.3 ms
 - **Image Size**: 729x671
 - **Chart Type**: scatter
 - **Confidence**: 50.0%
-- **Preprocessing Steps**: 5
+- **Preprocessing Steps**: 7
 - **Keypoints**: 931
 - **Polylines**: 188
 
@@ -204,11 +205,11 @@
 ![Result](../images/stage3_academic/result_14_arxiv_2112_03485v1_p02_img00.png)
 
 - **Status**: Success
-- **Processing Time**: 428.68 ms
+- **Processing Time**: 1219.14 ms
 - **Image Size**: 479x370
 - **Chart Type**: scatter
 - **Confidence**: 50.0%
-- **Preprocessing Steps**: 5
+- **Preprocessing Steps**: 7
 - **Keypoints**: 148
 - **Polylines**: 23
 

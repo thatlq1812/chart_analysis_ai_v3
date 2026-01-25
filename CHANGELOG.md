@@ -9,9 +9,61 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Planned
-- Stage 3: Extraction (OCR + Geometric Analysis)
+- Stage 3: Complete OCR + Geometric Analysis
 - Stage 4: Reasoning (SLM Integration)
 - Stage 5: Reporting (Output Formatting)
+
+---
+
+## [0.3.0] - 2026-01-25
+
+### Week 1: ResNet-18 Classifier [COMPLETED]
+
+#### Added
+- **ResNet-18 Chart Classifier**
+  - Model: ResNet-18 with 8-class output (area, bar, box, heatmap, histogram, line, pie, scatter)
+  - Accuracy: 94.66% test accuracy (vs 37.5% baseline SimpleChartClassifier)
+  - Training: 27 minutes on NVIDIA GPU, early stopping at epoch 15/100
+  - Dataset: Academic dataset with stratified train/test split
+  
+- **Grad-CAM Explainability** (`scripts/generate_gradcam.py`)
+  - Visual explanation of model attention regions
+  - Target layer: ResNet-18 layer4[-1].conv2 (last convolutional layer)
+  - Generated: 8 per-class visualizations + 1 summary (9 files total)
+  - Output: `models/explainability/gradcam_*.png`
+  
+- **ONNX Model Export** (`scripts/export_resnet18_onnx.py`)
+  - Cross-platform deployment format (42.64 MB)
+  - Inference speed: 6.90ms mean (CPU), 144.9 images/sec throughput
+  - Validation: PyTorch vs ONNX predictions match (max diff 0.000982)
+  - Output: `models/onnx/resnet18_chart_classifier.onnx` + metadata JSON
+  
+- **Pipeline Integration** (`src/core_engine/stages/s3_extraction/resnet_classifier.py`)
+  - Production wrapper: `ResNet18Classifier` class
+  - API methods: `predict()`, `predict_with_confidence()`, `predict_batch()`, `get_class_probabilities()`
+  - Device support: Auto-detection (CUDA > MPS > CPU)
+  - Configuration: `config/models.yaml` updated with ResNet-18 settings
+
+#### Changed
+- **Stage 3 Classifier**: Replaced SimpleChartClassifier (37.5%) with ResNet-18 (94.66%)
+- **Configuration**: Updated `config/models.yaml` with ResNet-18 paths and 8 chart classes
+
+#### Fixed
+- ONNX export device mismatch: Model on GPU, input on CPU
+- Model loading structure: Checkpoint uses ResNetWrapper with "resnet." prefix
+- Integration test validation: 93.75% accuracy (15/16 correct)
+
+#### Tested
+- Integration test: `scripts/test_resnet_integration.py`
+  - Overall: 93.75% accuracy (15/16 samples)
+  - Per-class: 7/8 types at 100%, area at 50% (1 misclassification)
+  - Pass threshold: 90% (PASSED)
+  - Output: Visualization grid + JSON results
+
+#### Documentation
+- `docs/reports/WEEK1_COMPLETION_SUMMARY.md`: Comprehensive completion report
+- Evaluation results: Confusion matrix, per-class metrics, training curves
+- Explainability: Grad-CAM visualizations showing model attention
 
 ---
 

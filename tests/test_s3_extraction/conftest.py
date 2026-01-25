@@ -11,8 +11,8 @@ import tempfile
 from datetime import datetime
 import cv2
 
-from core_engine.schemas.common import SessionInfo, BoundingBox
-from core_engine.schemas.stage_outputs import Stage2Output, DetectedChart
+from src.core_engine.schemas.common import SessionInfo, BoundingBox
+from src.core_engine.schemas.stage_outputs import Stage2Output, DetectedChart
 
 
 @pytest.fixture(scope="session")

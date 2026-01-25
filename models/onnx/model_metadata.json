@@ -1,0 +1,38 @@
+{
+  "model_name": "ResNet18ChartClassifier",
+  "input_shape": [
+    1,
+    3,
+    224,
+    224
+  ],
+  "output_shape": [
+    1,
+    8
+  ],
+  "class_names": [
+    "area",
+    "bar",
+    "box",
+    "heatmap",
+    "histogram",
+    "line",
+    "pie",
+    "scatter"
+  ],
+  "normalization": {
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "opset_version": 11,
+  "framework": "PyTorch 2.0+",
+  "exported_from": "D:\\elix\\chart_analysis_ai_v3\\models\\weights\\resnet18_chart_classifier_best.pt"
+}
