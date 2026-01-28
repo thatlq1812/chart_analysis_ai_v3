@@ -258,7 +258,12 @@ class TestVectorizerEdgeCases:
 
     def test_large_epsilon(self) -> None:
         """Test with very large epsilon (aggressive simplification)."""
-        config = VectorizeConfig(epsilon=100.0, adaptive_epsilon=False)
+        config = VectorizeConfig(
+            epsilon=100.0,
+            adaptive_epsilon=False,
+            use_curvature_adaptive=False,  # Disable to test pure large epsilon
+            use_hierarchical=False,  # Disable to test pure RDP
+        )
         vectorizer = Vectorizer(config)
         
         # Create complex path

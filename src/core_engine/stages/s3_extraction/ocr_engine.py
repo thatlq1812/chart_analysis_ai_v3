@@ -96,6 +96,39 @@ class OCRConfig(BaseModel):
         default=True,
         description="Validate numeric values are in reasonable ranges"
     )
+    
+    # Image pre-enhancement for OCR
+    enable_pre_enhancement: bool = Field(
+        default=True,
+        description="Enable image enhancement before OCR"
+    )
+    upscale_small_text: bool = Field(
+        default=True,
+        description="Upscale image regions with small text"
+    )
+    upscale_threshold: int = Field(
+        default=15,
+        ge=5,
+        description="Text height threshold (px) below which to upscale"
+    )
+    upscale_factor: float = Field(
+        default=2.0,
+        ge=1.0,
+        le=4.0,
+        description="Upscale factor for small text regions"
+    )
+    denoise_before_ocr: bool = Field(
+        default=True,
+        description="Apply denoising before OCR"
+    )
+    sharpen_text: bool = Field(
+        default=True,
+        description="Apply sharpening filter to enhance text edges"
+    )
+    enhance_contrast: bool = Field(
+        default=True,
+        description="Apply CLAHE contrast enhancement"
+    )
 
 
 @dataclass
@@ -213,6 +246,10 @@ class OCREngine:
         # Convert grayscale to BGR if needed (PaddleOCR expects BGR)
         if len(image.shape) == 2:
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        
+        # Apply pre-enhancement if enabled
+        if self.config.enable_pre_enhancement:
+            image = self._enhance_image_for_ocr(image, chart_id)
         
         h, w = image.shape[:2]
         
@@ -742,3 +779,138 @@ class OCREngine:
             correction_type = "cleanup"
         
         return text, correction_type if text != original else None
+    
+    def _enhance_image_for_ocr(
+        self,
+        image: np.ndarray,
+        chart_id: str = "unknown",
+    ) -> np.ndarray:
+        """
+        Enhance image quality before OCR.
+        
+        Applies multiple enhancement techniques:
+        1. Contrast enhancement (CLAHE)
+        2. Denoising (bilateral filter)
+        3. Sharpening (unsharp mask)
+        4. Upscaling for small text
+        
+        Args:
+            image: Input BGR image
+            chart_id: Chart identifier for logging
+        
+        Returns:
+            Enhanced BGR image
+        """
+        enhanced = image.copy()
+        h, w = enhanced.shape[:2]
+        
+        enhancements_applied = []
+        
+        # 1. Denoise (preserves edges better than Gaussian blur)
+        if self.config.denoise_before_ocr:
+            enhanced = cv2.bilateralFilter(enhanced, 9, 75, 75)
+            enhancements_applied.append("denoise")
+        
+        # 2. Contrast enhancement using CLAHE on L channel
+        if self.config.enhance_contrast:
+            lab = cv2.cvtColor(enhanced, cv2.COLOR_BGR2LAB)
+            l_channel, a_channel, b_channel = cv2.split(lab)
+            
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            l_enhanced = clahe.apply(l_channel)
+            
+            lab_enhanced = cv2.merge([l_enhanced, a_channel, b_channel])
+            enhanced = cv2.cvtColor(lab_enhanced, cv2.COLOR_LAB2BGR)
+            enhancements_applied.append("clahe")
+        
+        # 3. Sharpening using unsharp mask
+        if self.config.sharpen_text:
+            gaussian = cv2.GaussianBlur(enhanced, (0, 0), 2.0)
+            enhanced = cv2.addWeighted(enhanced, 1.5, gaussian, -0.5, 0)
+            enhancements_applied.append("sharpen")
+        
+        # 4. Upscale small images (helps with small text)
+        if self.config.upscale_small_text:
+            # If image is small overall, upscale it
+            if h < 200 or w < 300:
+                scale = self.config.upscale_factor
+                new_w = int(w * scale)
+                new_h = int(h * scale)
+                enhanced = cv2.resize(
+                    enhanced, (new_w, new_h),
+                    interpolation=cv2.INTER_CUBIC
+                )
+                enhancements_applied.append(f"upscale_{scale}x")
+        
+        if enhancements_applied:
+            self.logger.debug(
+                f"OCR image enhancement | chart_id={chart_id} | "
+                f"applied={','.join(enhancements_applied)}"
+            )
+        
+        return enhanced
+    
+    def enhance_text_region(
+        self,
+        image: np.ndarray,
+        bbox: BoundingBox,
+        target_height: int = 32,
+    ) -> np.ndarray:
+        """
+        Enhance a specific text region for better OCR accuracy.
+        
+        This method is useful for re-processing low-confidence text
+        regions with more aggressive enhancement.
+        
+        Args:
+            image: Full image
+            bbox: Text bounding box
+            target_height: Target height for text region
+        
+        Returns:
+            Enhanced cropped region
+        """
+        # Crop with padding
+        pad = 5
+        x1 = max(0, bbox.x_min - pad)
+        y1 = max(0, bbox.y_min - pad)
+        x2 = min(image.shape[1], bbox.x_max + pad)
+        y2 = min(image.shape[0], bbox.y_max + pad)
+        
+        region = image[y1:y2, x1:x2].copy()
+        
+        if region.size == 0:
+            return region
+        
+        # Calculate scale to reach target height
+        current_height = region.shape[0]
+        if current_height < target_height:
+            scale = target_height / current_height
+            new_w = int(region.shape[1] * scale)
+            new_h = target_height
+            region = cv2.resize(
+                region, (new_w, new_h),
+                interpolation=cv2.INTER_CUBIC
+            )
+        
+        # Enhanced preprocessing for text
+        # Convert to grayscale
+        if len(region.shape) == 3:
+            gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = region
+        
+        # Binarization using Otsu
+        _, binary = cv2.threshold(
+            gray, 0, 255,
+            cv2.THRESH_BINARY + cv2.THRESH_OTSU
+        )
+        
+        # Invert if text is white on dark background
+        if np.mean(binary) > 127:
+            binary = 255 - binary
+        
+        # Convert back to BGR for OCR engine compatibility
+        enhanced = cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR)
+        
+        return enhanced

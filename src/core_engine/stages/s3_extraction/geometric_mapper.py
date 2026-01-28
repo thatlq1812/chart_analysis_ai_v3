@@ -9,6 +9,7 @@ Key features:
 - Least squares fitting with confidence scoring
 - Pixel-to-value and value-to-pixel conversion
 - Sub-pixel accuracy support
+- Hough-based axis line detection for improved calibration
 
 Reference: docs/instruction_p2_research.md - Section 5.2
 Enhancement: instruction_003.md - RANSAC for robust calibration
@@ -16,10 +17,11 @@ Enhancement: instruction_003.md - RANSAC for robust calibration
 
 import logging
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 
+import cv2
 import numpy as np
 from pydantic import BaseModel, Field
 
@@ -99,6 +101,46 @@ class MapperConfig(BaseModel):
         default=True,
         description="Y-axis increases downward (image coordinates)"
     )
+    
+    # Axis line detection
+    detect_axis_lines: bool = Field(
+        default=True,
+        description="Use Hough transform to detect axis lines"
+    )
+    hough_threshold: int = Field(
+        default=50,
+        ge=10,
+        description="Minimum votes for Hough line detection"
+    )
+    hough_min_line_length: int = Field(
+        default=50,
+        ge=10,
+        description="Minimum line length for HoughLinesP"
+    )
+    hough_max_line_gap: int = Field(
+        default=10,
+        ge=1,
+        description="Maximum gap between line segments"
+    )
+    axis_angle_tolerance: float = Field(
+        default=5.0,
+        ge=0,
+        le=45,
+        description="Maximum angle (degrees) deviation from horizontal/vertical"
+    )
+
+
+@dataclass
+class AxisLineResult:
+    """Result of axis line detection."""
+    
+    x_axis_line: Optional[Tuple[int, int, int, int]] = None  # (x1, y1, x2, y2)
+    y_axis_line: Optional[Tuple[int, int, int, int]] = None
+    origin: Optional[Tuple[int, int]] = None  # Intersection point
+    x_axis_y_position: Optional[int] = None  # Y pixel of X-axis
+    y_axis_x_position: Optional[int] = None  # X pixel of Y-axis
+    all_horizontal_lines: List[Tuple[int, int, int, int]] = field(default_factory=list)
+    all_vertical_lines: List[Tuple[int, int, int, int]] = field(default_factory=list)
 
 
 @dataclass
@@ -141,11 +183,143 @@ class GeometricMapper:
         self.x_scale: Optional[ScaleMapping] = None
         self.y_scale: Optional[ScaleMapping] = None
         
+        # Detected axis lines
+        self.axis_lines: Optional[AxisLineResult] = None
+        
         # Plot area boundaries (in pixels)
         self.plot_x_min: float = 0
         self.plot_x_max: float = 0
         self.plot_y_min: float = 0
         self.plot_y_max: float = 0
+    
+    def detect_axis_lines(
+        self,
+        binary_image: np.ndarray,
+        chart_id: str = "unknown",
+    ) -> AxisLineResult:
+        """
+        Detect axis lines using Hough transform.
+        
+        This helps identify:
+        1. The exact pixel positions of X and Y axes
+        2. The plot area boundaries
+        3. The origin point (if axes meet)
+        
+        Args:
+            binary_image: Binary image (edges or preprocessed)
+            chart_id: Chart identifier for logging
+        
+        Returns:
+            AxisLineResult with detected axis information
+        """
+        if not self.config.detect_axis_lines:
+            return AxisLineResult()
+        
+        h, w = binary_image.shape[:2]
+        
+        # Edge detection if input is not already edges
+        if binary_image.max() > 1:
+            edges = cv2.Canny(binary_image, 50, 150)
+        else:
+            edges = binary_image
+        
+        # Hough line detection
+        lines = cv2.HoughLinesP(
+            edges,
+            rho=1,
+            theta=np.pi / 180,
+            threshold=self.config.hough_threshold,
+            minLineLength=self.config.hough_min_line_length,
+            maxLineGap=self.config.hough_max_line_gap,
+        )
+        
+        if lines is None:
+            self.logger.debug(f"No lines detected | chart_id={chart_id}")
+            return AxisLineResult()
+        
+        horizontal_lines = []
+        vertical_lines = []
+        angle_tol = self.config.axis_angle_tolerance
+        
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            
+            # Compute angle
+            if abs(x2 - x1) < 1e-10:
+                angle = 90.0
+            else:
+                angle = abs(np.degrees(np.arctan2(y2 - y1, x2 - x1)))
+            
+            # Classify as horizontal or vertical
+            if angle < angle_tol or angle > (180 - angle_tol):
+                horizontal_lines.append((x1, y1, x2, y2))
+            elif abs(angle - 90) < angle_tol:
+                vertical_lines.append((x1, y1, x2, y2))
+        
+        self.logger.debug(
+            f"Lines detected | chart_id={chart_id} | "
+            f"horizontal={len(horizontal_lines)} | vertical={len(vertical_lines)}"
+        )
+        
+        # Find the most likely X-axis (longest horizontal line in bottom half)
+        x_axis_line = None
+        x_axis_y = None
+        best_x_axis_length = 0
+        
+        for x1, y1, x2, y2 in horizontal_lines:
+            y_pos = (y1 + y2) / 2
+            # X-axis should be in bottom 70% of image
+            if y_pos > h * 0.3:
+                length = abs(x2 - x1)
+                if length > best_x_axis_length:
+                    best_x_axis_length = length
+                    x_axis_line = (x1, y1, x2, y2)
+                    x_axis_y = int(y_pos)
+        
+        # Find the most likely Y-axis (longest vertical line in left half)
+        y_axis_line = None
+        y_axis_x = None
+        best_y_axis_length = 0
+        
+        for x1, y1, x2, y2 in vertical_lines:
+            x_pos = (x1 + x2) / 2
+            # Y-axis should be in left 50% of image
+            if x_pos < w * 0.5:
+                length = abs(y2 - y1)
+                if length > best_y_axis_length:
+                    best_y_axis_length = length
+                    y_axis_line = (x1, y1, x2, y2)
+                    y_axis_x = int(x_pos)
+        
+        # Find origin (intersection of axes)
+        origin = None
+        if x_axis_y is not None and y_axis_x is not None:
+            origin = (y_axis_x, x_axis_y)
+        
+        result = AxisLineResult(
+            x_axis_line=x_axis_line,
+            y_axis_line=y_axis_line,
+            origin=origin,
+            x_axis_y_position=x_axis_y,
+            y_axis_x_position=y_axis_x,
+            all_horizontal_lines=horizontal_lines,
+            all_vertical_lines=vertical_lines,
+        )
+        
+        self.axis_lines = result
+        
+        # Update plot boundaries based on detected axes
+        if x_axis_line is not None:
+            self.plot_y_max = x_axis_y
+        if y_axis_line is not None:
+            self.plot_x_min = y_axis_x
+        
+        self.logger.info(
+            f"Axis lines detected | chart_id={chart_id} | "
+            f"x_axis_y={x_axis_y} | y_axis_x={y_axis_x} | origin={origin}"
+        )
+        
+        return result
     
     def calibrate_y_axis(
         self,
@@ -201,6 +375,148 @@ class GeometricMapper:
             return linear_result
         
         return None
+    
+    def detect_scale_pattern(
+        self,
+        values: List[float],
+    ) -> Dict[str, Any]:
+        """
+        Detect special scale patterns from tick values.
+        
+        Detects:
+        - Logarithmic (1, 10, 100, 1000)
+        - Percentage (0, 25, 50, 75, 100)
+        - Scientific notation (1e-3, 1e-2, 1e-1)
+        - Date/time patterns (could extend)
+        
+        Args:
+            values: List of numeric tick values
+        
+        Returns:
+            Dict with pattern info: {
+                'type': 'linear' | 'logarithmic' | 'percentage' | 'scientific',
+                'base': log base if logarithmic,
+                'confidence': pattern confidence,
+                'normalized': whether values are 0-1 or 0-100
+            }
+        """
+        if len(values) < 2:
+            return {'type': 'linear', 'confidence': 0.0}
+        
+        sorted_vals = sorted(values)
+        
+        # Check for percentage pattern (0, 25, 50, 75, 100 or 0, 20, 40, 60, 80, 100)
+        if self._is_percentage_scale(sorted_vals):
+            return {
+                'type': 'percentage',
+                'confidence': 0.9,
+                'normalized': max(sorted_vals) <= 1.01,  # 0-1 vs 0-100
+            }
+        
+        # Check for logarithmic pattern (powers of 10, 2, or e)
+        log_pattern = self._detect_log_pattern(sorted_vals)
+        if log_pattern['is_log']:
+            return {
+                'type': 'logarithmic',
+                'base': log_pattern['base'],
+                'confidence': log_pattern['confidence'],
+            }
+        
+        # Check for scientific notation pattern
+        if self._is_scientific_scale(sorted_vals):
+            return {
+                'type': 'scientific',
+                'confidence': 0.8,
+            }
+        
+        # Default to linear
+        return {'type': 'linear', 'confidence': 0.7}
+    
+    def _is_percentage_scale(self, values: List[float]) -> bool:
+        """Check if values represent a percentage scale."""
+        if len(values) < 3:
+            return False
+        
+        # Check 0-100 pattern
+        if abs(min(values)) < 0.1 and abs(max(values) - 100) < 1:
+            # Check for common percentage intervals (20, 25, 10)
+            diffs = [values[i+1] - values[i] for i in range(len(values)-1)]
+            if len(diffs) >= 2:
+                avg_diff = sum(diffs) / len(diffs)
+                if avg_diff in [10, 20, 25] or abs(avg_diff - 20) < 2 or abs(avg_diff - 25) < 2:
+                    return True
+        
+        # Check 0-1 pattern (normalized)
+        if abs(min(values)) < 0.01 and abs(max(values) - 1.0) < 0.01:
+            return True
+        
+        return False
+    
+    def _detect_log_pattern(self, values: List[float]) -> Dict[str, Any]:
+        """Detect logarithmic scale pattern."""
+        result = {'is_log': False, 'base': 10, 'confidence': 0.0}
+        
+        if len(values) < 3:
+            return result
+        
+        # Filter positive values
+        pos_values = [v for v in values if v > 0]
+        if len(pos_values) < 3:
+            return result
+        
+        # Check for base-10 pattern (1, 10, 100, 1000...)
+        log10_vals = [np.log10(v) for v in pos_values]
+        log10_rounded = [round(v) for v in log10_vals]
+        
+        if all(abs(v - r) < 0.1 for v, r in zip(log10_vals, log10_rounded)):
+            # Values are close to powers of 10
+            diffs = [log10_rounded[i+1] - log10_rounded[i] for i in range(len(log10_rounded)-1)]
+            if len(set(diffs)) == 1 and diffs[0] in [1, 2]:
+                result['is_log'] = True
+                result['base'] = 10
+                result['confidence'] = 0.95
+                return result
+        
+        # Check for base-2 pattern (1, 2, 4, 8, 16...)
+        log2_vals = [np.log2(v) for v in pos_values if v > 0]
+        log2_rounded = [round(v) for v in log2_vals]
+        
+        if all(abs(v - r) < 0.1 for v, r in zip(log2_vals, log2_rounded)):
+            diffs = [log2_rounded[i+1] - log2_rounded[i] for i in range(len(log2_rounded)-1)]
+            if len(set(diffs)) == 1 and diffs[0] in [1, 2]:
+                result['is_log'] = True
+                result['base'] = 2
+                result['confidence'] = 0.9
+                return result
+        
+        # Check for general exponential growth (ratio between consecutive values)
+        if len(pos_values) >= 3:
+            ratios = [pos_values[i+1] / pos_values[i] for i in range(len(pos_values)-1)]
+            avg_ratio = sum(ratios) / len(ratios)
+            ratio_variance = sum((r - avg_ratio) ** 2 for r in ratios) / len(ratios)
+            
+            if ratio_variance < 0.1 * avg_ratio ** 2 and avg_ratio > 1.5:
+                result['is_log'] = True
+                result['base'] = avg_ratio
+                result['confidence'] = 0.7
+        
+        return result
+    
+    def _is_scientific_scale(self, values: List[float]) -> bool:
+        """Check if values follow scientific notation pattern."""
+        if len(values) < 3:
+            return False
+        
+        # Check if values span multiple orders of magnitude with consistent pattern
+        pos_values = [abs(v) for v in values if v != 0]
+        if len(pos_values) < 3:
+            return False
+        
+        log_vals = [np.log10(v) for v in pos_values]
+        span = max(log_vals) - min(log_vals)
+        
+        # Scientific notation typically spans 3+ orders of magnitude
+        return span >= 3
     
     def calibrate_x_axis(
         self,

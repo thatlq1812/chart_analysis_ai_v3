@@ -17,6 +17,21 @@ Reference: docs/architecture/STAGE4_REASONING.md
 from .s4_reasoning import Stage4Reasoning, ReasoningConfig
 from .reasoning_engine import ReasoningEngine, ReasoningResult
 from .gemini_engine import GeminiReasoningEngine, GeminiConfig
+from .value_mapper import (
+    GeometricValueMapper,
+    ValueMapperConfig,
+    AxisMapping,
+    MappingResult,
+    ScaleType,
+)
+from .prompt_builder import (
+    GeminiPromptBuilder,
+    PromptConfig,
+    PromptTask,
+    OutputFormat,
+    CanonicalContext,
+    create_prompt_builder,
+)
 
 __all__ = [
     # Main Stage
@@ -27,4 +42,17 @@ __all__ = [
     "ReasoningResult",
     "GeminiReasoningEngine",
     "GeminiConfig",
+    # Value Mapping
+    "GeometricValueMapper",
+    "ValueMapperConfig",
+    "AxisMapping",
+    "MappingResult",
+    "ScaleType",
+    # Prompt Building
+    "GeminiPromptBuilder",
+    "PromptConfig",
+    "PromptTask",
+    "OutputFormat",
+    "CanonicalContext",
+    "create_prompt_builder",
 ]

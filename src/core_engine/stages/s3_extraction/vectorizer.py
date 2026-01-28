@@ -66,6 +66,43 @@ class VectorizeConfig(BaseModel):
         description="Factor for adaptive epsilon: eps = factor * stroke_width"
     )
     
+    # Curvature-adaptive epsilon (NEW)
+    use_curvature_adaptive: bool = Field(
+        default=True,
+        description="Use local curvature to adapt epsilon (tighter tolerance at curves)"
+    )
+    curvature_epsilon_min: float = Field(
+        default=0.5,
+        gt=0,
+        description="Minimum epsilon for high-curvature regions"
+    )
+    curvature_epsilon_max: float = Field(
+        default=5.0,
+        gt=0,
+        description="Maximum epsilon for straight regions"
+    )
+    curvature_window: int = Field(
+        default=7,
+        ge=3,
+        description="Window size for local curvature estimation"
+    )
+    
+    # Hierarchical segmentation (NEW)
+    use_hierarchical: bool = Field(
+        default=True,
+        description="Use hierarchical segmentation at high-curvature points"
+    )
+    segment_at_corners: bool = Field(
+        default=True,
+        description="Segment polyline at detected corners"
+    )
+    corner_angle_threshold: float = Field(
+        default=45.0,
+        ge=10,
+        le=120,
+        description="Angle threshold (degrees) for corner segmentation"
+    )
+    
     # Sub-pixel refinement
     subpixel_refinement: bool = Field(
         default=True,
@@ -199,50 +236,61 @@ class Vectorizer:
             
             total_before += len(path)
             
-            # Determine epsilon for this path
-            if self.config.adaptive_epsilon and stroke_width_map is not None:
-                epsilon = self._compute_adaptive_epsilon(path, stroke_width_map)
+            # Hierarchical segmentation at corners (NEW)
+            if self.config.use_hierarchical and self.config.segment_at_corners:
+                segments = self._segment_at_corners(path)
             else:
-                epsilon = self.config.epsilon
+                segments = [path]
             
-            # Apply RDP simplification
-            simplified = self._rdp_simplify(path, epsilon)
-            
-            # Sub-pixel refinement
-            if self.config.subpixel_refinement and grayscale_image is not None:
-                simplified = self._refine_subpixel(simplified, grayscale_image)
-            
-            total_after += len(simplified)
-            
-            # Convert to PointFloat
-            points = [PointFloat(x=float(x), y=float(y)) for x, y in simplified]
-            
-            # Detect line style
-            line_style = LineStyle.SOLID
-            seg_lengths = []
-            gap_lengths = []
-            
-            if self.config.detect_line_style:
-                line_style, seg_lengths, gap_lengths = self._detect_line_style(path)
-            
-            # Create polyline
-            polyline = Polyline(
-                points=points,
-                line_style=line_style,
-                segment_lengths=seg_lengths,
-                gap_lengths=gap_lengths,
-            )
-            polylines.append(polyline)
-            
-            # Mark vertices as data points
-            for point in points:
-                vertex = KeyPoint(
-                    point=point,
-                    point_type=KeyPointType.VERTEX,
-                    is_vertex=True,
-                    confidence=1.0,
+            for segment in segments:
+                if len(segment) < 2:
+                    continue
+                
+                # Determine epsilon for this path/segment
+                if self.config.use_curvature_adaptive:
+                    # Use curvature-aware RDP
+                    simplified = self._rdp_curvature_adaptive(segment)
+                elif self.config.adaptive_epsilon and stroke_width_map is not None:
+                    epsilon = self._compute_adaptive_epsilon(segment, stroke_width_map)
+                    simplified = self._rdp_simplify(segment, epsilon)
+                else:
+                    simplified = self._rdp_simplify(segment, self.config.epsilon)
+                
+                # Sub-pixel refinement
+                if self.config.subpixel_refinement and grayscale_image is not None:
+                    simplified = self._refine_subpixel(simplified, grayscale_image)
+                
+                total_after += len(simplified)
+                
+                # Convert to PointFloat
+                points = [PointFloat(x=float(x), y=float(y)) for x, y in simplified]
+                
+                # Detect line style
+                line_style = LineStyle.SOLID
+                seg_lengths = []
+                gap_lengths = []
+                
+                if self.config.detect_line_style:
+                    line_style, seg_lengths, gap_lengths = self._detect_line_style(segment)
+                
+                # Create polyline
+                polyline = Polyline(
+                    points=points,
+                    line_style=line_style,
+                    segment_lengths=seg_lengths,
+                    gap_lengths=gap_lengths,
                 )
-                all_vertices.append(vertex)
+                polylines.append(polyline)
+                
+                # Mark vertices as data points
+                for point in points:
+                    vertex = KeyPoint(
+                        point=point,
+                        point_type=KeyPointType.VERTEX,
+                        is_vertex=True,
+                        confidence=1.0,
+                    )
+                    all_vertices.append(vertex)
         
         compression = 1.0 - (total_after / total_before) if total_before > 0 else 0.0
         
@@ -367,6 +415,254 @@ class Vectorizer:
         
         # Clamp to reasonable range
         return max(0.5, min(adaptive_eps, 10.0))
+    
+    def _segment_at_corners(
+        self,
+        path: List[Tuple[int, int]],
+    ) -> List[List[Tuple[int, int]]]:
+        """
+        Segment a path at detected corner points.
+        
+        Corners are points where the direction changes significantly.
+        This allows different epsilon values for different segments.
+        
+        Args:
+            path: Pixel path
+        
+        Returns:
+            List of path segments
+        """
+        if len(path) < 5:
+            return [path]
+        
+        window = max(3, self.config.curvature_window // 2)
+        threshold_rad = np.radians(self.config.corner_angle_threshold)
+        
+        corner_indices = []
+        
+        for i in range(window, len(path) - window):
+            # Direction before point
+            dx1 = path[i][0] - path[i - window][0]
+            dy1 = path[i][1] - path[i - window][1]
+            
+            # Direction after point
+            dx2 = path[i + window][0] - path[i][0]
+            dy2 = path[i + window][1] - path[i][1]
+            
+            # Compute angle change
+            len1 = math.sqrt(dx1 * dx1 + dy1 * dy1)
+            len2 = math.sqrt(dx2 * dx2 + dy2 * dy2)
+            
+            if len1 < 1e-10 or len2 < 1e-10:
+                continue
+            
+            # Dot product for angle
+            dot = (dx1 * dx2 + dy1 * dy2) / (len1 * len2)
+            dot = max(-1.0, min(1.0, dot))
+            angle = math.acos(dot)
+            
+            # If angle change is significant, mark as corner
+            if angle > threshold_rad:
+                corner_indices.append(i)
+        
+        if not corner_indices:
+            return [path]
+        
+        # Remove corners that are too close together
+        min_segment_length = 10
+        filtered_corners = []
+        last_corner = -min_segment_length
+        
+        for idx in corner_indices:
+            if idx - last_corner >= min_segment_length:
+                filtered_corners.append(idx)
+                last_corner = idx
+        
+        # Split path at corners
+        segments = []
+        prev_idx = 0
+        
+        for corner_idx in filtered_corners:
+            if corner_idx - prev_idx >= 3:
+                segments.append(path[prev_idx:corner_idx + 1])
+            prev_idx = corner_idx
+        
+        # Add final segment
+        if len(path) - prev_idx >= 3:
+            segments.append(path[prev_idx:])
+        
+        return segments if segments else [path]
+    
+    def _rdp_curvature_adaptive(
+        self,
+        path: List[Tuple[int, int]],
+    ) -> List[Tuple[float, float]]:
+        """
+        RDP with curvature-adaptive epsilon.
+        
+        Uses tighter tolerance (smaller epsilon) at curved regions
+        and looser tolerance at straight regions.
+        
+        Args:
+            path: Pixel path
+        
+        Returns:
+            Simplified path
+        """
+        if len(path) < 3:
+            return [(float(x), float(y)) for x, y in path]
+        
+        # Compute local curvature at each point
+        curvatures = self._compute_local_curvature(path)
+        
+        # Map curvature to epsilon
+        epsilons = []
+        for curv in curvatures:
+            # High curvature -> low epsilon (preserve detail)
+            # Low curvature -> high epsilon (simplify)
+            if curv > self.config.curvature_threshold:
+                # Curved region
+                eps = self.config.curvature_epsilon_min
+            else:
+                # Scale linearly based on curvature
+                ratio = curv / self.config.curvature_threshold if self.config.curvature_threshold > 0 else 0
+                eps = self.config.curvature_epsilon_max - (
+                    self.config.curvature_epsilon_max - self.config.curvature_epsilon_min
+                ) * ratio
+            epsilons.append(eps)
+        
+        # Use segment-wise RDP with local epsilon
+        return self._rdp_with_local_epsilon(path, epsilons)
+    
+    def _compute_local_curvature(
+        self,
+        path: List[Tuple[int, int]],
+        window: int = None,
+    ) -> List[float]:
+        """
+        Compute local curvature at each point using Menger curvature.
+        
+        Menger curvature = 4 * area(triangle) / (|AB| * |BC| * |CA|)
+        
+        Args:
+            path: Pixel path
+            window: Window size for curvature estimation
+        
+        Returns:
+            List of curvature values (same length as path)
+        """
+        if window is None:
+            window = self.config.curvature_window
+        
+        half_w = window // 2
+        n = len(path)
+        curvatures = []
+        
+        for i in range(n):
+            # Get neighboring points
+            i_prev = max(0, i - half_w)
+            i_next = min(n - 1, i + half_w)
+            
+            if i_prev == i or i == i_next:
+                curvatures.append(0.0)
+                continue
+            
+            # Three points for Menger curvature
+            A = np.array(path[i_prev], dtype=np.float64)
+            B = np.array(path[i], dtype=np.float64)
+            C = np.array(path[i_next], dtype=np.float64)
+            
+            # Side lengths
+            AB = np.linalg.norm(B - A)
+            BC = np.linalg.norm(C - B)
+            CA = np.linalg.norm(A - C)
+            
+            if AB < 1e-10 or BC < 1e-10 or CA < 1e-10:
+                curvatures.append(0.0)
+                continue
+            
+            # Area using cross product (2D: z-component of 3D cross product)
+            cross = (B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0])
+            area = abs(cross) / 2.0
+            
+            # Menger curvature
+            curv = 4.0 * area / (AB * BC * CA)
+            curvatures.append(curv)
+        
+        return curvatures
+    
+    def _rdp_with_local_epsilon(
+        self,
+        path: List[Tuple[int, int]],
+        epsilons: List[float],
+    ) -> List[Tuple[float, float]]:
+        """
+        RDP with varying epsilon based on local properties.
+        
+        Args:
+            path: Pixel path
+            epsilons: Epsilon value for each point
+        
+        Returns:
+            Simplified path
+        """
+        if len(path) < 3:
+            return [(float(x), float(y)) for x, y in path]
+        
+        points = np.array(path, dtype=np.float64)
+        n = len(points)
+        
+        # Recursive RDP with local epsilon
+        keep = np.zeros(n, dtype=bool)
+        keep[0] = keep[-1] = True
+        
+        def recursive_rdp(start, end):
+            if end - start <= 1:
+                return
+            
+            # Find point with maximum distance relative to local epsilon
+            line_vec = points[end] - points[start]
+            line_len = np.linalg.norm(line_vec)
+            
+            if line_len < 1e-10:
+                return
+            
+            line_unit = line_vec / line_len
+            
+            max_dist_ratio = 0.0
+            max_idx = start
+            
+            for i in range(start + 1, end):
+                vec = points[i] - points[start]
+                proj_len = np.dot(vec, line_unit)
+                
+                if proj_len < 0:
+                    dist = np.linalg.norm(vec)
+                elif proj_len > line_len:
+                    dist = np.linalg.norm(points[i] - points[end])
+                else:
+                    proj = points[start] + proj_len * line_unit
+                    dist = np.linalg.norm(points[i] - proj)
+                
+                # Compare distance to local epsilon
+                local_eps = epsilons[i]
+                dist_ratio = dist / local_eps if local_eps > 0 else dist
+                
+                if dist_ratio > max_dist_ratio:
+                    max_dist_ratio = dist_ratio
+                    max_idx = i
+            
+            if max_dist_ratio > 1.0:  # dist > epsilon
+                keep[max_idx] = True
+                recursive_rdp(start, max_idx)
+                recursive_rdp(max_idx, end)
+        
+        recursive_rdp(0, n - 1)
+        
+        # Extract kept points
+        result = [(float(points[i, 0]), float(points[i, 1])) for i in range(n) if keep[i]]
+        
+        return result
     
     def _refine_subpixel(
         self,

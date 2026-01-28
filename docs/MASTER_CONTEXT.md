@@ -2,6 +2,8 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 1.6.0 | 2026-01-30 | That Le | Stage 4 core implemented (ValueMapper + PromptBuilder) |
+| 1.5.0 | 2026-01-29 | That Le | Stage 3 fully enhanced and validated (100% accuracy) |
 | 1.4.0 | 2026-01-26 | That Le | ResNet-18 classifier integrated and validated |
 | 1.3.0 | 2026-01-25 | That Le | Documentation restructured, Stage 4/5 docs added |
 | 1.2.1 | 2026-01-24 | That Le | Stage 3 tested on academic dataset |
@@ -20,7 +22,7 @@
 | **Core Philosophy** | Hybrid Intelligence (Neural + Symbolic) |
 | **Primary Method** | YOLO Detection + Geometric Mapping + SLM Reasoning |
 | **Language** | Python 3.11+ |
-| **Current Phase** | Phase 2 - Core Engine (Week 1 Complete: ResNet-18) |
+| **Current Phase** | Phase 2 - Core Engine (Stage 4 In Progress) |
 | **Target** | Academic Thesis + Research Paper |
 
 ---
@@ -212,7 +214,15 @@ chart_analysis_ai_v3/
 |       +-- pipeline.py         # Main orchestrator
 |       +-- exceptions.py       # Custom exceptions
 |       +-- schemas/            # Pydantic models
-|       +-- stages/             # Pipeline stages (s1-s5)
+|       +-- stages/             # Pipeline stages
+|           +-- s1_ingestion/   # Stage 1
+|           +-- s2_detection/   # Stage 2
+|           +-- s3_extraction/  # Stage 3 (OCR, geometry, elements)
+|           +-- s4_reasoning/   # Stage 4 (value mapper, prompts)
+|               +-- value_mapper.py    # Pixel-to-value conversion
+|               +-- prompt_builder.py  # Canonical Format builder
+|               +-- prompts/           # Template files
+|           +-- s5_reporting/   # Stage 5 (TODO)
 |       +-- validators/         # Input validators
 |
 +-- interface/                  # Interface layer (future)
@@ -220,7 +230,10 @@ chart_analysis_ai_v3/
 +-- tests/
 |   +-- conftest.py             # Shared fixtures
 |   +-- test_schemas.py
-|   +-- test_s3_extraction/     # Stage 3 tests
+|   +-- test_s3_extraction/     # Stage 3 tests (129 cases)
+|   +-- test_s4_reasoning/      # Stage 4 tests (36 cases)
+|       +-- test_value_mapper.py
+|       +-- test_prompt_builder.py
 |   +-- fixtures/               # Test data
 |
 +-- scripts/                    # Utility scripts
@@ -255,9 +268,62 @@ chart_analysis_ai_v3/
 | Task | Status | Notes |
 | --- | --- | --- |
 | Stage 3: Extraction | [DONE] | Geo-SLM hybrid approach implemented |
-| Stage 3 Testing | [DONE] | Tested on 15 arXiv chart images |
-| Stage 4: Reasoning | [TODO] | SLM integration - NEXT |
+| Stage 3 Testing | [DONE] | Tested on 800+ images (100% accuracy) |
+| Stage 4: Reasoning | [IN PROGRESS] | Core components implemented |
 | Stage 5: Reporting | [TODO] | Output formatting |
+
+**Stage 4 Implementation Details:**
+
+| Submodule | Status | Description |
+| --- | --- | --- |
+| GeometricValueMapper | [DONE] | Pixel-to-value conversion using AxisInfo calibration |
+| GeminiPromptBuilder | [DONE] | Canonical Format prompts with anti-hallucination |
+| ReasoningEngine | [DONE] | Orchestrator integrating mapper + builder |
+| Prompt Templates | [DONE] | reasoning.txt + canonical_format.md |
+| Unit Tests | [DONE] | 36 test cases (16 mapper + 20 builder) |
+| Gemini Integration | [PROTOTYPE] | Using API for rapid development |
+| Local SLM | [TODO] | Self-trained model for production |
+
+**Stage 4 Architecture:**
+
+```
+Stage 3 Output (RawMetadata)
+         |
+         v
++-----------------------------------+
+|    GeometricValueMapper           |
+|    - Calibrate axes from AxisInfo |
+|    - Convert pixel -> value       |
+|    - Handle linear/log scales     |
+|    - Y-axis inversion             |
++-----------------------------------+
+         |
+         v (MappingResult)
++-----------------------------------+
+|    GeminiPromptBuilder            |
+|    - Build CanonicalContext       |
+|    - Anti-hallucination rules     |
+|    - Structured JSON output       |
++-----------------------------------+
+         |
+         v (Structured Prompt)
++-----------------------------------+
+|    LLM Backend                    |
+|    - Gemini API (prototype)       |
+|    - Local SLM (production)       |
++-----------------------------------+
+         |
+         v (RefinedChartData)
++-----------------------------------+
+|    Post-processing                |
+|    - Merge OCR + mapped values    |
+|    - Confidence scoring           |
+|    - Description generation       |
++-----------------------------------+
+         |
+         v
+Stage 5 Input (RefinedChartData)
+```
 
 **Stage 3 Implementation Details:**
 
@@ -287,27 +353,68 @@ chart_analysis_ai_v3/
 | Classes | 8 types (area, bar, box, heatmap, histogram, line, pie, scatter) |
 | Explainability | Grad-CAM visualizations (9 files) |
 
-**Stage 3 Academic Dataset Test Results (2026-01-26):**
+**Stage 3 Full Pipeline Test Results (2026-01-29):**
 
 | Metric | Value |
 | --- | --- |
-| Total Images Tested | 15 |
-| Success Rate | 100% |
-| Avg Processing Time | 3,533 ms |
-| Classification: Line | 11 (73.3%) |
-| Classification: Scatter | 4 (26.7%) |
+| Total Images Tested | 800+ (100 per type) |
+| Classification Accuracy | **100%** (all 8 types) |
+| OCR Confidence | **91.5%** (EasyOCR) |
+| Overall Confidence | **92.6%** |
+| Avg Processing Time | ~7.6s (improved from 14.6s) |
+
+**Stage 3 Enhancements Implemented:**
+
+| Enhancement | Description |
+| --- | --- |
+| RANSAC Fitting | Robust axis calibration with outlier rejection |
+| Curve Fitting | Circle/arc/ellipse fitting for line charts |
+| OCR Post-processing | Error correction (O->0, l->1, etc.) |
+| Content-aware Role | Keyword-based text classification |
+| Confidence Scoring | Weighted overall from 4 components |
+| Gap Filling | Morphological closing in skeletonizer |
 
 Reports generated:
-- [ACADEMIC_DATASET_TEST_REPORT.md](reports/ACADEMIC_DATASET_TEST_REPORT.md)
-- [STAGE3_VISUALIZATION.md](reports/STAGE3_VISUALIZATION.md)
+- [STAGE3_COMPLETION_SUMMARY.md](reports/STAGE3_COMPLETION_SUMMARY.md)
+- [STAGE3_CLASSIFIED_TEST_REPORT.md](reports/STAGE3_CLASSIFIED_TEST_REPORT.md)
 
 ### 5.3. Upcoming Phases
 
 | Phase | Focus | Timeline |
 | --- | --- | --- |
-| Phase 2 (cont.) | Stage 4-5 implementation | Week 3-4 |
+| **Stage 4** | Gemini integration testing, SLM training | Next |
+| **Stage 5** | Parallel processing, insights generation | After Stage 4 |
 | Phase 3 | Optimization & Benchmarking | Week 5-6 |
 | Phase 4 | Demo & Documentation | Week 7-8 |
+
+**Stage 5 Planned Architecture:**
+
+```
+Stage 4 Output (RefinedChartData[])
+         |
+         v
++----------------------------------------+
+|    Parallel Processing Engine          |
+|    - ThreadPoolExecutor for batch      |
+|    - Async insight generation          |
++----------------------------------------+
+         |
+         +-------+-------+-------+
+         v       v       v       v
+     [Trend]  [Stats] [Compare] [Summary]
+         |       |       |       |
+         +-------+-------+-------+
+                 |
+                 v
++----------------------------------------+
+|    Report Generator                    |
+|    - JSON schema validation            |
+|    - Markdown report                   |
+|    - Traceability info                 |
++----------------------------------------+
+         |
+         v
+Final Output (PipelineResult)
 
 ---
 
@@ -325,6 +432,10 @@ Reports generated:
 | RDP vectorization | Preserves data points, reduces noise | 2026-01-25 |
 | Spatial OCR role classification | Context-aware text extraction | 2026-01-25 |
 | Hybrid bar+line detection | Contours for bars, skeleton for lines | 2026-01-25 |
+| Stage 3 = Pure Geometry | Output toán học hóa, no LLM dependency | 2026-01-29 |
+| Stage 4 = Gemini prototype | Rapid iteration, then train local SLM | 2026-01-30 |
+| Canonical Format prompts | Anti-hallucination, structured output | 2026-01-30 |
+| Stage 5 = Parallel processing | Async insights for throughput | 2026-01-30 |
 
 ---
 

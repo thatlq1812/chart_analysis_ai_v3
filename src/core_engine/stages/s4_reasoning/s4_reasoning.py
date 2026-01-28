@@ -3,11 +3,17 @@ Stage 4: Semantic Reasoning
 
 Main orchestrator for the reasoning stage.
 Combines geometric mapping, OCR correction, and SLM reasoning.
+
+Pipeline:
+1. GeometricValueMapper: Convert pixel → actual values
+2. GeminiPromptBuilder: Build structured context
+3. GeminiReasoningEngine: Call Gemini API for reasoning
+4. Post-processing: Apply corrections and generate output
 """
 
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -24,7 +30,9 @@ from ...schemas.stage_outputs import (
 )
 from ..base import BaseStage
 from .gemini_engine import GeminiConfig, GeminiReasoningEngine
+from .prompt_builder import GeminiPromptBuilder, PromptConfig, CanonicalContext
 from .reasoning_engine import ReasoningEngine, ReasoningResult
+from .value_mapper import GeometricValueMapper, ValueMapperConfig, MappingResult
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +55,12 @@ class ReasoningConfig(BaseModel):
         description="HuggingFace model ID for local SLM"
     )
     local_slm_device: str = Field(default="auto")
+    
+    # Value Mapper config
+    value_mapper: ValueMapperConfig = Field(default_factory=ValueMapperConfig)
+    
+    # Prompt Builder config
+    prompt: PromptConfig = Field(default_factory=PromptConfig)
     
     # Processing options
     enable_ocr_correction: bool = Field(
@@ -97,13 +111,18 @@ class Stage4Reasoning(BaseStage):
         self.config = config
         self.logger = logging.getLogger(self.__class__.__name__)
         
+        # Initialize components
+        self.value_mapper = GeometricValueMapper(config.value_mapper)
+        self.prompt_builder = GeminiPromptBuilder(config.prompt)
+        
         # Initialize reasoning engine based on config
         self.engine: Optional[ReasoningEngine] = None
         self._initialize_engine()
         
         self.logger.info(
             f"Stage4Reasoning initialized | "
-            f"engine={config.engine}"
+            f"engine={config.engine} | "
+            f"value_mapping={config.enable_value_mapping}"
         )
     
     def _initialize_engine(self):
@@ -188,6 +207,12 @@ class Stage4Reasoning(BaseStage):
         """
         Process a single chart through reasoning pipeline.
         
+        Pipeline:
+        1. Geometric Value Mapping (pixel → actual values)
+        2. Build Canonical Context for prompting
+        3. SLM Reasoning (Gemini API)
+        4. Post-processing and validation
+        
         Args:
             metadata: Raw metadata from Stage 3
         
@@ -197,18 +222,50 @@ class Stage4Reasoning(BaseStage):
         chart_id = metadata.chart_id
         self.logger.debug(f"Processing chart | chart_id={chart_id}")
         
-        # Use engine if available
+        # Step 1: Geometric Value Mapping
+        mapped_series: List[DataSeries] = []
+        if self.config.enable_value_mapping:
+            # Reset mapper for new chart
+            self.value_mapper = GeometricValueMapper(self.config.value_mapper)
+            
+            # Map metadata to series
+            mapped_series = self.value_mapper.map_metadata_to_series(metadata)
+            
+            calibration = self.value_mapper.get_calibration_summary()
+            self.logger.debug(
+                f"Value mapping complete | chart_id={chart_id} | "
+                f"calibrated={calibration['is_calibrated']} | "
+                f"series={len(mapped_series)}"
+            )
+        
+        # Step 2: Build Canonical Context
+        context = self.prompt_builder.build_canonical_context(
+            metadata=metadata,
+            mapped_series=mapped_series,
+        )
+        
+        # Step 3: Use engine if available
         if self.engine is not None and self.engine.is_available():
+            # Build prompt with context
+            prompt = self.prompt_builder.build_reasoning_prompt(
+                metadata=metadata,
+                mapped_series=mapped_series,
+            )
+            
+            # Call reasoning engine
             result = self.engine.reason(metadata)
             
             if result.success:
+                # Merge mapped series with reasoning result
+                final_series = self._merge_series(mapped_series, result.series)
+                
                 return RefinedChartData(
                     chart_id=chart_id,
                     chart_type=metadata.chart_type,
                     title=result.title,
                     x_axis_label=result.x_axis_label,
                     y_axis_label=result.y_axis_label,
-                    series=result.series,
+                    series=final_series,
                     description=result.description,
                     correction_log=[
                         f"{c.get('original', '?')} -> {c.get('corrected', '?')}"
@@ -216,15 +273,77 @@ class Stage4Reasoning(BaseStage):
                     ],
                 )
         
-        # Fallback to rule-based extraction
-        return self._create_fallback_result(metadata)
+        # Fallback to rule-based extraction with mapped values
+        return self._create_fallback_result(metadata, mapped_series)
     
-    def _create_fallback_result(self, metadata: RawMetadata) -> RefinedChartData:
+    def _merge_series(
+        self,
+        mapped_series: List[DataSeries],
+        reasoned_series: List[DataSeries],
+    ) -> List[DataSeries]:
+        """
+        Merge mapped series with reasoned series.
+        
+        Uses reasoned names/labels but mapped values if available.
+        
+        Args:
+            mapped_series: Series from geometric mapping
+            reasoned_series: Series from SLM reasoning
+        
+        Returns:
+            Merged series list
+        """
+        if not mapped_series:
+            return reasoned_series
+        if not reasoned_series:
+            return mapped_series
+        
+        # Use reasoned series as base, but update values from mapped
+        merged = []
+        for i, r_series in enumerate(reasoned_series):
+            if i < len(mapped_series):
+                # Merge points: use reasoned labels, mapped values
+                m_series = mapped_series[i]
+                merged_points = []
+                
+                for j, r_point in enumerate(r_series.points):
+                    if j < len(m_series.points):
+                        # Use mapped value if it has higher confidence
+                        m_point = m_series.points[j]
+                        if m_point.confidence > r_point.confidence:
+                            merged_points.append(DataPoint(
+                                label=r_point.label or m_point.label,
+                                value=m_point.value,
+                                confidence=m_point.confidence,
+                            ))
+                        else:
+                            merged_points.append(r_point)
+                    else:
+                        merged_points.append(r_point)
+                
+                merged.append(DataSeries(
+                    name=r_series.name,
+                    color=r_series.color or m_series.color,
+                    points=merged_points,
+                ))
+            else:
+                merged.append(r_series)
+        
+        return merged
+    
+    def _create_fallback_result(
+        self,
+        metadata: RawMetadata,
+        mapped_series: Optional[List[DataSeries]] = None,
+    ) -> RefinedChartData:
         """
         Create fallback result using rule-based extraction.
         
+        Uses mapped series if available, otherwise extracts from elements.
+        
         Args:
             metadata: Raw metadata from Stage 3
+            mapped_series: Optional pre-mapped series from ValueMapper
         
         Returns:
             RefinedChartData with basic extraction
@@ -244,11 +363,13 @@ class Stage4Reasoning(BaseStage):
             elif text.role == "ylabel" and not y_label:
                 y_label = text.text
         
-        # Create basic series from elements
-        series = []
-        if metadata.elements:
+        # Use mapped series if available
+        series = mapped_series if mapped_series else []
+        
+        # If no mapped series, create basic series from elements
+        if not series and metadata.elements:
             # Group by color
-            color_groups: dict = {}
+            color_groups: Dict[tuple, List] = {}
             for elem in metadata.elements:
                 if elem.color:
                     key = (elem.color.r, elem.color.g, elem.color.b)
@@ -277,11 +398,12 @@ class Stage4Reasoning(BaseStage):
                 ))
         
         # Generate basic description
-        description = (
-            f"This {metadata.chart_type.value} chart"
-            + (f' titled "{title}"' if title else "")
-            + f" contains {len(metadata.elements)} elements"
-            + f" and {len(metadata.texts)} text regions."
+        description = self._generate_fallback_description(
+            metadata.chart_type,
+            title,
+            series,
+            x_label,
+            y_label,
         )
         
         return RefinedChartData(
@@ -294,6 +416,35 @@ class Stage4Reasoning(BaseStage):
             description=description,
             correction_log=["Used rule-based fallback"],
         )
+    
+    def _generate_fallback_description(
+        self,
+        chart_type: ChartType,
+        title: Optional[str],
+        series: List[DataSeries],
+        x_label: Optional[str],
+        y_label: Optional[str],
+    ) -> str:
+        """Generate simple description without API."""
+        parts = [f"This {chart_type.value} chart"]
+        
+        if title:
+            parts[0] += f' titled "{title}"'
+        
+        # Count data points
+        total_points = sum(len(s.points) for s in series)
+        if total_points > 0:
+            parts.append(f"contains {total_points} data points across {len(series)} series")
+        
+        if x_label or y_label:
+            axis_parts = []
+            if x_label:
+                axis_parts.append(f"x-axis showing {x_label}")
+            if y_label:
+                axis_parts.append(f"y-axis showing {y_label}")
+            parts.append(f"with {' and '.join(axis_parts)}")
+        
+        return ". ".join(parts) + "."
     
     def process_single(
         self,

@@ -1540,3 +1540,187 @@ class ElementDetector:
             )
         
         return looks_like_line
+    
+    def validate_elements(
+        self,
+        chart_type: str,
+        bars: List[BarRectangle],
+        markers: List[DataMarker],
+        slices: List[PieSlice],
+        image_shape: Tuple[int, int],
+    ) -> dict:
+        """
+        Validate detected elements against chart type expectations.
+        
+        Performs cross-validation checks:
+        - Bar chart should have bars, not many markers
+        - Line/scatter should have markers, not bars
+        - Pie chart should have slices
+        - Element positions should be consistent
+        
+        Args:
+            chart_type: Detected chart type
+            bars: Detected bars
+            markers: Detected markers
+            slices: Detected slices
+            image_shape: (height, width) of image
+        
+        Returns:
+            Dict with validation results:
+            {
+                'is_valid': bool,
+                'confidence': float,
+                'issues': List[str],
+                'suggestions': List[str]
+            }
+        """
+        h, w = image_shape
+        issues = []
+        suggestions = []
+        confidence = 1.0
+        
+        # Chart type specific validation
+        if chart_type in ('bar', 'histogram'):
+            if len(bars) == 0:
+                issues.append("Bar/histogram chart detected but no bars found")
+                confidence *= 0.5
+                suggestions.append("Check if bars merged into background or use color segmentation")
+            elif len(bars) < 2:
+                issues.append(f"Only {len(bars)} bar(s) found, expected more for bar chart")
+                confidence *= 0.7
+            
+            # Bars should have consistent width (for grouped bars)
+            if len(bars) >= 2:
+                widths = [bar.width for bar in bars]
+                width_std = np.std(widths) / np.mean(widths) if np.mean(widths) > 0 else 0
+                if width_std > 0.5:
+                    issues.append(f"Bar widths inconsistent (CV={width_std:.2f})")
+                    confidence *= 0.9
+            
+            # Bars should be aligned (same baseline)
+            if len(bars) >= 2:
+                baselines = [bar.y + bar.height for bar in bars]  # Bottom of bars
+                baseline_range = max(baselines) - min(baselines)
+                if baseline_range > h * 0.1:
+                    issues.append(f"Bar baselines not aligned (range={baseline_range:.0f}px)")
+                    confidence *= 0.8
+        
+        elif chart_type in ('line', 'area'):
+            if len(markers) == 0 and len(bars) > 0:
+                issues.append("Line chart detected but found bars instead of markers")
+                confidence *= 0.6
+                suggestions.append("Classification might be incorrect, check for bar chart")
+            
+            # Check if markers are roughly aligned (following a trend)
+            if len(markers) >= 3:
+                xs = [m.center.x for m in markers]
+                ys = [m.center.y for m in markers]
+                if not self._check_trend_alignment(xs, ys):
+                    issues.append("Markers don't follow expected line pattern")
+                    confidence *= 0.8
+        
+        elif chart_type == 'scatter':
+            if len(markers) < 5:
+                issues.append(f"Scatter plot should have many points, found only {len(markers)}")
+                confidence *= 0.7
+            
+            if len(bars) > 0:
+                issues.append("Scatter plot detected but found bars")
+                confidence *= 0.6
+        
+        elif chart_type == 'pie':
+            if len(slices) == 0:
+                issues.append("Pie chart detected but no slices found")
+                confidence *= 0.4
+                suggestions.append("Check color segmentation for pie detection")
+            else:
+                # Slices should sum to ~360 degrees (or 2*pi radians)
+                total_angle = sum(s.end_angle - s.start_angle for s in slices)
+                expected_total = 2 * np.pi
+                if abs(total_angle - expected_total) > 0.2 * expected_total:
+                    issues.append(f"Slice angles don't sum to 360° (got {np.degrees(total_angle):.1f}°)")
+                    confidence *= 0.7
+        
+        elif chart_type == 'box':
+            # Box plots have specific structure
+            if len(bars) < 2:
+                issues.append("Box plot should have multiple boxes")
+                confidence *= 0.6
+        
+        elif chart_type == 'heatmap':
+            # Heatmaps should have grid-like bars
+            if len(bars) > 0:
+                # Check for grid alignment
+                xs = sorted(set(int(bar.x) for bar in bars))
+                ys = sorted(set(int(bar.y) for bar in bars))
+                
+                if len(xs) < 2 or len(ys) < 2:
+                    issues.append("Heatmap should have grid structure")
+                    confidence *= 0.7
+        
+        # General element sanity checks
+        if len(bars) + len(markers) + len(slices) == 0:
+            issues.append("No chart elements detected")
+            confidence = 0.1
+            suggestions.append("Check image preprocessing settings")
+        
+        # Check for out-of-bounds elements
+        out_of_bounds = 0
+        for bar in bars:
+            if bar.x < 0 or bar.y < 0 or bar.x + bar.width > w or bar.y + bar.height > h:
+                out_of_bounds += 1
+        for marker in markers:
+            if marker.center.x < 0 or marker.center.y < 0 or marker.center.x > w or marker.center.y > h:
+                out_of_bounds += 1
+        
+        if out_of_bounds > 0:
+            issues.append(f"{out_of_bounds} element(s) out of bounds")
+            confidence *= 0.9
+        
+        return {
+            'is_valid': len(issues) == 0 or confidence >= 0.5,
+            'confidence': max(0.0, min(1.0, confidence)),
+            'issues': issues,
+            'suggestions': suggestions,
+        }
+    
+    def _check_trend_alignment(
+        self,
+        xs: List[float],
+        ys: List[float],
+        threshold: float = 0.3,
+    ) -> bool:
+        """Check if points roughly follow a trend (for line charts)."""
+        if len(xs) < 3:
+            return True
+        
+        # Sort by x and check if y values have some structure
+        points = sorted(zip(xs, ys), key=lambda p: p[0])
+        sorted_ys = [p[1] for p in points]
+        
+        # Compute simple linear regression R²
+        xs_arr = np.array([p[0] for p in points])
+        ys_arr = np.array(sorted_ys)
+        
+        if len(np.unique(xs_arr)) < 2:
+            return True
+        
+        # Fit line
+        A = np.vstack([xs_arr, np.ones(len(xs_arr))]).T
+        try:
+            m, c = np.linalg.lstsq(A, ys_arr, rcond=None)[0]
+        except np.linalg.LinAlgError:
+            return True
+        
+        predicted = m * xs_arr + c
+        ss_res = np.sum((ys_arr - predicted) ** 2)
+        ss_tot = np.sum((ys_arr - np.mean(ys_arr)) ** 2)
+        
+        if ss_tot < 1e-10:
+            return True
+        
+        r_squared = 1.0 - (ss_res / ss_tot)
+        
+        # For trend alignment, we expect some correlation
+        # But not perfect (that would be very rare)
+        return r_squared > threshold or r_squared < -threshold  # Includes negative trends
