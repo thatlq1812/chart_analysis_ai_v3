@@ -84,6 +84,7 @@ class TextRole(str, Enum):
     """
     
     TITLE = "title"
+    SUBTITLE = "subtitle"
     X_AXIS_LABEL = "x_axis_label"
     Y_AXIS_LABEL = "y_axis_label"
     X_TICK = "x_tick"           # Tick labels on X axis

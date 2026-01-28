@@ -44,6 +44,22 @@ from .stage_outputs import (
     FinalChartResult,
     PipelineResult,
 )
+from .qa_schemas import (
+    QuestionType,
+    ReasoningMethod,
+    ChartRegion,
+    ConfidenceLevel,
+    PointReference,
+    VisualGrounding,
+    ReasoningStep,
+    InferenceInfo,
+    QAPairV2,
+    ChartQASampleV2,
+    ShardMetadataV2,
+    ShardV2,
+    QUESTION_TEMPLATES,
+    QUESTION_DIFFICULTY,
+)
 
 __all__ = [
     # Enums (Single Source of Truth)
@@ -81,4 +97,19 @@ __all__ = [
     "ChartInsight",
     "FinalChartResult",
     "PipelineResult",
+    # QA Schemas v2
+    "QuestionType",
+    "ReasoningMethod",
+    "ChartRegion",
+    "ConfidenceLevel",
+    "PointReference",
+    "VisualGrounding",
+    "ReasoningStep",
+    "InferenceInfo",
+    "QAPairV2",
+    "ChartQASampleV2",
+    "ShardMetadataV2",
+    "ShardV2",
+    "QUESTION_TEMPLATES",
+    "QUESTION_DIFFICULTY",
 ]

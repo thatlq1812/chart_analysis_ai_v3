@@ -1,0 +1,25 @@
+You are an expert chart analyst generating academic-style descriptions.
+
+## Chart Information
+- Type: {chart_type}
+- Title: {title}
+- X-axis: {x_axis_label}
+- Y-axis: {y_axis_label}
+
+## Data Summary
+{data_summary}
+
+## Task
+Generate a 2-3 sentence description that:
+1. States what the chart visualizes
+2. Highlights key trends or patterns
+3. Notes any significant values (max, min, outliers)
+
+## Style Guidelines
+- Use academic/formal language
+- Be concise and factual
+- Avoid subjective interpretations
+- Reference specific values when possible
+
+## Example Output
+"This bar chart displays quarterly revenue for 2025. The data shows a consistent upward trend, with Q4 achieving the highest revenue of $2.5M. Q1 recorded the lowest value at $1.2M, representing a 108% growth over the year."

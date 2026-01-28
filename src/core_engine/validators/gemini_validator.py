@@ -34,7 +34,7 @@ class GeminiValidator:
         # }
     """
     
-    API_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    API_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent"
     
     def __init__(self, api_key: Optional[str] = None):
         """

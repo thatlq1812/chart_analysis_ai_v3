@@ -5,7 +5,7 @@ Pydantic models for data flowing between pipeline stages.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
@@ -115,6 +115,71 @@ class AxisInfo(BaseModel):
     y_max: Optional[float] = None
     x_scale_factor: Optional[float] = None  # pixels per unit
     y_scale_factor: Optional[float] = None
+    x_calibration_confidence: float = Field(
+        default=0.0, ge=0, le=1,
+        description="Confidence in X-axis calibration (R-squared)"
+    )
+    y_calibration_confidence: float = Field(
+        default=0.0, ge=0, le=1,
+        description="Confidence in Y-axis calibration (R-squared)"
+    )
+    x_outliers_removed: int = Field(
+        default=0, ge=0,
+        description="Number of outlier tick labels removed during calibration"
+    )
+    y_outliers_removed: int = Field(
+        default=0, ge=0,
+        description="Number of outlier tick labels removed during calibration"
+    )
+
+
+class ExtractionConfidence(BaseModel):
+    """Confidence scores for Stage 3 extraction components."""
+    
+    classification_confidence: float = Field(
+        default=0.0, ge=0, le=1,
+        description="Chart type classification confidence"
+    )
+    ocr_mean_confidence: float = Field(
+        default=0.0, ge=0, le=1,
+        description="Mean OCR confidence across all texts"
+    )
+    axis_calibration_confidence: float = Field(
+        default=0.0, ge=0, le=1,
+        description="Combined axis calibration confidence"
+    )
+    element_detection_confidence: float = Field(
+        default=0.0, ge=0, le=1,
+        description="Confidence in element detection"
+    )
+    overall_confidence: float = Field(
+        default=0.0, ge=0, le=1,
+        description="Weighted overall extraction confidence"
+    )
+    
+    @classmethod
+    def compute_overall(
+        cls,
+        classification: float,
+        ocr: float,
+        axis: float,
+        elements: float,
+        weights: Tuple[float, float, float, float] = (0.3, 0.25, 0.25, 0.2),
+    ) -> "ExtractionConfidence":
+        """Compute overall confidence from components."""
+        overall = (
+            weights[0] * classification +
+            weights[1] * ocr +
+            weights[2] * axis +
+            weights[3] * elements
+        )
+        return cls(
+            classification_confidence=classification,
+            ocr_mean_confidence=ocr,
+            axis_calibration_confidence=axis,
+            element_detection_confidence=elements,
+            overall_confidence=overall,
+        )
 
 
 class RawMetadata(BaseModel):
@@ -125,6 +190,14 @@ class RawMetadata(BaseModel):
     texts: List[OCRText] = Field(default_factory=list)
     elements: List[ChartElement] = Field(default_factory=list)
     axis_info: Optional[AxisInfo] = None
+    confidence: Optional[ExtractionConfidence] = Field(
+        default=None,
+        description="Extraction confidence scores for Stage 4 reasoning"
+    )
+    warnings: List[str] = Field(
+        default_factory=list,
+        description="Extraction warnings (low confidence, missing data, etc.)"
+    )
 
 
 class Stage3Output(BaseModel):

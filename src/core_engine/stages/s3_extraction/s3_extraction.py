@@ -39,6 +39,7 @@ from ...schemas.extraction import (
 from ...schemas.stage_outputs import (
     AxisInfo,
     ChartElement,
+    ExtractionConfidence,
     OCRText,
     RawMetadata,
     Stage2Output,
@@ -62,8 +63,8 @@ class ExtractionConfig(BaseModel):
     
     # OCR engine selection (shorthand - passed to OCRConfig)
     ocr_engine: str = Field(
-        default="paddleocr",
-        description="OCR engine: 'paddleocr' or 'tesseract'"
+        default="easyocr",
+        description="OCR engine: 'easyocr', 'paddleocr', or 'tesseract'"
     )
     
     # Submodule configs
@@ -515,13 +516,89 @@ class Stage3Extraction(BaseStage):
                 )
                 chart_type = class_result.chart_type
         
-        # Build RawMetadata
+        # Build RawMetadata with confidence scores
+        # Calculate confidence components
+        warnings = []
+        
+        # Classification confidence
+        classification_conf = 0.0
+        if self.ml_classifier is not None and chart_type != ChartType.UNKNOWN:
+            try:
+                # Get confidence from last classification (if available)
+                ml_result = self.ml_classifier.classify(image_bgr, chart_id=chart_id)
+                classification_conf = ml_result.confidence
+            except Exception:
+                classification_conf = 0.5  # Default moderate confidence
+        elif chart_type != ChartType.UNKNOWN:
+            classification_conf = 0.7  # Rule-based has lower default confidence
+        
+        if classification_conf < 0.7:
+            warnings.append(f"Low classification confidence: {classification_conf:.2f}")
+        
+        # OCR mean confidence
+        ocr_conf = 0.0
+        if texts:
+            ocr_conf = sum(t.confidence for t in texts) / len(texts)
+            if ocr_conf < 0.7:
+                warnings.append(f"Low OCR confidence: {ocr_conf:.2f}")
+        else:
+            warnings.append("No text detected by OCR")
+        
+        # Axis calibration confidence (average of both axes)
+        axis_conf = 0.0
+        if axis_info:
+            confs = []
+            if axis_info.y_calibration_confidence > 0:
+                confs.append(axis_info.y_calibration_confidence)
+            if axis_info.x_calibration_confidence > 0:
+                confs.append(axis_info.x_calibration_confidence)
+            if confs:
+                axis_conf = sum(confs) / len(confs)
+            
+            # Warn if outliers were removed
+            total_outliers = axis_info.x_outliers_removed + axis_info.y_outliers_removed
+            if total_outliers > 0:
+                warnings.append(f"Removed {total_outliers} outlier tick labels during calibration")
+        else:
+            warnings.append("Axis calibration failed or insufficient data")
+        
+        # Element detection confidence (based on count and consistency)
+        element_conf = 0.0
+        if elements:
+            # Heuristic: more elements = more confidence (up to a point)
+            element_conf = min(1.0, len(elements) / 10.0) * 0.8 + 0.2
+            
+            # Reduce confidence if element count seems inconsistent with chart type
+            if chart_type == ChartType.PIE and len([e for e in elements if e.element_type == ElementType.SLICE.value]) == 0:
+                element_conf *= 0.5
+                warnings.append("Pie chart detected but no slices found")
+            elif chart_type == ChartType.BAR and len([e for e in elements if e.element_type == ElementType.BAR.value]) == 0:
+                element_conf *= 0.5
+                warnings.append("Bar chart detected but no bars found")
+        
+        # Compute overall confidence
+        confidence = ExtractionConfidence.compute_overall(
+            classification=classification_conf,
+            ocr=ocr_conf,
+            axis=axis_conf,
+            elements=element_conf,
+        )
+        
+        self.logger.debug(
+            f"Extraction confidence | chart_id={chart_id} | "
+            f"overall={confidence.overall_confidence:.2f} | "
+            f"class={classification_conf:.2f} | ocr={ocr_conf:.2f} | "
+            f"axis={axis_conf:.2f} | elem={element_conf:.2f}"
+        )
+        
         return RawMetadata(
             chart_id=chart_id,
             chart_type=chart_type,
             texts=texts,
             elements=elements,
             axis_info=axis_info,
+            confidence=confidence,
+            warnings=warnings,
         )
     
     def _convert_elements(
@@ -603,7 +680,7 @@ class Stage3Extraction(BaseStage):
             img_height: Image height
         
         Returns:
-            AxisInfo if calibration successful
+            AxisInfo if calibration successful (includes confidence scores)
         """
         # Extract Y-axis tick values
         y_ticks = self.ocr_engine.extract_axis_values(texts, axis="y")
@@ -625,6 +702,9 @@ class Stage3Extraction(BaseStage):
                 axis_info.y_min = min(y_values)
                 axis_info.y_max = max(y_values)
                 axis_info.y_scale_factor = y_result.scale.slope
+                # Add confidence from calibration
+                axis_info.y_calibration_confidence = y_result.confidence
+                axis_info.y_outliers_removed = y_result.outliers_removed
         
         # Calibrate X-axis
         if x_ticks:
@@ -634,6 +714,9 @@ class Stage3Extraction(BaseStage):
                 axis_info.x_min = min(x_values)
                 axis_info.x_max = max(x_values)
                 axis_info.x_scale_factor = x_result.scale.slope
+                # Add confidence from calibration
+                axis_info.x_calibration_confidence = x_result.confidence
+                axis_info.x_outliers_removed = x_result.outliers_removed
         
         return axis_info
     

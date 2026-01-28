@@ -1781,3 +1781,33 @@ data chartqa
 [24/01/2026 20:18:47] Hoàng: Cai gi dang lam dang nghien cuu cu ghi zo
 [24/01/2026 20:21:38] Tlq: [Photo] 
 [24/01/2026 20:22:18] Hoàng: lại lại
+[26/01/2026 11:26:07] Tlq: [File: 02_stage2_detection.ipynb]
+[26/01/2026 11:26:07] Tlq: [File: 03_stage3_extraction.ipynb]
+[26/01/2026 11:26:07] Tlq: [File: 04_stage4_reasoning.ipynb]
+[26/01/2026 11:26:07] Tlq: [File: 00_quick_start.ipynb]
+[26/01/2026 11:26:08] Tlq: [File: 01_stage1_ingestion.ipynb]
+[27/01/2026 04:21:20] Tlq: t nghĩ là mn nên làm nghiêm túc hơn
+[27/01/2026 04:21:25] Tlq: cảnh cáo lần 1.
+[27/01/2026 10:32:29] Hoàng: Ngày nao cx lmf luon ::))
+[27/01/2026 15:17:38] Hoàng: https://www.kaggle.com/datasets/buixuanhoangk18hcm/train-deplot
+[27/01/2026 15:17:50] Hoàng: Đây là data chart tieng viet tạo từ excel t có làm 2k ảnh
+[27/01/2026 15:18:02] Hoàng: Nếu mà có thu su dung the cứ tai ve add vô training thử Deplot nhé
+[27/01/2026 16:50:55] Tlq: [Photo] 
+[27/01/2026 17:00:41] Hoàng: @Tlq này là gì v chú
+[27/01/2026 17:00:57] Tlq: data
+[27/01/2026 22:42:28] Tlq: [Photo] 
+[27/01/2026 22:42:41] Tlq: 200000 chắc lọc được 50k chart
+[27/01/2026 22:42:59] Hoàng: data mình đủ r mà m
+[27/01/2026 22:43:05] Hoàng: bua m cào ra là ok r
+[27/01/2026 22:43:31] Tlq: pie ít lắm
+[27/01/2026 22:43:35] Hoàng: mà chắc làm nhiều hon ngta ghi nhận đó
+[27/01/2026 22:43:35] Tlq: Mới phải làm thêm
+[27/01/2026 22:43:36] Hoàng: =))
+[27/01/2026 22:43:54] Hoàng: mà làm theo khoan tạo question answer json nha
+[27/01/2026 22:44:08] Hoàng: mốt t gui data t vs data cũ của m t lọc ra r làm
+[27/01/2026 22:44:45] Tlq: Thì m làm gì thì cứ làm
+[27/01/2026 22:44:52] Tlq: Làm được gì thì cứ báo cáo và note ra
+[27/01/2026 22:45:06] Tlq: Input output vấn đề giải pháp thực trạng tiến độ kinh phí
+[27/01/2026 22:45:08] Tlq: Vậy thôi
+[27/01/2026 22:46:23] Hoàng: T dang finetune deplot
+[27/01/2026 22:46:28] Hoàng: =))

@@ -106,7 +106,7 @@ Rules:
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY not found in environment")
         
-        self.model = model or os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        self.model = model or os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
         self.temperature = temperature
         self.max_tokens = max_tokens
         

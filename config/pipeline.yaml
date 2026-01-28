@@ -128,6 +128,36 @@ reporting:
   include_bbox_coords: true
   include_confidence: true
 
+# =============================================================================
+# DATA FACTORY (Training data generation - NOT a pipeline stage)
+# =============================================================================
+
+# QA Generation for SLM Training
+data_factory:
+  qa_generator:
+    enabled: true
+    
+    # API Configuration
+    model_name: "gemini-3-flash-preview"
+    temperature: 0.7
+    max_retries: 3
+    
+    # Generation Settings
+    questions_per_chart: 10
+    include_uncertain: false
+    
+    # Question Depth Distribution (target %)
+    question_distribution:
+      shallow: 25      # structural, extraction, counting
+      intermediate: 35 # comparison, trend, range
+      deep: 30         # interpolation, threshold, multi_hop
+      conceptual: 10   # why_reasoning, caption_aware
+    
+    # Output Settings
+    output_dir: "data/academic_dataset/chart_qa_v2/generated"
+    checkpoint_every: 100
+    shard_size: 1000
+
 # Caching
 caching:
   enabled: true

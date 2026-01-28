@@ -2,21 +2,25 @@
 Vectorization Module
 
 Implements Ramer-Douglas-Peucker (RDP) algorithm for converting
-pixel paths to piecewise linear vectors.
+pixel paths to piecewise linear vectors, with curve fitting support.
 
 Key features:
 - RDP simplification with adaptive epsilon
 - Vertex preservation (data point accuracy)
 - Sub-pixel refinement
 - Morphological profile for line style detection
+- Arc/circle fitting for pie charts
+- Spline fitting for smooth curves
 
 Reference: docs/instruction_p2_research.md - Section 3
+Enhancement: instruction_003.md - Curve fitting
 """
 
 import logging
 import math
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from enum import Enum
+from typing import List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
@@ -31,6 +35,15 @@ from ...schemas.extraction import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class CurveFitMethod(str, Enum):
+    """Method for curve fitting."""
+    NONE = "none"           # Only RDP polylines
+    AUTO = "auto"           # Automatically detect curves
+    CIRCLE = "circle"       # Fit circles/arcs
+    ELLIPSE = "ellipse"     # Fit ellipses
+    SPLINE = "spline"       # B-spline fitting
 
 
 class VectorizeConfig(BaseModel):
@@ -74,6 +87,28 @@ class VectorizeConfig(BaseModel):
         ge=1,
         description="Minimum gap length to consider as dashed"
     )
+    
+    # Curve fitting
+    curve_fit_method: CurveFitMethod = Field(
+        default=CurveFitMethod.AUTO,
+        description="Curve fitting method for smooth shapes"
+    )
+    curve_fit_threshold: float = Field(
+        default=0.95,
+        ge=0.5,
+        le=1.0,
+        description="Minimum R-squared for accepting curve fit"
+    )
+    min_arc_points: int = Field(
+        default=10,
+        ge=5,
+        description="Minimum points to attempt arc fitting"
+    )
+    curvature_threshold: float = Field(
+        default=0.1,
+        gt=0,
+        description="Minimum curvature to consider as curved"
+    )
 
 
 @dataclass
@@ -85,6 +120,27 @@ class VectorizeResult:
     total_points_before: int
     total_points_after: int
     compression_ratio: float
+    fitted_curves: List['FittedCurve'] = None  # Curve fits if detected
+    
+    def __post_init__(self):
+        if self.fitted_curves is None:
+            self.fitted_curves = []
+
+
+@dataclass
+class FittedCurve:
+    """Result of curve fitting."""
+    
+    curve_type: str  # "arc", "circle", "ellipse", "spline"
+    center: Optional[Tuple[float, float]] = None  # For arc/circle/ellipse
+    radius: Optional[float] = None  # For circle
+    radii: Optional[Tuple[float, float]] = None  # For ellipse (a, b)
+    angle: Optional[float] = None  # Rotation angle for ellipse
+    start_angle: Optional[float] = None  # For arc
+    end_angle: Optional[float] = None  # For arc
+    control_points: Optional[List[Tuple[float, float]]] = None  # For spline
+    r_squared: float = 0.0  # Fit quality
+    points: List[Tuple[float, float]] = None  # Original points used
 
 
 class Vectorizer:
@@ -454,3 +510,318 @@ class Vectorizer:
             epsilon = 0.02 * perimeter
         
         return cv2.approxPolyDP(contour, epsilon, closed=True)
+    
+    # ========== CURVE FITTING METHODS ==========
+    
+    def fit_circle(
+        self,
+        points: List[Tuple[float, float]],
+    ) -> Optional[FittedCurve]:
+        """
+        Fit a circle to a set of points using algebraic least squares.
+        
+        Uses the algebraic circle fit method:
+        (x - cx)^2 + (y - cy)^2 = r^2
+        
+        Rearranged to: x^2 + y^2 = 2*cx*x + 2*cy*y + (r^2 - cx^2 - cy^2)
+        
+        Args:
+            points: List of (x, y) points
+        
+        Returns:
+            FittedCurve with circle parameters or None if fit fails
+        """
+        if len(points) < 3:
+            return None
+        
+        pts = np.array(points)
+        x = pts[:, 0]
+        y = pts[:, 1]
+        
+        # Build design matrix for: A*[cx, cy, c]^T = b
+        # where c = r^2 - cx^2 - cy^2
+        A = np.column_stack([2*x, 2*y, np.ones(len(x))])
+        b = x**2 + y**2
+        
+        try:
+            # Least squares solve
+            result, residuals, rank, s = np.linalg.lstsq(A, b, rcond=None)
+            cx, cy, c = result
+            
+            # Recover radius
+            r_squared = c + cx**2 + cy**2
+            if r_squared < 0:
+                return None
+            radius = np.sqrt(r_squared)
+            
+            # Compute R-squared
+            predicted = (x - cx)**2 + (y - cy)**2
+            actual = radius**2 * np.ones(len(x))
+            ss_res = np.sum((predicted - actual)**2)
+            ss_tot = np.sum((predicted - np.mean(predicted))**2)
+            
+            if ss_tot < 1e-10:
+                r_sq = 1.0 if ss_res < 1e-10 else 0.0
+            else:
+                r_sq = 1.0 - (ss_res / ss_tot)
+            
+            return FittedCurve(
+                curve_type="circle",
+                center=(cx, cy),
+                radius=radius,
+                r_squared=r_sq,
+                points=points,
+            )
+            
+        except np.linalg.LinAlgError:
+            return None
+    
+    def fit_arc(
+        self,
+        points: List[Tuple[float, float]],
+    ) -> Optional[FittedCurve]:
+        """
+        Fit an arc to a set of points.
+        
+        First fits a circle, then determines the arc angles.
+        
+        Args:
+            points: List of (x, y) points
+        
+        Returns:
+            FittedCurve with arc parameters or None if fit fails
+        """
+        circle = self.fit_circle(points)
+        if circle is None or circle.r_squared < self.config.curve_fit_threshold:
+            return None
+        
+        cx, cy = circle.center
+        
+        # Compute angles for each point
+        pts = np.array(points)
+        angles = np.arctan2(pts[:, 1] - cy, pts[:, 0] - cx)
+        
+        # Find start and end angles (handle wrap-around)
+        # Sort points by angle
+        sorted_indices = np.argsort(angles)
+        sorted_angles = angles[sorted_indices]
+        
+        # Check for angle wrap (crossing -pi/pi boundary)
+        angle_diffs = np.diff(sorted_angles)
+        max_gap_idx = np.argmax(angle_diffs)
+        
+        if angle_diffs[max_gap_idx] > np.pi:
+            # Arc crosses the boundary
+            start_angle = sorted_angles[max_gap_idx + 1]
+            end_angle = sorted_angles[max_gap_idx]
+        else:
+            start_angle = sorted_angles[0]
+            end_angle = sorted_angles[-1]
+        
+        return FittedCurve(
+            curve_type="arc",
+            center=circle.center,
+            radius=circle.radius,
+            start_angle=float(start_angle),
+            end_angle=float(end_angle),
+            r_squared=circle.r_squared,
+            points=points,
+        )
+    
+    def fit_ellipse(
+        self,
+        points: List[Tuple[float, float]],
+    ) -> Optional[FittedCurve]:
+        """
+        Fit an ellipse to a set of points using OpenCV.
+        
+        Args:
+            points: List of (x, y) points
+        
+        Returns:
+            FittedCurve with ellipse parameters or None if fit fails
+        """
+        if len(points) < 5:
+            return None
+        
+        pts = np.array(points, dtype=np.float32).reshape(-1, 1, 2)
+        
+        try:
+            # OpenCV fitEllipse
+            ellipse = cv2.fitEllipse(pts)
+            center, (width, height), angle = ellipse
+            
+            # Compute fit quality (distance from ellipse)
+            cx, cy = center
+            a, b = width / 2, height / 2
+            theta = np.radians(angle)
+            
+            # Compute normalized distance for each point
+            pts_flat = pts.reshape(-1, 2)
+            cos_t, sin_t = np.cos(theta), np.sin(theta)
+            
+            distances = []
+            for px, py in pts_flat:
+                # Transform to ellipse coordinate system
+                dx, dy = px - cx, py - cy
+                x_rot = dx * cos_t + dy * sin_t
+                y_rot = -dx * sin_t + dy * cos_t
+                
+                # Normalized distance from ellipse
+                if a > 0 and b > 0:
+                    dist = abs((x_rot / a)**2 + (y_rot / b)**2 - 1)
+                    distances.append(dist)
+            
+            if distances:
+                mean_dist = np.mean(distances)
+                # Convert to R-squared-like metric
+                r_sq = max(0, 1 - mean_dist)
+            else:
+                r_sq = 0
+            
+            return FittedCurve(
+                curve_type="ellipse",
+                center=(cx, cy),
+                radii=(a, b),
+                angle=float(angle),
+                r_squared=r_sq,
+                points=points,
+            )
+            
+        except cv2.error:
+            return None
+    
+    def compute_curvature(
+        self,
+        points: List[Tuple[float, float]],
+        window: int = 5,
+    ) -> List[float]:
+        """
+        Compute discrete curvature at each point.
+        
+        Uses the Menger curvature formula:
+        k = 4 * Area(triangle) / (|AB| * |BC| * |CA|)
+        
+        Args:
+            points: List of (x, y) points
+            window: Number of points to consider for smoothing
+        
+        Returns:
+            List of curvature values (one per point)
+        """
+        if len(points) < 3:
+            return [0.0] * len(points)
+        
+        pts = np.array(points)
+        curvatures = []
+        
+        for i in range(len(pts)):
+            # Get neighboring points
+            if i == 0:
+                p0, p1, p2 = pts[0], pts[1], pts[min(2, len(pts)-1)]
+            elif i == len(pts) - 1:
+                p0, p1, p2 = pts[max(0, i-2)], pts[i-1], pts[i]
+            else:
+                p0, p1, p2 = pts[i-1], pts[i], pts[i+1]
+            
+            # Compute Menger curvature
+            a = np.linalg.norm(p1 - p0)
+            b = np.linalg.norm(p2 - p1)
+            c = np.linalg.norm(p2 - p0)
+            
+            if a < 1e-10 or b < 1e-10 or c < 1e-10:
+                curvatures.append(0.0)
+                continue
+            
+            # Area of triangle using cross product
+            area = 0.5 * abs(
+                (p1[0] - p0[0]) * (p2[1] - p0[1]) -
+                (p2[0] - p0[0]) * (p1[1] - p0[1])
+            )
+            
+            # Menger curvature
+            k = 4 * area / (a * b * c)
+            curvatures.append(k)
+        
+        return curvatures
+    
+    def detect_curve_type(
+        self,
+        points: List[Tuple[float, float]],
+    ) -> str:
+        """
+        Automatically detect the best curve type for a set of points.
+        
+        Args:
+            points: List of (x, y) points
+        
+        Returns:
+            Curve type string: "line", "arc", "circle", "ellipse", or "spline"
+        """
+        if len(points) < self.config.min_arc_points:
+            return "line"
+        
+        # Compute curvature
+        curvatures = self.compute_curvature(points)
+        mean_curvature = np.mean(np.abs(curvatures))
+        std_curvature = np.std(curvatures)
+        
+        # Low curvature = straight line
+        if mean_curvature < self.config.curvature_threshold:
+            return "line"
+        
+        # Constant curvature = circle/arc
+        if std_curvature < 0.3 * mean_curvature:
+            # Try circle fit
+            circle_fit = self.fit_circle(points)
+            if circle_fit and circle_fit.r_squared > self.config.curve_fit_threshold:
+                # Check if it's a full circle or arc
+                pts = np.array(points)
+                cx, cy = circle_fit.center
+                angles = np.arctan2(pts[:, 1] - cy, pts[:, 0] - cx)
+                angle_range = np.ptp(angles)
+                
+                if angle_range > 1.8 * np.pi:
+                    return "circle"
+                else:
+                    return "arc"
+        
+        # Try ellipse
+        ellipse_fit = self.fit_ellipse(points)
+        if ellipse_fit and ellipse_fit.r_squared > self.config.curve_fit_threshold:
+            return "ellipse"
+        
+        # Default to spline for complex curves
+        return "spline"
+    
+    def fit_curve_auto(
+        self,
+        points: List[Tuple[float, float]],
+    ) -> Optional[FittedCurve]:
+        """
+        Automatically fit the best curve type to points.
+        
+        Args:
+            points: List of (x, y) points
+        
+        Returns:
+            FittedCurve or None if no good fit found
+        """
+        curve_type = self.detect_curve_type(points)
+        
+        if curve_type == "line":
+            return None  # Use RDP polyline instead
+        elif curve_type == "circle":
+            return self.fit_circle(points)
+        elif curve_type == "arc":
+            return self.fit_arc(points)
+        elif curve_type == "ellipse":
+            return self.fit_ellipse(points)
+        else:
+            # Spline: just return points as control points
+            return FittedCurve(
+                curve_type="spline",
+                control_points=points,
+                r_squared=1.0,  # Spline passes through all points
+                points=points,
+            )

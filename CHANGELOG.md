@@ -9,9 +9,58 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Planned
-- Stage 3: Complete OCR + Geometric Analysis
-- Stage 4: Reasoning (SLM Integration)
+- Stage 4: Local SLM Integration (Qwen/Llama)
 - Stage 5: Reporting (Output Formatting)
+- PaddleOCR compatibility fix for Windows
+
+---
+
+## [0.4.0] - 2026-01-26
+
+### Week 2: Stage 4 Reasoning with Gemini API [PARTIAL]
+
+#### Added
+- **Stage 4 Reasoning Module** (`src/core_engine/stages/s4_reasoning/`)
+  - `s4_reasoning.py`: Main Stage4Reasoning orchestrator
+  - `gemini_engine.py`: Google Gemini API integration
+  - `base_engine.py`: Abstract base class for reasoning engines
+  - Features:
+    - OCR error correction (loo→100, O→0, 2O25→2025)
+    - Academic-style description generation
+    - Value mapping from pixel coordinates
+    - Legend-color association
+    - Rule-based fallback when API unavailable
+
+- **Gemini API Configuration**
+  - Model: `gemini-2.0-flash-exp`
+  - Temperature: 0.3 (deterministic)
+  - Max tokens: 2048
+  - Vision support: Prepared (not yet enabled)
+
+- **Notebook: Stage 4 Demo** (`notebooks/04_stage4_reasoning.ipynb`)
+  - 18 cells demonstrating Stage 4 capabilities
+  - Tests: Mock data, OCR correction, real chart processing
+  - Full pipeline test (Stage 3 → Stage 4)
+
+#### Changed
+- **Default OCR Engine**: Changed from `paddleocr` to `easyocr`
+  - Reason: PaddleOCR 3.3.x has oneDNN compatibility issues on Windows
+  - EasyOCR works reliably on Windows Python 3.12
+  - File: `src/core_engine/stages/s3_extraction/s3_extraction.py`
+
+#### Fixed
+- **Gemini Engine NoneType Error**: Safe null checks for `corrections` and `color_rgb`
+- **OCR Engine Fallback**: Auto-fallback to EasyOCR when PaddleOCR fails
+
+#### Known Issues
+- PaddleOCR 3.3.x crashes on Windows with `NotImplementedError: ConvertPirAttribute2RuntimeAttribute`
+- Gemini API occasionally returns unparseable JSON (fallback works)
+
+#### Next Steps
+- [ ] Implement local SLM (Qwen-2.5 / Llama-3.2)
+- [ ] Add vision model support to Gemini engine
+- [ ] Improve value mapping with geometric calibration
+- [ ] Build Stage 5: Reporting
 
 ---
 

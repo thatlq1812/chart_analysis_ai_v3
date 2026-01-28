@@ -125,7 +125,7 @@ class TestGeometricMapper:
         pixels = np.array([100.0, 200.0, 300.0, 400.0])
         values = np.array([40.0, 30.0, 20.0, 10.0])  # Inverted Y
         
-        result = mapper._fit_linear(pixels, values)
+        result = mapper._fit_least_squares(pixels, values)
         
         assert result is not None
         # Should have negative slope (inverted Y)

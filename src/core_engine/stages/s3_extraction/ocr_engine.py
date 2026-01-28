@@ -82,6 +82,20 @@ class OCRConfig(BaseModel):
         le=1,
         description="Top region proportion for title detection"
     )
+    
+    # Post-processing (OCR correction)
+    enable_post_processing: bool = Field(
+        default=True,
+        description="Enable OCR post-processing and correction"
+    )
+    fix_common_ocr_errors: bool = Field(
+        default=True,
+        description="Fix common OCR misreads (O->0, l->1, etc.)"
+    )
+    validate_numeric_ranges: bool = Field(
+        default=True,
+        description="Validate numeric values are in reasonable ranges"
+    )
 
 
 @dataclass
@@ -125,18 +139,26 @@ class OCREngine:
         
         if self.config.engine == "paddleocr":
             try:
+                # Disable oneDNN to avoid compatibility issues on Windows
+                import os
+                os.environ.setdefault("FLAGS_use_mkldnn", "0")
+                os.environ.setdefault("PADDLE_MKL_NUM_THREADS", "1")
+                
                 from paddleocr import PaddleOCR
                 
+                # PaddleOCR 3.x uses different params
                 self._engine = PaddleOCR(
-                    use_angle_cls=self.config.use_angle_cls,
                     lang=self.config.languages[0] if self.config.languages else "en",
+                    device="cpu",  # Avoid GPU/oneDNN issues
                 )
                 self._initialized = True
                 self.logger.info("PaddleOCR engine initialized")
                 
-            except ImportError:
-                self.logger.error("PaddleOCR not installed. Run: pip install paddleocr")
-                raise
+            except Exception as e:
+                self.logger.warning(f"PaddleOCR init failed: {e}. Falling back to EasyOCR.")
+                self.config.engine = "easyocr"
+                self._init_engine()  # Retry with EasyOCR
+                return
                 
         elif self.config.engine == "tesseract":
             try:
@@ -212,13 +234,23 @@ class OCREngine:
             if len(result["text"].strip()) < self.config.min_text_length:
                 continue
             
+            # Apply post-processing if enabled
+            text_value = result["text"]
+            correction_applied = None
+            if self.config.enable_post_processing:
+                text_value, correction_applied = self._post_process_text(
+                    text_value, result["confidence"]
+                )
+            
             # Classify role if enabled
             role = None
             if self.config.classify_roles:
-                role = self._classify_role(result["bbox"], w, h)
+                role = self._classify_role(
+                    result["bbox"], w, h, text=text_value
+                )
             
             ocr_text = OCRText(
-                text=result["text"],
+                text=text_value,
                 bbox=BoundingBox(
                     x_min=int(result["bbox"][0]),
                     y_min=int(result["bbox"][1]),
@@ -229,6 +261,14 @@ class OCREngine:
                 confidence=result["confidence"],
                 role=role,
             )
+            
+            # Log corrections for debugging
+            if correction_applied:
+                self.logger.debug(
+                    f"OCR correction | original='{result['text']}' | "
+                    f"corrected='{text_value}' | type={correction_applied}"
+                )
+            
             texts.append(ocr_text)
         
         elapsed = (time.time() - start_time) * 1000
@@ -245,39 +285,82 @@ class OCREngine:
         )
     
     def _extract_paddleocr(self, image: np.ndarray) -> List[dict]:
-        """Extract using PaddleOCR."""
+        """Extract using PaddleOCR.
+        
+        Compatible with PaddleOCR 3.x API which uses predict() instead of ocr().
+        """
         results = []
         
-        # PaddleOCR returns: [[bbox, (text, confidence)], ...]
-        # Note: New PaddleOCR API doesn't support cls parameter in ocr()
-        output = self._engine.ocr(image)
-        
-        if output is None or len(output) == 0:
-            return results
-        
-        # Handle different output formats
-        if output[0] is None:
-            return results
-        
-        for line in output[0]:
-            if line is None or len(line) < 2:
-                continue
+        try:
+            # PaddleOCR 3.x uses predict() with new output format
+            # Each result is a dict with 'rec_texts', 'rec_scores', 'dt_polys'
+            output_iter = self._engine.predict(image)
             
-            bbox_points = line[0]  # [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
-            text_conf = line[1]    # (text, confidence)
-            
-            if len(bbox_points) < 4:
-                continue
-            
-            # Convert quadrilateral to axis-aligned bbox
-            xs = [p[0] for p in bbox_points]
-            ys = [p[1] for p in bbox_points]
-            
-            results.append({
-                "text": text_conf[0],
-                "confidence": text_conf[1],
-                "bbox": (min(xs), min(ys), max(xs), max(ys)),
-            })
+            for result in output_iter:
+                if result is None:
+                    continue
+                    
+                # New API returns dict with keys: 'input_path', 'dt_polys', 'rec_texts', 'rec_scores'
+                if isinstance(result, dict):
+                    dt_polys = result.get('dt_polys', [])
+                    rec_texts = result.get('rec_texts', [])
+                    rec_scores = result.get('rec_scores', [])
+                    
+                    for i, (poly, text, score) in enumerate(zip(dt_polys, rec_texts, rec_scores)):
+                        if poly is None or len(poly) < 4:
+                            continue
+                        
+                        # Convert polygon to bbox
+                        xs = [p[0] for p in poly]
+                        ys = [p[1] for p in poly]
+                        
+                        results.append({
+                            "text": text,
+                            "confidence": float(score),
+                            "bbox": (min(xs), min(ys), max(xs), max(ys)),
+                        })
+                else:
+                    # Fallback for old API format [[bbox, (text, conf)], ...]
+                    if isinstance(result, list) and len(result) > 0:
+                        for line in result:
+                            if line is None or len(line) < 2:
+                                continue
+                            
+                            bbox_points = line[0]
+                            text_conf = line[1]
+                            
+                            if len(bbox_points) < 4:
+                                continue
+                            
+                            xs = [p[0] for p in bbox_points]
+                            ys = [p[1] for p in bbox_points]
+                            
+                            results.append({
+                                "text": text_conf[0],
+                                "confidence": text_conf[1],
+                                "bbox": (min(xs), min(ys), max(xs), max(ys)),
+                            })
+        except Exception as e:
+            self.logger.warning(f"PaddleOCR extraction failed: {e}, trying legacy API")
+            # Try legacy ocr() API
+            try:
+                output = self._engine.ocr(image)
+                if output and output[0]:
+                    for line in output[0]:
+                        if line is None or len(line) < 2:
+                            continue
+                        bbox_points = line[0]
+                        text_conf = line[1]
+                        if len(bbox_points) >= 4:
+                            xs = [p[0] for p in bbox_points]
+                            ys = [p[1] for p in bbox_points]
+                            results.append({
+                                "text": text_conf[0],
+                                "confidence": text_conf[1],
+                                "bbox": (min(xs), min(ys), max(xs), max(ys)),
+                            })
+            except Exception as e2:
+                self.logger.error(f"PaddleOCR legacy API also failed: {e2}")
         
         return results
     
@@ -350,58 +433,142 @@ class OCREngine:
         bbox: Tuple[float, float, float, float],
         img_width: int,
         img_height: int,
+        text: str = "",
     ) -> str:
         """
-        Classify text role based on spatial position.
+        Classify text role based on spatial position and text content.
+        
+        Enhanced with content-aware heuristics:
+        - Numeric patterns for tick values
+        - Unit patterns for axis labels  
+        - Title patterns (capitalization, length)
         
         Args:
             bbox: (x_min, y_min, x_max, y_max)
             img_width: Image width
             img_height: Image height
+            text: The actual text content
         
         Returns:
             TextRole string value
         """
+        import re
+        
         x_min, y_min, x_max, y_max = bbox
         
         # Center of text box
         cx = (x_min + x_max) / 2
         cy = (y_min + y_max) / 2
         
+        # Box dimensions
+        box_width = x_max - x_min
+        box_height = y_max - y_min
+        
         # Relative positions
         rel_x = cx / img_width
         rel_y = cy / img_height
         
-        # Height of text box relative to image
-        rel_height = (y_max - y_min) / img_height
+        # Aspect ratio (helps detect rotated text)
+        aspect_ratio = box_width / max(box_height, 1)
         
-        # Title: Top region, centered horizontally
-        if rel_y < self.config.title_region_top and 0.2 < rel_x < 0.8:
-            return TextRole.TITLE.value
+        # Relative sizes
+        rel_box_width = box_width / img_width
+        rel_box_height = box_height / img_height
         
-        # Y-axis label: Left side, vertically centered
-        if rel_x < 0.15 and 0.3 < rel_y < 0.7:
-            return TextRole.Y_AXIS_LABEL.value
+        # ========== CONTENT ANALYSIS ==========
+        text_clean = text.strip()
+        text_lower = text_clean.lower()
         
-        # Y-tick labels: Left side
-        if rel_x < 0.2 and 0.1 < rel_y < 0.9:
-            return TextRole.Y_TICK.value
+        # Is numeric? (tick values)
+        is_numeric = bool(re.match(r'^[-+]?[\d,.]+%?$', text_clean.replace(' ', '')))
         
-        # X-axis label: Bottom, centered
-        if rel_y > 0.85 and 0.3 < rel_x < 0.7:
-            return TextRole.X_AXIS_LABEL.value
+        # Is short numeric with unit? (e.g., "100%", "5k", "10M")
+        is_numeric_with_suffix = bool(re.match(r'^[-+]?[\d,.]+\s*[%kKmMbB]?$', text_clean))
         
-        # X-tick labels: Bottom region
-        if rel_y > 0.8:
-            return TextRole.X_TICK.value
+        # Is axis label pattern? (contains unit words)
+        axis_label_keywords = [
+            'count', 'number', 'amount', 'value', 'score', 'rate', 'ratio',
+            'percentage', 'percent', 'frequency', 'probability', 'density',
+            'time', 'date', 'year', 'month', 'day', 'hour',
+            'price', 'cost', 'revenue', 'sales', 'profit',
+            'distance', 'height', 'width', 'size', 'area', 'volume',
+            'temperature', 'weight', 'mass', 'speed', 'velocity',
+            'accuracy', 'precision', 'recall', 'f1', 'loss', 'error',
+            'epoch', 'iteration', 'step', 'batch',
+            '(', ')', '[', ']',  # Units often in parentheses
+        ]
+        has_axis_keywords = any(kw in text_lower for kw in axis_label_keywords)
         
-        # Legend: Usually top-right or bottom
-        if rel_x > 0.7 and rel_y < 0.3:
-            return TextRole.LEGEND.value
+        # Is legend pattern? (short, possibly with color indicator)
+        legend_keywords = [
+            'group', 'class', 'category', 'type', 'series', 'label',
+            'train', 'test', 'val', 'validation',
+            'baseline', 'proposed', 'ours', 'method',
+            'model', 'algorithm',
+        ]
+        has_legend_keywords = any(kw in text_lower for kw in legend_keywords)
         
-        # Data label: Inside plot area
+        # Is title pattern? (longer, possibly capitalized)
+        is_title_like = (
+            len(text_clean) > 10 and
+            (text_clean[0].isupper() or text_clean.isupper()) and
+            not is_numeric
+        )
+        
+        # ========== POSITION-BASED CLASSIFICATION ==========
+        
+        # Title: Top region, wide text, centered
+        if rel_y < self.config.title_region_top:
+            if 0.15 < rel_x < 0.85 and (is_title_like or rel_box_width > 0.3):
+                return TextRole.TITLE.value
+        
+        # Y-axis label: Left side, often rotated (tall narrow box)
+        # Rotated text has aspect_ratio < 1 (taller than wide)
+        if rel_x < 0.15:
+            if 0.25 < rel_y < 0.75:
+                # Check if it looks like axis label (not numeric)
+                if has_axis_keywords or (not is_numeric and len(text_clean) > 3):
+                    return TextRole.Y_AXIS_LABEL.value
+        
+        # Y-tick labels: Left side, numeric
+        if rel_x < 0.25 and 0.1 < rel_y < 0.9:
+            if is_numeric or is_numeric_with_suffix:
+                return TextRole.Y_TICK.value
+        
+        # X-axis label: Bottom, centered, not numeric
+        if rel_y > 0.85:
+            if 0.25 < rel_x < 0.75:
+                if has_axis_keywords or (not is_numeric and len(text_clean) > 3):
+                    return TextRole.X_AXIS_LABEL.value
+        
+        # X-tick labels: Bottom region, could be numeric or categorical
+        if rel_y > 0.75:
+            # Numeric ticks
+            if is_numeric or is_numeric_with_suffix:
+                return TextRole.X_TICK.value
+            # Categorical ticks (short text at bottom)
+            if len(text_clean) < 20 and not has_axis_keywords:
+                return TextRole.X_TICK.value
+        
+        # Legend: Usually top-right, bottom, or right side
+        # Often short categorical labels
+        if rel_x > 0.65:
+            if rel_y < 0.35 or rel_y > 0.65:
+                if has_legend_keywords or (len(text_clean) < 25 and not is_numeric):
+                    return TextRole.LEGEND.value
+        
+        # Data label: Inside plot area, usually numeric values on/near elements
         if 0.15 < rel_x < 0.85 and 0.15 < rel_y < 0.85:
-            return TextRole.DATA_LABEL.value
+            if is_numeric or is_numeric_with_suffix:
+                return TextRole.DATA_LABEL.value
+            # Short text near data could be label
+            if len(text_clean) < 15:
+                return TextRole.DATA_LABEL.value
+        
+        # Subtitle: Just below title area
+        if 0.12 < rel_y < 0.25 and 0.2 < rel_x < 0.8:
+            if not is_numeric:
+                return TextRole.SUBTITLE.value
         
         return TextRole.UNKNOWN.value
     
@@ -454,3 +621,124 @@ class OCREngine:
                 continue
         
         return values
+    
+    def _post_process_text(
+        self,
+        text: str,
+        confidence: float,
+    ) -> Tuple[str, Optional[str]]:
+        """
+        Post-process OCR text to fix common errors.
+        
+        Args:
+            text: Raw OCR text
+            confidence: OCR confidence score
+        
+        Returns:
+            Tuple of (corrected_text, correction_type or None)
+        """
+        import re
+        
+        original = text
+        correction_type = None
+        
+        # ========== COMMON OCR CHARACTER ERRORS ==========
+        # These are frequent misreads in chart contexts
+        
+        if self.config.fix_common_ocr_errors:
+            # Only apply aggressive fixes to low-confidence results
+            # or when text looks like it should be numeric
+            looks_numeric = bool(re.search(r'\d', text))
+            
+            if looks_numeric or confidence < 0.8:
+                # Common letter-digit confusions
+                ocr_corrections = {
+                    # Letter O -> digit 0 (in numeric context)
+                    'O': '0',
+                    'o': '0',
+                    # Letter l/I -> digit 1 (in numeric context)
+                    'l': '1',
+                    'I': '1',
+                    # Letter S -> digit 5
+                    'S': '5',
+                    's': '5',
+                    # Letter B -> digit 8
+                    'B': '8',
+                    # Letter Z -> digit 2
+                    'Z': '2',
+                    # Letter G -> digit 6
+                    'G': '6',
+                    # Letter q -> digit 9
+                    'q': '9',
+                }
+                
+                # Apply corrections only if text looks like a number
+                # (has digits mixed with potential letter errors)
+                if re.match(r'^[\d\s,.\-+%OolISsBZGq]+$', text):
+                    corrected = text
+                    for wrong, right in ocr_corrections.items():
+                        if wrong in corrected:
+                            corrected = corrected.replace(wrong, right)
+                    
+                    if corrected != text:
+                        text = corrected
+                        correction_type = "char_substitution"
+        
+        # ========== NUMERIC FORMAT NORMALIZATION ==========
+        
+        # Fix common decimal point issues
+        # "1,5" -> "1.5" (European decimal)
+        if re.match(r'^\d+,\d{1,2}$', text):
+            text = text.replace(',', '.')
+            correction_type = correction_type or "decimal_format"
+        
+        # Fix thousand separators that look like decimals
+        # "1.000" -> "1000" (if followed by 3 digits)
+        if re.match(r'^\d{1,3}\.\d{3}$', text) and ',' not in original:
+            text = text.replace('.', '')
+            correction_type = correction_type or "thousand_separator"
+        
+        # ========== COMMON UNIT/SUFFIX FIXES ==========
+        
+        # Fix percentage signs that got split or misread
+        # "100 %" -> "100%"
+        text = re.sub(r'(\d)\s+%', r'\1%', text)
+        
+        # Fix "K" "M" "B" suffixes (common in charts)
+        # "10 K" -> "10K"
+        text = re.sub(r'(\d)\s+([KkMmBb])(?:\s|$)', r'\1\2', text)
+        
+        # ========== WHITESPACE CLEANUP ==========
+        
+        # Remove leading/trailing whitespace
+        text = text.strip()
+        
+        # Collapse multiple spaces
+        text = re.sub(r'\s+', ' ', text)
+        
+        # ========== VALIDATE NUMERIC RANGES ==========
+        
+        if self.config.validate_numeric_ranges and correction_type:
+            # After correction, verify the number is reasonable
+            try:
+                # Try to parse as number
+                clean = text.replace(',', '').replace('%', '').replace(' ', '')
+                clean = re.sub(r'[KkMmBb]$', '', clean)
+                value = float(clean)
+                
+                # Flag suspicious corrections (extremely large/small)
+                if abs(value) > 1e15 or (value != 0 and abs(value) < 1e-15):
+                    # Revert to original - correction likely wrong
+                    self.logger.debug(
+                        f"Reverting OCR correction (out of range) | "
+                        f"corrected='{text}' | original='{original}'"
+                    )
+                    return original, None
+                    
+            except ValueError:
+                pass  # Not a pure number, that's OK
+        
+        if text != original and correction_type is None:
+            correction_type = "cleanup"
+        
+        return text, correction_type if text != original else None

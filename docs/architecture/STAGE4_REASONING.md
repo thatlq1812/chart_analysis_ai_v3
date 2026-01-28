@@ -3,10 +3,11 @@
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
 | 1.0.0 | 2026-01-25 | That Le | Stage 4 architecture documentation (PLANNED) |
+| 1.1.0 | 2026-01-26 | That Le | Implemented Gemini API integration |
 
-## Status: PLANNED
+## Status: IN PROGRESS
 
-This document outlines the planned architecture for Stage 4 (Reasoning) which will integrate Small Language Models (SLM) for semantic understanding.
+Stage 4 reasoning is now implemented with Gemini API support.
 
 ## 1. Overview
 
@@ -164,24 +165,78 @@ class RefinedChartData(BaseModel):
     confidence: float
 ```
 
-## 5. Implementation Timeline
+## 5. Implementation Status
 
 | Task | Status | Target |
 | --- | --- | --- |
-| Design document | [DONE] | Week 3 |
-| Geometric mapper implementation | [TODO] | Week 3 |
-| SLM integration | [TODO] | Week 3-4 |
-| Error correction rules | [TODO] | Week 4 |
-| Description generator | [TODO] | Week 4 |
-| Unit tests | [TODO] | Week 4 |
+| Design document | DONE | Week 3 |
+| Gemini API integration | DONE | Week 3 |
+| OCR error correction | DONE | Week 3 |
+| Description generator | DONE | Week 3 |
+| Rule-based fallback | DONE | Week 3 |
+| Local SLM integration | TODO | Week 4 |
+| Geometric value mapping | TODO | Week 4 |
+| Unit tests | PARTIAL | Week 4 |
 
-## 6. Dependencies
+## 6. Implementation Details
+
+### 6.1. File Structure
+
+```
+src/core_engine/stages/s4_reasoning/
+    __init__.py
+    s4_reasoning.py          # Main orchestrator
+    reasoning_engine.py      # Abstract interface
+    gemini_engine.py         # Gemini API implementation
+    prompts/
+        ocr_correction.txt   # OCR error correction prompt
+        description.txt      # Description generation prompt
+        value_mapping.txt    # Value extraction prompt
+```
+
+### 6.2. Usage Example
+
+```python
+from src.core_engine.stages.s4_reasoning import (
+    Stage4Reasoning,
+    ReasoningConfig,
+    GeminiConfig,
+)
+
+# Initialize with Gemini
+config = ReasoningConfig(
+    engine="gemini",
+    gemini=GeminiConfig(
+        model_name="gemini-2.0-flash-exp",
+        temperature=0.3,
+    ),
+)
+stage4 = Stage4Reasoning(config)
+
+# Process Stage 3 output
+result = stage4.process(stage3_output)
+```
+
+### 6.3. API Key Configuration
+
+Set environment variable:
+```bash
+export GOOGLE_API_KEY="your-api-key-here"
+```
+
+Or create `config/secrets/.env`:
+```
+GOOGLE_API_KEY=your-api-key-here
+```
+
+## 7. Dependencies
 
 ```toml
 # Required packages (in pyproject.toml)
 transformers = ">=4.36.0"
 torch = ">=2.0.0"
 accelerate = ">=0.25.0"
+google-generativeai = ">=0.3.0"  # NEW: Gemini API
 ```
 
 ## 7. References
