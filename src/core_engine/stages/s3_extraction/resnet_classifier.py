@@ -84,10 +84,15 @@ class ResNet18Classifier:
             raise FileNotFoundError(f"Model not found: {self.model_path}")
         
         # Load checkpoint
-        checkpoint = torch.load(self.model_path, map_location=self.device)
+        checkpoint = torch.load(self.model_path, map_location=self.device, weights_only=False)
         
-        # Get class names from checkpoint or default
-        if 'class_names' in checkpoint:
+        # Get class names from checkpoint
+        if 'class_mapping' in checkpoint:
+            # class_mapping is {class_name: index}
+            mapping = checkpoint['class_mapping']
+            # Sort by index to get ordered list
+            self.class_names = sorted(mapping.keys(), key=lambda x: mapping[x])
+        elif 'class_names' in checkpoint:
             self.class_names = checkpoint['class_names']
         else:
             # Default order (alphabetical)
@@ -99,13 +104,17 @@ class ResNet18Classifier:
         self.num_classes = len(self.class_names)
         self.class_to_idx = {cls: i for i, cls in enumerate(self.class_names)}
         
-        # Build model wrapper (matches training structure)
+        # Build model wrapper (matches training structure with Sequential FC)
         class ResNetWrapper(nn.Module):
             def __init__(self, num_classes):
                 super().__init__()
                 self.resnet = models.resnet18(pretrained=False)
                 in_features = self.resnet.fc.in_features
-                self.resnet.fc = nn.Linear(in_features, num_classes)
+                # Use Sequential to match training structure: resnet.fc.1.weight
+                self.resnet.fc = nn.Sequential(
+                    nn.Dropout(0.3),
+                    nn.Linear(in_features, num_classes)
+                )
             
             def forward(self, x):
                 return self.resnet(x)
@@ -134,20 +143,29 @@ class ResNet18Classifier:
         chart_type, _ = self.predict_with_confidence(image_path)
         return chart_type
     
-    def predict_with_confidence(self, image_path: Path) -> tuple[str, float]:
+    def predict_with_confidence(self, image_input) -> tuple[str, float]:
         """
         Predict chart type with confidence score
         
         Args:
-            image_path: Path to chart image
+            image_input: Path to chart image OR BGR numpy array
         
         Returns:
             Tuple of (chart_type, confidence)
             If confidence < threshold, returns ('unknown', confidence)
         """
         try:
-            # Load image
-            image = Image.open(image_path).convert('RGB')
+            # Handle different input types
+            if isinstance(image_input, (Path, str)):
+                # Load from path
+                image = Image.open(image_input).convert('RGB')
+            elif isinstance(image_input, np.ndarray):
+                # Convert BGR numpy array to PIL RGB
+                import cv2
+                rgb_array = cv2.cvtColor(image_input, cv2.COLOR_BGR2RGB)
+                image = Image.fromarray(rgb_array)
+            else:
+                raise ValueError(f"Unsupported input type: {type(image_input)}")
             
             # Transform
             input_tensor = self.transform(image).unsqueeze(0).to(self.device)
@@ -167,7 +185,6 @@ class ResNet18Classifier:
             if confidence < self.confidence_threshold:
                 logger.warning(
                     f"Low confidence prediction | "
-                    f"image={image_path.name} | "
                     f"pred={chart_type} | "
                     f"conf={confidence:.3f} < threshold={self.confidence_threshold}"
                 )
@@ -176,7 +193,7 @@ class ResNet18Classifier:
             return chart_type, confidence
         
         except Exception as e:
-            logger.error(f"Prediction failed | image={image_path} | error={e}")
+            logger.error(f"Prediction failed | error={e}")
             return 'unknown', 0.0
     
     def predict_batch(self, image_paths: list[Path]) -> list[tuple[str, float]]:
@@ -250,8 +267,16 @@ def create_resnet_classifier(
         Initialized ResNet18Classifier
     """
     if model_path is None:
-        # Auto-detect model path
+        # Auto-detect model path - try v2 first (94.14% accuracy)
         project_root = Path(__file__).parent.parent.parent.parent.parent
-        model_path = project_root / "models" / "weights" / "resnet18_chart_classifier_best.pt"
+        v2_path = project_root / "models" / "weights" / "resnet18_chart_classifier_v2_best.pt"
+        v1_path = project_root / "models" / "weights" / "resnet18_chart_classifier_best.pt"
+        
+        if v2_path.exists():
+            model_path = v2_path
+        elif v1_path.exists():
+            model_path = v1_path
+        else:
+            raise FileNotFoundError(f"No ResNet model found at {v2_path} or {v1_path}")
     
     return ResNet18Classifier(model_path, device, confidence_threshold)

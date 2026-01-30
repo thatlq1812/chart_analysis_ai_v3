@@ -230,13 +230,28 @@ class QAPairV2(BaseModel):
 # CHART QA SAMPLE v2
 # =============================================================================
 
+class ChartVerification(BaseModel):
+    """Verification info from Gemini about chart validity and type."""
+    
+    is_valid_chart: bool = Field(True, description="Is this a valid chart/graph?")
+    actual_chart_type: str = Field(..., description="Gemini's detected chart type")
+    chart_quality: str = Field("medium", description="high|medium|low|unreadable")
+    verification_notes: Optional[str] = Field(None, description="Notes on type mismatch or quality issues")
+    type_matches_folder: bool = Field(True, description="Does Gemini type match folder type?")
+
+
 class ChartQASampleV2(BaseModel):
     """Complete QA sample for a chart image."""
     
     # Identity
     image_id: str = Field(..., description="Unique image identifier")
     image_path: str = Field(..., description="Relative path to image")
-    chart_type: str = Field(..., description="Detected chart type")
+    chart_type: str = Field(..., description="Folder/labeled chart type")
+    
+    # Gemini verification (for data cleaning)
+    verification: Optional[ChartVerification] = Field(
+        None, description="Gemini's verification of chart type and quality"
+    )
     
     # Context
     caption: Optional[str] = Field(None, description="Figure caption if available")

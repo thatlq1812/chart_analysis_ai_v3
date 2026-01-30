@@ -5,18 +5,22 @@ Train YOLO for Chart Detection (Binary: chart vs non-chart).
 This script prepares data and trains YOLOv8 to detect chart regions in images.
 The model outputs bounding boxes for detected charts.
 
+Data Source: classified_charts/ directory with 32,364 chart images
+- Chart types: area, bar, box, heatmap, histogram, line, pie, scatter
+- Non-chart: diagram, not_a_chart, other, table (used as negative samples)
+- Excluded: uncertain (14,466 images - ambiguous labels)
+
 Usage:
     python scripts/train_yolo_chart_detector.py --epochs 50
-    python scripts/train_yolo_chart_detector.py --epochs 100 --batch 16
+    python scripts/train_yolo_chart_detector.py --epochs 100 --batch 16 --prepare-only
 """
 
 import argparse
-import json
 import random
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 import yaml
 from PIL import Image
@@ -26,46 +30,77 @@ from tqdm import tqdm
 PROJECT_ROOT = Path(__file__).parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 ACADEMIC_DATASET = DATA_DIR / "academic_dataset"
-IMAGES_DIR = ACADEMIC_DATASET / "images"
-MANIFESTS_DIR = ACADEMIC_DATASET / "manifests"
+CLASSIFIED_CHARTS_DIR = ACADEMIC_DATASET / "classified_charts"
 YOLO_DATASET_DIR = DATA_DIR / "yolo_chart_detection"
 
+# Chart types to use as positive samples
+CHART_TYPES = ["area", "bar", "box", "heatmap", "histogram", "line", "pie", "scatter"]
 
-def load_chart_manifest() -> Tuple[List[Dict], List[Dict], List[Dict]]:
-    """Load train/val/test manifests."""
-    train_manifest = MANIFESTS_DIR / "train_manifest.json"
-    val_manifest = MANIFESTS_DIR / "val_manifest.json"
-    test_manifest = MANIFESTS_DIR / "test_manifest.json"
-    
-    with open(train_manifest) as f:
-        train_data = json.load(f)
-    with open(val_manifest) as f:
-        val_data = json.load(f)
-    with open(test_manifest) as f:
-        test_data = json.load(f)
-    
-    return train_data, val_data, test_data
+# Non-chart types to use as negative samples
+NON_CHART_TYPES = ["diagram", "not_a_chart", "other", "table"]
+
+# Excluded (ambiguous labels)
+EXCLUDED_TYPES = ["uncertain"]
 
 
-def get_non_chart_images(chart_images: set, max_samples: int = 3000) -> List[Path]:
+def load_classified_images() -> Tuple[List[Path], List[Path]]:
     """
-    Get non-chart images from the dataset.
+    Load images from classified_charts directory.
     
-    Strategy: Images not in manifests are likely non-charts
-    (diagrams, photos, tables, equations, etc.)
+    Returns:
+        Tuple of (chart_images, non_chart_images)
     """
-    all_images = set(p.stem for p in IMAGES_DIR.glob("*.png"))
-    non_chart_stems = all_images - chart_images
+    chart_images = []
+    non_chart_images = []
     
-    # Sample randomly
-    non_chart_list = list(non_chart_stems)
-    random.shuffle(non_chart_list)
+    for chart_type in CHART_TYPES:
+        type_dir = CLASSIFIED_CHARTS_DIR / chart_type
+        if type_dir.exists():
+            images = list(type_dir.glob("*.png"))
+            chart_images.extend(images)
+            print(f"  {chart_type}: {len(images)} images")
     
-    sampled = non_chart_list[:max_samples]
-    return [IMAGES_DIR / f"{stem}.png" for stem in sampled]
+    for non_chart_type in NON_CHART_TYPES:
+        type_dir = CLASSIFIED_CHARTS_DIR / non_chart_type
+        if type_dir.exists():
+            images = list(type_dir.glob("*.png"))
+            non_chart_images.extend(images)
+            print(f"  {non_chart_type}: {len(images)} images (negative)")
+    
+    return chart_images, non_chart_images
 
 
-def create_yolo_label(image_path: Path, bbox: Dict = None, is_chart: bool = True) -> str:
+def split_data(
+    images: List[Path],
+    train_ratio: float = 0.7,
+    val_ratio: float = 0.15,
+) -> Tuple[List[Path], List[Path], List[Path]]:
+    """
+    Split images into train/val/test sets.
+    
+    Args:
+        images: List of image paths
+        train_ratio: Ratio for training set (default 0.7)
+        val_ratio: Ratio for validation set (default 0.15)
+        
+    Returns:
+        Tuple of (train, val, test) lists
+    """
+    shuffled = images.copy()
+    random.shuffle(shuffled)
+    
+    n_total = len(shuffled)
+    n_train = int(n_total * train_ratio)
+    n_val = int(n_total * val_ratio)
+    
+    train = shuffled[:n_train]
+    val = shuffled[n_train:n_train + n_val]
+    test = shuffled[n_train + n_val:]
+    
+    return train, val, test
+
+
+def create_yolo_label(image_path: Path, is_chart: bool = True) -> str:
     """
     Create YOLO format label.
     
@@ -74,7 +109,6 @@ def create_yolo_label(image_path: Path, bbox: Dict = None, is_chart: bool = True
     
     Args:
         image_path: Path to image
-        bbox: Bounding box dict with x_min, y_min, x_max, y_max
         is_chart: Whether image contains a chart
         
     Returns:
@@ -87,92 +121,70 @@ def create_yolo_label(image_path: Path, bbox: Dict = None, is_chart: bool = True
     with Image.open(image_path) as img:
         img_w, img_h = img.size
     
-    if bbox:
-        # Use provided bbox
-        x_min = bbox.get("x_min", 0)
-        y_min = bbox.get("y_min", 0)
-        x_max = bbox.get("x_max", img_w)
-        y_max = bbox.get("y_max", img_h)
-    else:
-        # Full image is the chart
-        x_min, y_min = 0, 0
-        x_max, y_max = img_w, img_h
-    
-    # Convert to YOLO format (normalized center + wh)
-    x_center = ((x_min + x_max) / 2) / img_w
-    y_center = ((y_min + y_max) / 2) / img_h
-    width = (x_max - x_min) / img_w
-    height = (y_max - y_min) / img_h
-    
-    # Clamp values
-    x_center = max(0, min(1, x_center))
-    y_center = max(0, min(1, y_center))
-    width = max(0.01, min(1, width))
-    height = max(0.01, min(1, height))
-    
-    # Class 0 = chart
-    return f"0 {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}"
+    # Full image is the chart (since these are already cropped chart images)
+    # YOLO format: class_id x_center y_center width height (normalized 0-1)
+    # Class 0 = chart, full image = center at 0.5, 0.5 with width/height = 1.0
+    return "0 0.500000 0.500000 1.000000 1.000000"
 
 
 def prepare_yolo_dataset(
-    train_data: List[Dict],
-    val_data: List[Dict],
-    test_data: List[Dict],
-    neg_ratio: float = 0.5,
+    chart_images: List[Path],
+    non_chart_images: List[Path],
+    neg_ratio: float = 0.3,
     output_dir: Path = YOLO_DATASET_DIR,
 ) -> Path:
     """
     Prepare YOLO format dataset.
     
     Args:
-        train_data: Training chart samples
-        val_data: Validation chart samples
-        test_data: Test chart samples
-        neg_ratio: Ratio of negative samples (0.5 = 50% negatives)
+        chart_images: List of chart image paths
+        non_chart_images: List of non-chart image paths
+        neg_ratio: Ratio of negative samples relative to positive (0.3 = 30%)
         output_dir: Output directory
         
     Returns:
         Path to dataset.yaml
     """
-    print("=" * 60)
+    print("\n" + "=" * 60)
     print("PREPARING YOLO DATASET")
     print("=" * 60)
+    
+    # Clear existing dataset
+    if output_dir.exists():
+        print(f"Removing existing dataset at {output_dir}")
+        shutil.rmtree(output_dir)
     
     # Create directory structure
     for split in ["train", "val", "test"]:
         (output_dir / split / "images").mkdir(parents=True, exist_ok=True)
         (output_dir / split / "labels").mkdir(parents=True, exist_ok=True)
     
-    # Collect all chart image stems
-    all_chart_stems = set()
-    for item in train_data + val_data + test_data:
-        all_chart_stems.add(Path(item["image_path"]).stem)
+    # Split chart images (70/15/15)
+    print(f"\nSplitting {len(chart_images)} chart images...")
+    train_charts, val_charts, test_charts = split_data(chart_images)
+    print(f"  Train: {len(train_charts)}")
+    print(f"  Val:   {len(val_charts)}")
+    print(f"  Test:  {len(test_charts)}")
     
-    print(f"Total chart samples: {len(all_chart_stems)}")
+    # Calculate and split negative samples
+    n_neg_needed = int(len(chart_images) * neg_ratio)
+    n_neg_available = len(non_chart_images)
+    n_neg_used = min(n_neg_needed, n_neg_available)
     
-    # Calculate negative samples needed
-    total_charts = len(train_data) + len(val_data) + len(test_data)
-    neg_samples_needed = int(total_charts * neg_ratio)
+    print(f"\nUsing {n_neg_used} negative samples (available: {n_neg_available})")
     
-    # Get negative samples
-    print(f"Collecting {neg_samples_needed} negative samples...")
-    non_chart_images = get_non_chart_images(all_chart_stems, neg_samples_needed)
-    print(f"Found {len(non_chart_images)} non-chart images")
-    
-    # Split negatives proportionally
-    n_train_neg = int(len(non_chart_images) * 0.7)
-    n_val_neg = int(len(non_chart_images) * 0.15)
-    
-    random.shuffle(non_chart_images)
-    train_neg = non_chart_images[:n_train_neg]
-    val_neg = non_chart_images[n_train_neg:n_train_neg + n_val_neg]
-    test_neg = non_chart_images[n_train_neg + n_val_neg:]
+    if n_neg_used > 0:
+        random.shuffle(non_chart_images)
+        neg_samples = non_chart_images[:n_neg_used]
+        train_neg, val_neg, test_neg = split_data(neg_samples)
+    else:
+        train_neg, val_neg, test_neg = [], [], []
     
     def process_split(
         split_name: str,
-        chart_items: List[Dict],
-        neg_images: List[Path],
-    ):
+        chart_items: List[Path],
+        neg_items: List[Path],
+    ) -> int:
         """Process a single split."""
         split_dir = output_dir / split_name
         images_dir = split_dir / "images"
@@ -182,9 +194,8 @@ def prepare_yolo_dataset(
         errors = 0
         
         # Process chart images
-        for item in tqdm(chart_items, desc=f"{split_name} charts"):
+        for src_path in tqdm(chart_items, desc=f"{split_name} charts"):
             try:
-                src_path = IMAGES_DIR / item["image_path"]
                 if not src_path.exists():
                     errors += 1
                     continue
@@ -194,10 +205,7 @@ def prepare_yolo_dataset(
                 shutil.copy2(src_path, dst_path)
                 
                 # Create label (full image = chart bbox)
-                # Use bbox from manifest if available, else full image
-                bbox = item.get("bbox")
-                label = create_yolo_label(src_path, bbox=None, is_chart=True)  # Full image
-                
+                label = create_yolo_label(src_path, is_chart=True)
                 label_path = labels_dir / f"{src_path.stem}.txt"
                 with open(label_path, "w") as f:
                     f.write(label)
@@ -208,7 +216,7 @@ def prepare_yolo_dataset(
                 errors += 1
         
         # Process negative images
-        for src_path in tqdm(neg_images, desc=f"{split_name} non-charts"):
+        for src_path in tqdm(neg_items, desc=f"{split_name} non-charts"):
             try:
                 if not src_path.exists():
                     errors += 1
@@ -232,9 +240,9 @@ def prepare_yolo_dataset(
         return count
     
     # Process all splits
-    train_count = process_split("train", train_data, train_neg)
-    val_count = process_split("val", val_data, val_neg)
-    test_count = process_split("test", test_data, test_neg)
+    train_count = process_split("train", train_charts, train_neg)
+    val_count = process_split("val", val_charts, val_neg)
+    test_count = process_split("test", test_charts, test_neg)
     
     # Create dataset.yaml
     dataset_config = {
@@ -361,10 +369,10 @@ def main():
     parser.add_argument("--epochs", type=int, default=50, help="Training epochs")
     parser.add_argument("--batch", type=int, default=16, help="Batch size")
     parser.add_argument("--imgsz", type=int, default=640, help="Image size")
-    parser.add_argument("--neg-ratio", type=float, default=0.5, 
-                        help="Ratio of negative samples")
-    parser.add_argument("--model", type=str, default="yolov8n.pt",
-                        help="Base model (yolov8n.pt, yolov8s.pt, etc.)")
+    parser.add_argument("--neg-ratio", type=float, default=0.3, 
+                        help="Ratio of negative samples (0.3 = 30%%)")
+    parser.add_argument("--model", type=str, default="models/weights/yolov8n.pt",
+                        help="Base model path")
     parser.add_argument("--prepare-only", action="store_true",
                         help="Only prepare dataset, don't train")
     parser.add_argument("--skip-prepare", action="store_true",
@@ -372,21 +380,21 @@ def main():
     args = parser.parse_args()
     
     print("=" * 60)
-    print("YOLO CHART DETECTOR TRAINING")
+    print("YOLO CHART DETECTOR TRAINING (v2)")
     print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
     
-    # Load manifests
-    print("\nLoading manifests...")
-    train_data, val_data, test_data = load_chart_manifest()
-    print(f"  Train: {len(train_data)} charts")
-    print(f"  Val:   {len(val_data)} charts")
-    print(f"  Test:  {len(test_data)} charts")
+    # Load images from classified_charts
+    print("\nLoading classified images...")
+    chart_images, non_chart_images = load_classified_images()
+    print(f"\nTotal charts: {len(chart_images)}")
+    print(f"Total non-charts: {len(non_chart_images)}")
     
     # Prepare dataset
     if not args.skip_prepare:
         dataset_yaml = prepare_yolo_dataset(
-            train_data, val_data, test_data,
+            chart_images=chart_images,
+            non_chart_images=non_chart_images,
             neg_ratio=args.neg_ratio,
         )
     else:

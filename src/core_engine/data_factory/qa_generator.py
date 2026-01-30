@@ -33,6 +33,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from core_engine.schemas.qa_schemas import (
     ChartQASampleV2,
+    ChartVerification,
     ConfidenceLevel,
     InferenceInfo,
     PointReference,
@@ -87,37 +88,41 @@ CRITICAL RULES:
 - Be precise with numerical answers (include units)
 """
 
-GENERATION_PROMPT = """Analyze this {chart_type} chart and generate research-grade QA pairs.
+GENERATION_PROMPT = """Analyze this image (labeled as '{chart_type}' chart).
 
 {caption_context}
 
-Generate a JSON array of QA pairs. Each pair MUST include:
-1. "question": The question text
-2. "answer": Detailed answer with evidence
-3. "question_type": One of: structural, extraction, counting, comparison, trend, range, interpolation, extrapolation, percentage_change, threshold, optimal_point, multi_hop, why_reasoning, caption_aware, ambiguity
-4. "difficulty": 1-5 scale
-5. "answer_value": The extracted/computed value (number, string, or null)
-6. "answer_unit": Unit if applicable (or null)
-7. "is_answerable": true/false
-8. "reasoning_method": One of: direct_read, interpolation, extrapolation, calculation, approximation, inference, comparison, aggregation, pattern, cannot_determine
-9. "confidence": 0.0-1.0
-10. "reasoning_steps": Array of steps like {{"step": 1, "action": "...", "observation": "..."}}
-11. "visual_references": {{"regions": [...], "tick_marks": [...], "points": [...]}}
+Return JSON with:
+1. "verification": Chart validity check
+2. "qa_pairs": 6-8 question-answer pairs
 
-IMPORTANT:
-- For line charts: Include interpolation, threshold detection, trend analysis
-- For bar charts: Include comparison, percentage calculations, ranking
-- For scatter: Include correlation, clustering, outlier detection
-- For pie: Include proportion comparison, aggregation
-- For heatmap: Include pattern detection, max/min location
+JSON structure:
+{{
+  "verification": {{
+    "is_valid_chart": boolean,
+    "actual_chart_type": "line|bar|scatter|pie|heatmap|histogram|area|box|table|diagram|not_a_chart|other",
+    "chart_quality": "high|medium|low|unreadable",
+    "verification_notes": "string or null"
+  }},
+  "qa_pairs": [
+    {{
+      "question": "string",
+      "answer": "string",
+      "question_type": "structural|extraction|counting|comparison|trend|range|interpolation|percentage_change|threshold|multi_hop|why_reasoning",
+      "difficulty": 1-5,
+      "answer_value": "value or null",
+      "is_answerable": boolean,
+      "confidence": 0.0-1.0
+    }}
+  ]
+}}
 
-Generate exactly 10 QA pairs with this distribution:
-- 2-3 shallow (structural, extraction, counting)
-- 3-4 intermediate (comparison, trend, range)
-- 3-4 deep (interpolation, percentage_change, threshold, multi_hop)
-- 1-2 conceptual (why_reasoning) if applicable
+Rules:
+- If NOT a valid chart: is_valid_chart=false, qa_pairs=[]
+- If actual type differs from '{chart_type}': note in verification_notes
+- Include mix: 2 easy (structural/counting), 3-4 medium (comparison/trend), 2 hard (interpolation/reasoning)
 
-Return ONLY valid JSON array, no markdown formatting."""
+Return ONLY valid JSON."""
 
 CAPTION_CONTEXT_TEMPLATE = """
 Figure Caption: "{caption}"
@@ -290,13 +295,13 @@ class ChartQAGeneratorV2:
                     config=types.GenerateContentConfig(
                         system_instruction=SYSTEM_PROMPT,
                         temperature=self.temperature,
-                        max_output_tokens=4096,
+                        max_output_tokens=8192,  # Increased for complete JSON
                         response_mime_type="application/json",
                     ),
                 )
                 
                 # Parse JSON response
-                raw_qa_pairs = self._parse_response(response.text)
+                verification_data, raw_qa_pairs = self._parse_response(response.text)
                 break
                 
             except Exception as e:
@@ -317,6 +322,32 @@ class ChartQAGeneratorV2:
                 qa_pairs=[],
                 generator_model=self.model_name,
             )
+        
+        # Build verification object
+        verification = None
+        if verification_data:
+            actual_type = verification_data.get("actual_chart_type", chart_type)
+            type_matches = actual_type.lower() == chart_type.lower()
+            
+            verification = ChartVerification(
+                is_valid_chart=verification_data.get("is_valid_chart", True),
+                actual_chart_type=actual_type,
+                chart_quality=verification_data.get("chart_quality", "medium"),
+                verification_notes=verification_data.get("verification_notes"),
+                type_matches_folder=type_matches,
+            )
+            
+            # Log mismatches for data cleaning
+            if not type_matches:
+                logger.warning(
+                    f"Type mismatch | image={image_path.name} | "
+                    f"folder={chart_type} | gemini={actual_type}"
+                )
+            if not verification.is_valid_chart:
+                logger.warning(
+                    f"Invalid chart | image={image_path.name} | "
+                    f"notes={verification.verification_notes}"
+                )
         
         # Convert to QAPairV2 objects
         qa_pairs = self._convert_to_qa_pairs(raw_qa_pairs, chart_type)
@@ -341,6 +372,7 @@ class ChartQAGeneratorV2:
             image_id=image_id,
             image_path=str(image_path),
             chart_type=chart_type,
+            verification=verification,
             caption=caption,
             context_text=context,
             paper_id=paper_id,
@@ -350,8 +382,12 @@ class ChartQAGeneratorV2:
             generator_model=self.model_name,
         )
     
-    def _parse_response(self, response_text: str) -> List[Dict[str, Any]]:
-        """Parse JSON response from model."""
+    def _parse_response(self, response_text: str) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+        """Parse JSON response from model.
+        
+        Returns:
+            Tuple of (verification_dict, qa_pairs_list)
+        """
         # Clean response
         text = response_text.strip()
         
@@ -360,19 +396,46 @@ class ChartQAGeneratorV2:
             text = re.sub(r"```(?:json)?\s*", "", text)
             text = text.rstrip("`")
         
+        # Remove trailing commas before } or ] (common LLM JSON error)
+        text = re.sub(r",\s*([}\]])", r"\1", text)
+        
+        verification = {}
+        qa_pairs = []
+        
         try:
             data = json.loads(text)
-            if isinstance(data, list):
-                return data
-            elif isinstance(data, dict) and "qa_pairs" in data:
-                return data["qa_pairs"]
+            
+            if isinstance(data, dict):
+                # New format with verification
+                verification = data.get("verification", {})
+                qa_pairs = data.get("qa_pairs", [])
+            elif isinstance(data, list):
+                # Old format (backward compatible)
+                qa_pairs = data
             else:
                 logger.warning("Unexpected response structure")
-                return []
         except json.JSONDecodeError as e:
             logger.error(f"JSON parse error: {e}")
-            logger.debug(f"Response text: {text[:500]}...")
-            return []
+            
+            # Try to extract partial data using regex
+            try:
+                # Try to find verification block
+                verif_match = re.search(r'"verification"\s*:\s*(\{[^}]+\})', text)
+                if verif_match:
+                    verification = json.loads(verif_match.group(1))
+                    logger.info("Extracted verification from partial JSON")
+                    
+                # Try to find qa_pairs array
+                # This is a simple approach - find array content
+                qa_match = re.search(r'"qa_pairs"\s*:\s*\[', text)
+                if qa_match:
+                    logger.info("Found qa_pairs key but couldn't parse full JSON")
+            except Exception as ex:
+                logger.debug(f"Partial extraction failed: {ex}")
+            
+            logger.debug(f"Response text (first 1000 chars): {text[:1000]}...")
+        
+        return verification, qa_pairs
     
     def _convert_to_qa_pairs(
         self,
@@ -480,22 +543,145 @@ class ChartQAGeneratorV2:
         
         return qa_pairs
     
+    def _process_single_sample(
+        self,
+        sample: Dict[str, Any],
+        index: int,
+        total: int,
+        output_dir: Optional[Path] = None,
+    ) -> Optional[ChartQASampleV2]:
+        """Process a single sample and save to individual JSON file.
+        
+        Args:
+            sample: Sample dict with image_path, chart_type, etc.
+            index: Current index (for logging)
+            total: Total samples (for logging)
+            output_dir: Base output directory (creates chart_type subdirs)
+            
+        Returns:
+            ChartQASampleV2 or None if failed
+        """
+        image_path = Path(sample["image_path"])
+        chart_type = sample.get("chart_type", "unknown")
+        image_id = image_path.stem
+        
+        # Skip uncertain if configured
+        if chart_type == "uncertain" and not self.config.include_uncertain:
+            logger.debug(f"Skipping uncertain chart: {image_path.name}")
+            return None
+        
+        if not image_path.exists():
+            logger.warning(f"Image not found: {image_path}")
+            return None
+        
+        # Check if already processed (skip if output file exists)
+        if output_dir:
+            output_file = output_dir / chart_type / f"{image_id}.json"
+            if output_file.exists():
+                logger.debug(f"[{index+1}/{total}] SKIP (already exists): {image_id}")
+                # Load existing result to return
+                try:
+                    with open(output_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    return ChartQASampleV2(**data)
+                except Exception as e:
+                    logger.warning(f"Failed to load existing {output_file}: {e}")
+                    # Continue to regenerate
+        
+        try:
+            qa_sample = self.generate_qa_pairs(
+                image_path=image_path,
+                chart_type=chart_type,
+                caption=sample.get("caption"),
+                context=sample.get("context_text"),
+                metadata=sample,
+            )
+            
+            # Save individual JSON file immediately
+            if output_dir:
+                self._save_single_result(qa_sample, output_dir)
+            
+            logger.info(
+                f"[{index+1}/{total}] Generated {len(qa_sample.qa_pairs)} QA pairs "
+                f"for {image_path.name} | chart_type={chart_type}"
+            )
+            return qa_sample
+            
+        except Exception as e:
+            logger.error(f"Failed to process {image_path}: {e}")
+            return None
+    
+    def _save_single_result(
+        self,
+        sample: ChartQASampleV2,
+        output_dir: Path,
+    ) -> Path:
+        """Save a single sample to its own JSON file.
+        
+        Structure:
+            output_dir/
+            ├── line/
+            │   ├── img_001.json
+            │   └── img_002.json
+            ├── bar/
+            │   └── img_003.json
+            └── ...
+        
+        Args:
+            sample: The QA sample to save
+            output_dir: Base output directory
+            
+        Returns:
+            Path to saved file
+        """
+        # Create chart_type subdirectory
+        type_dir = output_dir / sample.chart_type
+        type_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Save to individual file
+        output_file = type_dir / f"{sample.image_id}.json"
+        
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(sample.model_dump(), f, indent=2, ensure_ascii=False, default=str)
+        
+        return output_file
+    
     def generate_batch(
         self,
         samples: List[Dict[str, Any]],
         output_dir: Optional[Path] = None,
         checkpoint_every: Optional[int] = None,
+        rate_limit_delay: float = 1.0,
+        max_workers: int = 1,
+        start_index: int = 0,
+        skip_existing: bool = True,
     ) -> List[ChartQASampleV2]:
         """Generate QA pairs for a batch of samples.
+        
+        Each image is saved to its own JSON file immediately after processing:
+            output_dir/{chart_type}/{image_id}.json
+        
+        This design ensures:
+        - No data loss on interruption
+        - Easy resume (skip_existing=True)
+        - Parallel-safe (no file conflicts)
+        - No batch file overwrites
         
         Args:
             samples: List of sample dicts with image_path, chart_type, etc.
             output_dir: Directory to save outputs (overrides config)
-            checkpoint_every: Save checkpoint every N samples (overrides config)
+            checkpoint_every: Log progress every N samples
+            rate_limit_delay: Delay between API calls in seconds (for sequential mode)
+            max_workers: Number of parallel workers (1=sequential, >1=parallel)
+            start_index: Starting index of this batch (for logging)
+            skip_existing: Skip images that already have output files
             
         Returns:
             List of ChartQASampleV2 with generated QA pairs
         """
+        import time
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
         output_dir = Path(output_dir or self.config.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         
@@ -504,92 +690,200 @@ class ChartQAGeneratorV2:
         results: List[ChartQASampleV2] = []
         success = 0
         failed = 0
+        skipped = 0
+        start_time = time.time()
+        total = len(samples)
         
-        for i, sample in enumerate(samples):
-            image_path = Path(sample["image_path"])
-            chart_type = sample.get("chart_type", "unknown")
-            
-            # Skip uncertain if configured
-            if chart_type == "uncertain" and not self.config.include_uncertain:
-                logger.debug(f"Skipping uncertain chart: {image_path.name}")
-                continue
-            
-            if not image_path.exists():
-                logger.warning(f"Image not found: {image_path}")
-                failed += 1
-                continue
-            
-            try:
-                qa_sample = self.generate_qa_pairs(
-                    image_path=image_path,
-                    chart_type=chart_type,
-                    caption=sample.get("caption"),
-                    context=sample.get("context_text"),
-                    metadata=sample,
-                )
-                
-                results.append(qa_sample)
-                success += 1
-                
-                logger.info(
-                    f"[{i+1}/{len(samples)}] Generated {len(qa_sample.qa_pairs)} QA pairs "
-                    f"for {image_path.name} | chart_type={chart_type}"
-                )
-                
-            except Exception as e:
-                logger.error(f"Failed to process {image_path}: {e}")
-                failed += 1
-            
-            # Save checkpoint
-            if (i + 1) % checkpoint_every == 0:
-                self._save_checkpoint(results, output_dir, i + 1)
+        # Count existing files for skip estimation
+        if skip_existing:
+            existing_count = 0
+            for sample in samples:
+                chart_type = sample.get("chart_type", "unknown")
+                image_id = Path(sample["image_path"]).stem
+                if (output_dir / chart_type / f"{image_id}.json").exists():
+                    existing_count += 1
+            logger.info(f"Found {existing_count}/{total} already processed (will skip)")
         
-        # Save final results
-        self._save_results(results, output_dir)
+        logger.info(f"Output structure: {output_dir}/{{chart_type}}/{{image_id}}.json")
         
-        logger.info(f"Batch complete | success={success} | failed={failed}")
+        # Choose execution mode
+        if max_workers > 1:
+            # ============ PARALLEL MODE ============
+            logger.info(f"Starting PARALLEL processing with {max_workers} workers")
+            
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # Submit all tasks
+                future_to_idx = {
+                    executor.submit(
+                        self._process_single_sample, sample, idx, total, output_dir
+                    ): idx 
+                    for idx, sample in enumerate(samples)
+                }
+                
+                # Process completed futures
+                for future in as_completed(future_to_idx):
+                    idx = future_to_idx[future]
+                    try:
+                        qa_sample = future.result()
+                        if qa_sample:
+                            results.append(qa_sample)
+                            success += 1
+                        else:
+                            failed += 1
+                    except Exception as e:
+                        logger.error(f"Worker error for sample {idx}: {e}")
+                        failed += 1
+                    
+                    # Progress with ETA
+                    completed = success + failed
+                    elapsed = time.time() - start_time
+                    avg_time = elapsed / completed if completed else 0
+                    remaining = avg_time * (total - completed)
+                    
+                    if completed % checkpoint_every == 0 or completed == total:
+                        logger.info(
+                            f"Progress: {completed}/{total} | "
+                            f"success={success} failed={failed} | "
+                            f"ETA: {remaining/60:.1f}min"
+                        )
+        else:
+            # ============ SEQUENTIAL MODE ============
+            logger.info("Starting SEQUENTIAL processing with rate limiting")
+            
+            for i, sample in enumerate(samples):
+                qa_sample = self._process_single_sample(sample, i, total, output_dir)
+                
+                if qa_sample:
+                    results.append(qa_sample)
+                    success += 1
+                else:
+                    failed += 1
+                
+                # Progress with ETA
+                elapsed = time.time() - start_time
+                avg_time = elapsed / (i + 1)
+                remaining = avg_time * (total - i - 1)
+                
+                if (i + 1) % checkpoint_every == 0 or i == total - 1:
+                    logger.info(
+                        f"Progress: [{i+1}/{total}] | "
+                        f"success={success} failed={failed} | "
+                        f"ETA: {remaining/60:.1f}min"
+                    )
+                
+                # Rate limiting to avoid API throttling
+                if rate_limit_delay > 0 and i < total - 1:
+                    time.sleep(rate_limit_delay)
+        
+        total_time = time.time() - start_time
+        logger.info(
+            f"Batch complete | success={success} | failed={failed} | "
+            f"time={total_time/60:.1f}min | avg={total_time/max(1,success):.1f}s/image"
+        )
+        
+        # Summary of output structure
+        self._log_output_summary(output_dir)
         
         return results
     
-    def _save_checkpoint(
-        self, 
-        results: List[ChartQASampleV2], 
-        output_dir: Path,
-        index: int,
-    ) -> None:
-        """Save checkpoint to disk."""
-        checkpoint_path = output_dir / f"checkpoint_{index}.json"
-        data = [r.model_dump() for r in results]
+    def _log_output_summary(self, output_dir: Path) -> None:
+        """Log summary of output files by chart type."""
+        summary = {}
+        for type_dir in output_dir.iterdir():
+            if type_dir.is_dir():
+                count = len(list(type_dir.glob("*.json")))
+                if count > 0:
+                    summary[type_dir.name] = count
         
-        with open(checkpoint_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False, default=str)
-        
-        logger.info(f"Checkpoint saved: {checkpoint_path}")
-    
-    def _save_results(
-        self,
-        results: List[ChartQASampleV2],
-        output_dir: Path,
-    ) -> Path:
-        """Save final results to JSON file."""
-        output_file = output_dir / "qa_pairs_v2.json"
-        data = [r.model_dump() for r in results]
-        
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False, default=str)
-        
-        logger.info(f"Results saved: {output_file}")
-        return output_file
+        if summary:
+            logger.info("Output summary by chart type:")
+            for chart_type, count in sorted(summary.items(), key=lambda x: -x[1]):
+                logger.info(f"  {chart_type}: {count} files")
+            logger.info(f"  TOTAL: {sum(summary.values())} files")
     
     def save_results(
         self,
         results: List[ChartQASampleV2],
-        output_path: Optional[Path] = None,
-    ) -> Path:
-        """Public method to save results."""
-        output_dir = Path(output_path or self.config.output_dir)
+        output_dir: Optional[Path] = None,
+    ) -> Dict[str, int]:
+        """Save multiple results to individual JSON files.
+        
+        Args:
+            results: List of QA samples to save
+            output_dir: Base output directory
+            
+        Returns:
+            Dict with count of files saved per chart_type
+        """
+        output_dir = Path(output_dir or self.config.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        return self._save_results(results, output_dir)
+        
+        saved_counts = {}
+        for sample in results:
+            self._save_single_result(sample, output_dir)
+            chart_type = sample.chart_type
+            saved_counts[chart_type] = saved_counts.get(chart_type, 0) + 1
+        
+        logger.info(f"Saved {len(results)} files to {output_dir}")
+        return saved_counts
+    
+    def load_results(
+        self,
+        output_dir: Optional[Path] = None,
+        chart_types: Optional[List[str]] = None,
+    ) -> List[ChartQASampleV2]:
+        """Load all saved results from output directory.
+        
+        Args:
+            output_dir: Base output directory
+            chart_types: Optional list of chart types to load (None = all)
+            
+        Returns:
+            List of ChartQASampleV2 loaded from files
+        """
+        output_dir = Path(output_dir or self.config.output_dir)
+        results = []
+        
+        # Find all chart type directories
+        type_dirs = []
+        if chart_types:
+            type_dirs = [output_dir / ct for ct in chart_types if (output_dir / ct).exists()]
+        else:
+            type_dirs = [d for d in output_dir.iterdir() if d.is_dir()]
+        
+        for type_dir in type_dirs:
+            for json_file in type_dir.glob("*.json"):
+                try:
+                    with open(json_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    results.append(ChartQASampleV2(**data))
+                except Exception as e:
+                    logger.warning(f"Failed to load {json_file}: {e}")
+        
+        logger.info(f"Loaded {len(results)} samples from {output_dir}")
+        return results
+    
+    def get_processed_ids(
+        self,
+        output_dir: Optional[Path] = None,
+    ) -> set:
+        """Get set of image IDs that have already been processed.
+        
+        Args:
+            output_dir: Base output directory
+            
+        Returns:
+            Set of image_id strings
+        """
+        output_dir = Path(output_dir or self.config.output_dir)
+        processed = set()
+        
+        for type_dir in output_dir.iterdir():
+            if type_dir.is_dir():
+                for json_file in type_dir.glob("*.json"):
+                    processed.add(json_file.stem)
+        
+        return processed
 
 
 # =============================================================================

@@ -2,6 +2,7 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 3.3.0 | 2026-01-31 | That Le | Dataset v2 (32,445 images), ResNet-18 v2 (94.14% accuracy) |
 | 3.2.0 | 2026-01-26 | That Le | ResNet-18 classifier (94.66% accuracy) production-ready |
 | 3.1.0 | 2026-01-25 | That Le | Documentation restructured, Stage notebooks added |
 | 3.0.0 | 2026-01-19 | That Le | Chart Analysis AI V3 |
@@ -22,10 +23,15 @@ A **hybrid AI system** for extracting structured data from chart images, combini
 
 | Phase | Status | Progress |
 | --- | --- | --- |
-| Phase 1: Foundation | [COMPLETED] | Dataset: 2,852 charts |
-| Phase 2: Core Engine | [IN PROGRESS] | Stage 3 done (ResNet-18: 94.66%), Stage 4-5 pending |
-| Phase 3: Optimization | [PLANNED] | - |
+| Phase 1: Foundation | [COMPLETED] | Dataset: 32,445 charts, 32,445 QA pairs |
+| Phase 2: Core Engine | [IN PROGRESS] | Stage 3 done (ResNet-18 v2: 94.14%), Stage 4-5 pending |
+| Phase 3: Optimization | [PLANNED] | SLM fine-tuning on QA dataset |
 | Phase 4: Presentation | [PLANNED] | - |
+
+**ResNet-18 v2 Classifier:**
+- Test Accuracy: **94.14%**
+- Classes: 8 (area, bar, box, heatmap, histogram, line, pie, scatter)
+- Training Data: 32,445 preprocessed images (256x256 grayscale)
 
 ## Quick Start
 
@@ -38,7 +44,7 @@ A **hybrid AI system** for extracting structured data from chart images, combini
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/chart_analysis_ai_v3.git
+git clone https://github.com/thatlq1812/chart_analysis_ai_v3.git
 cd chart_analysis_ai_v3
 
 # Create virtual environment (using uv recommended)

@@ -2,6 +2,7 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 2.1.0 | 2026-01-30 | That Le | Post-training cleanup, SLM prep |
 | 2.0.0 | 2026-01-30 | That Le | Complete rewrite with accurate status |
 | 1.2.0 | 2026-01-26 | That Le | Added Data Factory notebooks (01a-01f) |
 | 1.1.0 | 2026-01-26 | That Le | Added Stage 4, updated for ResNet-18 |
@@ -11,9 +12,21 @@
 
 ## Overview
 
-This directory contains Jupyter notebooks for:
-1. **Pipeline Stages** - Testing and visualizing each stage of the Geo-SLM pipeline
-2. **Data Factory** - Collecting and preparing training data from academic sources
+This directory contains Jupyter notebooks organized into two categories:
+
+1. **Pipeline Stages (0x)** - Testing and visualizing each stage of the Geo-SLM pipeline
+2. **Data Factory (01a-01f)** - Collecting and preparing training data from academic sources
+
+---
+
+## Current Progress
+
+| Component | Status | Accuracy | Notes |
+| --- | --- | --- | --- |
+| YOLO Chart Detector | COMPLETE | mAP 0.85+ | Custom trained on academic charts |
+| ResNet-18 Classifier | COMPLETE | **94.14%** | 8 chart types, grayscale optimized |
+| QA Dataset | COMPLETE | 32,445 pairs | Gemini-generated, verified |
+| SLM Fine-tuning | **NEXT** | - | Qwen2.5 on chart QA |
 
 ---
 

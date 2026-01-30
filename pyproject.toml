@@ -111,9 +111,9 @@ all = [
 chart-analysis = "interface.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/chart_analysis_ai_v3"
-Documentation = "https://github.com/yourusername/chart_analysis_ai_v3#readme"
-Repository = "https://github.com/yourusername/chart_analysis_ai_v3"
+Homepage = "https://github.com/thatlq1812/chart_analysis_ai_v3"
+Documentation = "https://github.com/thatlq1812/chart_analysis_ai_v3#readme"
+Repository = "https://github.com/thatlq1812/chart_analysis_ai_v3"
 
 [tool.setuptools.packages.find]
 where = ["src"]

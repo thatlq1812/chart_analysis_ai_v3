@@ -34,6 +34,8 @@ class ChartType(str, Enum):
     SCATTER = "scatter"
     AREA = "area"
     HISTOGRAM = "histogram"
+    HEATMAP = "heatmap"
+    BOX = "box"
     STACKED_BAR = "stacked_bar"
     GROUPED_BAR = "grouped_bar"
     DONUT = "donut"

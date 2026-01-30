@@ -32,7 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     - Rule-based fallback when API unavailable
 
 - **Gemini API Configuration**
-  - Model: `gemini-2.0-flash-exp`
+  - Model: `gemini-3.0-flash-preview`
   - Temperature: 0.3 (deterministic)
   - Max tokens: 2048
   - Vision support: Prepared (not yet enabled)

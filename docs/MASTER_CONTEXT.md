@@ -259,7 +259,7 @@ chart_analysis_ai_v3/
 | Project structure setup | [DONE] | V3 initialized |
 | Documentation framework | [DONE] | Instructions created |
 | Data collection pipeline | [DONE] | PDF mining + Gemini classification |
-| Chart QA dataset | [DONE] | 2,852 charts, 13,297 QA pairs |
+| Chart QA dataset | [DONE] | 32,445 charts, 32,445 QA pairs (v2) |
 | Stage 1: Ingestion | [DONE] | PDF/Image loading implemented |
 | Stage 2: Detection | [DONE] | YOLO integration complete |
 
@@ -335,23 +335,36 @@ Stage 5 Input (RefinedChartData)
 | OCR Engine | [DONE] | PaddleOCR with role classification |
 | Geometric Mapper | [DONE] | Axis calibration, pixel-to-value |
 | Element Detector | [DONE] | Bars, markers, pie slices |
-| Classifier | [UPGRADED] | ResNet-18 (94.66% accuracy, replacing 37.5% baseline) |
+| Classifier | [UPGRADED] | ResNet-18 v2 (94.14% accuracy, 32,445 images) |
 | Unit Tests | [DONE] | 7 test modules, 129 test cases |
 | Documentation | [DONE] | STAGE3_EXTRACTION.md created |
 | Academic Dataset Test | [DONE] | 15/15 images processed successfully |
 | Production Integration | [DONE] | ResNet18Classifier wrapper ready |
 
-**ResNet-18 Classifier (Week 1 Complete - 2026-01-26):**
+**ResNet-18 Classifier (v2 - 2026-01-31):**
 
 | Metric | Value |
 | --- | --- |
-| Training Accuracy | 94.66% |
-| Integration Test Accuracy | 93.75% (15/16 samples) |
-| Training Time | 27 minutes (NVIDIA GPU) |
+| Test Accuracy | **94.14%** |
+| Best Validation Accuracy | 94.80% |
+| Training Time | 50:22 (RTX 3060) |
 | Inference Speed (ONNX) | 6.90ms mean (CPU), 144.9 img/sec |
 | Model Size | 42.64 MB (ONNX format) |
 | Classes | 8 types (area, bar, box, heatmap, histogram, line, pie, scatter) |
-| Explainability | Grad-CAM visualizations (9 files) |
+| Dataset | 32,445 preprocessed images (256x256 grayscale) |
+
+**Per-class Accuracy (v2):**
+
+| Class | Accuracy | Samples |
+| --- | --- | --- |
+| pie | 98.8% | 2,421 |
+| bar | 95.3% | 9,086 |
+| heatmap | 94.9% | 680 |
+| line | 94.2% | 10,036 |
+| scatter | 93.3% | 2,802 |
+| histogram | 91.2% | 2,060 |
+| area | 90.5% | 493 |
+| box | 89.8% | 4,867 |
 
 **Stage 3 Full Pipeline Test Results (2026-01-29):**
 
@@ -382,10 +395,21 @@ Reports generated:
 
 | Phase | Focus | Timeline |
 | --- | --- | --- |
-| **Stage 4** | Gemini integration testing, SLM training | Next |
+| **Stage 4** | SLM fine-tuning (Qwen2.5 on 32K QA pairs) | Current |
 | **Stage 5** | Parallel processing, insights generation | After Stage 4 |
 | Phase 3 | Optimization & Benchmarking | Week 5-6 |
 | Phase 4 | Demo & Documentation | Week 7-8 |
+
+**SLM Training Plan:**
+
+| Item | Description |
+| --- | --- |
+| Base Model | Qwen2.5-1.5B-Instruct |
+| Dataset | 32,445 QA pairs (image + question-answer) |
+| Training Type | LoRA fine-tuning |
+| Task | Chart understanding and data extraction |
+| Hardware | RTX 3060 6GB VRAM |
+| Expected Output | Local SLM for Stage 4 inference |
 
 **Stage 5 Planned Architecture:**
 

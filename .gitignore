@@ -28,6 +28,7 @@ wheels/
 # Virtual Environments
 # ============================================================================
 .venv/
+.venv_paddle/
 venv/
 ENV/
 env/

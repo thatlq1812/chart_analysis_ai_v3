@@ -33,8 +33,14 @@ class OCRConfig(BaseModel):
     
     # Engine selection
     engine: str = Field(
-        default="easyocr",
-        description="OCR engine: 'easyocr', 'paddleocr', or 'tesseract'"
+        default="paddleocr",
+        description="OCR engine: 'paddleocr' (recommended), 'easyocr', or 'tesseract'"
+    )
+    
+    # Device settings
+    use_gpu: bool = Field(
+        default=True,
+        description="Use GPU for OCR (PaddleOCR only)"
     )
     
     # Language settings
@@ -129,6 +135,20 @@ class OCRConfig(BaseModel):
         default=True,
         description="Apply CLAHE contrast enhancement"
     )
+    
+    # Cache settings
+    use_cache: bool = Field(
+        default=True,
+        description="Use cached OCR results if available"
+    )
+    cache_file: Optional[Path] = Field(
+        default=None,
+        description="Path to OCR cache JSON file"
+    )
+    cache_base_dir: Optional[Path] = Field(
+        default=None,
+        description="Base directory for computing cache keys (relative paths)"
+    )
 
 
 @dataclass
@@ -164,6 +184,8 @@ class OCREngine:
         self.logger = logging.getLogger(self.__class__.__name__)
         self._engine = None
         self._initialized = False
+        self._cache: Optional[Dict[str, Any]] = None
+        self._cache_loaded = False
     
     def _init_engine(self) -> None:
         """Lazy initialization of OCR engine."""
@@ -179,13 +201,26 @@ class OCREngine:
                 
                 from paddleocr import PaddleOCR
                 
-                # PaddleOCR 3.x uses different params
+                # Use GPU if requested and available
+                use_gpu = self.config.use_gpu
+                if use_gpu:
+                    try:
+                        import paddle
+                        if not paddle.device.is_compiled_with_cuda():
+                            use_gpu = False
+                            self.logger.info("CUDA not available, using CPU")
+                    except Exception:
+                        use_gpu = False
+                        self.logger.info("Paddle GPU check failed, using CPU")
+                
+                # PaddleOCR 2.x initialization
                 self._engine = PaddleOCR(
                     lang=self.config.languages[0] if self.config.languages else "en",
-                    device="cpu",  # Avoid GPU/oneDNN issues
+                    use_gpu=use_gpu,
+                    show_log=False,
                 )
                 self._initialized = True
-                self.logger.info("PaddleOCR engine initialized")
+                self.logger.info(f"PaddleOCR engine initialized (use_gpu={use_gpu})")
                 
             except Exception as e:
                 self.logger.warning(f"PaddleOCR init failed: {e}. Falling back to EasyOCR.")
@@ -221,10 +256,91 @@ class OCREngine:
         else:
             raise ValueError(f"Unknown OCR engine: {self.config.engine}")
     
+    def _load_cache(self) -> None:
+        """Load OCR cache from JSON file."""
+        if self._cache_loaded:
+            return
+        
+        if not self.config.use_cache or not self.config.cache_file:
+            self._cache_loaded = True
+            return
+        
+        cache_path = Path(self.config.cache_file)
+        if cache_path.exists():
+            try:
+                import json
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self._cache = data.get("results", {})
+                self.logger.info(
+                    f"OCR cache loaded | entries={len(self._cache)} | file={cache_path}"
+                )
+            except Exception as e:
+                self.logger.warning(f"Failed to load OCR cache: {e}")
+                self._cache = {}
+        else:
+            self.logger.debug(f"OCR cache file not found: {cache_path}")
+            self._cache = {}
+        
+        self._cache_loaded = True
+    
+    def _get_from_cache(self, image_path: Optional[Path]) -> Optional[List[dict]]:
+        """
+        Get OCR results from cache.
+        
+        Args:
+            image_path: Path to the image file
+        
+        Returns:
+            List of raw OCR results if found in cache, None otherwise
+        """
+        if not self.config.use_cache or not image_path or self._cache is None:
+            return None
+        
+        # Compute cache key (relative path)
+        try:
+            if self.config.cache_base_dir:
+                key = str(image_path.relative_to(self.config.cache_base_dir))
+            else:
+                key = str(image_path.name)
+        except ValueError:
+            key = str(image_path.name)
+        
+        # Normalize path separators
+        key = key.replace("\\", "/")
+        
+        # Check cache
+        if key in self._cache:
+            cached = self._cache[key]
+            if cached.get("error"):
+                self.logger.debug(f"Cache hit (error) | key={key}")
+                return []
+            
+            # Convert cached format to raw_results format
+            raw_results = []
+            for text_entry in cached.get("texts", []):
+                bbox = text_entry.get("bbox", {})
+                raw_results.append({
+                    "text": text_entry.get("text", ""),
+                    "confidence": text_entry.get("confidence", 0.0),
+                    "bbox": (
+                        bbox.get("x_min", 0),
+                        bbox.get("y_min", 0),
+                        bbox.get("x_max", 0),
+                        bbox.get("y_max", 0),
+                    ),
+                })
+            
+            self.logger.debug(f"Cache hit | key={key} | texts={len(raw_results)}")
+            return raw_results
+        
+        return None
+    
     def extract_text(
         self,
         image: np.ndarray,
         chart_id: str = "unknown",
+        image_path: Optional[Path] = None,
     ) -> OCRResult:
         """
         Extract text from image.
@@ -232,6 +348,7 @@ class OCREngine:
         Args:
             image: BGR or grayscale image
             chart_id: Chart identifier for logging
+            image_path: Optional path to image (for cache lookup)
         
         Returns:
             OCRResult with extracted texts
@@ -239,26 +356,40 @@ class OCREngine:
         import time
         start_time = time.time()
         
-        self._init_engine()
+        h, w = image.shape[:2] if len(image.shape) >= 2 else (0, 0)
         
-        self.logger.debug(f"OCR started | chart_id={chart_id}")
+        # Try to get from cache first
+        self._load_cache()
+        cached_results = self._get_from_cache(image_path)
         
-        # Convert grayscale to BGR if needed (PaddleOCR expects BGR)
-        if len(image.shape) == 2:
-            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-        
-        # Apply pre-enhancement if enabled
-        if self.config.enable_pre_enhancement:
-            image = self._enhance_image_for_ocr(image, chart_id)
-        
-        h, w = image.shape[:2]
-        
-        if self.config.engine == "paddleocr":
-            raw_results = self._extract_paddleocr(image)
-        elif self.config.engine == "easyocr":
-            raw_results = self._extract_easyocr(image)
+        if cached_results is not None:
+            # Use cached results
+            raw_results = cached_results
+            from_cache = True
+            self.logger.debug(f"Using cached OCR | chart_id={chart_id} | texts={len(raw_results)}")
         else:
-            raw_results = self._extract_tesseract(image)
+            # Run OCR engine
+            from_cache = False
+            self._init_engine()
+            
+            self.logger.debug(f"OCR started | chart_id={chart_id}")
+            
+            # Convert grayscale to BGR if needed (PaddleOCR expects BGR)
+            if len(image.shape) == 2:
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+            
+            # Apply pre-enhancement if enabled
+            if self.config.enable_pre_enhancement:
+                image = self._enhance_image_for_ocr(image, chart_id)
+            
+            h, w = image.shape[:2]
+            
+            if self.config.engine == "paddleocr":
+                raw_results = self._extract_paddleocr(image)
+            elif self.config.engine == "easyocr":
+                raw_results = self._extract_easyocr(image)
+            else:
+                raw_results = self._extract_tesseract(image)
         
         # Convert to OCRText objects
         texts = []
@@ -310,8 +441,9 @@ class OCREngine:
         
         elapsed = (time.time() - start_time) * 1000
         
+        cache_info = " (cached)" if from_cache else ""
         self.logger.info(
-            f"OCR complete | chart_id={chart_id} | "
+            f"OCR complete{cache_info} | chart_id={chart_id} | "
             f"texts={len(texts)} | time={elapsed:.1f}ms"
         )
         
@@ -324,80 +456,38 @@ class OCREngine:
     def _extract_paddleocr(self, image: np.ndarray) -> List[dict]:
         """Extract using PaddleOCR.
         
-        Compatible with PaddleOCR 3.x API which uses predict() instead of ocr().
+        Compatible with PaddleOCR 2.x API using ocr() method.
         """
         results = []
         
         try:
-            # PaddleOCR 3.x uses predict() with new output format
-            # Each result is a dict with 'rec_texts', 'rec_scores', 'dt_polys'
-            output_iter = self._engine.predict(image)
+            # PaddleOCR 2.x uses ocr() method
+            # Returns: [[[box, (text, score)], ...], ...]
+            output = self._engine.ocr(image)
             
-            for result in output_iter:
-                if result is None:
-                    continue
+            if output and output[0]:
+                for line in output[0]:
+                    if line is None or len(line) < 2:
+                        continue
                     
-                # New API returns dict with keys: 'input_path', 'dt_polys', 'rec_texts', 'rec_scores'
-                if isinstance(result, dict):
-                    dt_polys = result.get('dt_polys', [])
-                    rec_texts = result.get('rec_texts', [])
-                    rec_scores = result.get('rec_scores', [])
+                    bbox_points = line[0]  # [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
+                    text_conf = line[1]    # (text, confidence)
                     
-                    for i, (poly, text, score) in enumerate(zip(dt_polys, rec_texts, rec_scores)):
-                        if poly is None or len(poly) < 4:
-                            continue
-                        
-                        # Convert polygon to bbox
-                        xs = [p[0] for p in poly]
-                        ys = [p[1] for p in poly]
-                        
-                        results.append({
-                            "text": text,
-                            "confidence": float(score),
-                            "bbox": (min(xs), min(ys), max(xs), max(ys)),
-                        })
-                else:
-                    # Fallback for old API format [[bbox, (text, conf)], ...]
-                    if isinstance(result, list) and len(result) > 0:
-                        for line in result:
-                            if line is None or len(line) < 2:
-                                continue
-                            
-                            bbox_points = line[0]
-                            text_conf = line[1]
-                            
-                            if len(bbox_points) < 4:
-                                continue
-                            
-                            xs = [p[0] for p in bbox_points]
-                            ys = [p[1] for p in bbox_points]
-                            
-                            results.append({
-                                "text": text_conf[0],
-                                "confidence": text_conf[1],
-                                "bbox": (min(xs), min(ys), max(xs), max(ys)),
-                            })
+                    if len(bbox_points) < 4:
+                        continue
+                    
+                    # Convert polygon to axis-aligned bbox
+                    xs = [p[0] for p in bbox_points]
+                    ys = [p[1] for p in bbox_points]
+                    
+                    results.append({
+                        "text": text_conf[0],
+                        "confidence": float(text_conf[1]),
+                        "bbox": (min(xs), min(ys), max(xs), max(ys)),
+                    })
+                    
         except Exception as e:
-            self.logger.warning(f"PaddleOCR extraction failed: {e}, trying legacy API")
-            # Try legacy ocr() API
-            try:
-                output = self._engine.ocr(image)
-                if output and output[0]:
-                    for line in output[0]:
-                        if line is None or len(line) < 2:
-                            continue
-                        bbox_points = line[0]
-                        text_conf = line[1]
-                        if len(bbox_points) >= 4:
-                            xs = [p[0] for p in bbox_points]
-                            ys = [p[1] for p in bbox_points]
-                            results.append({
-                                "text": text_conf[0],
-                                "confidence": text_conf[1],
-                                "bbox": (min(xs), min(ys), max(xs), max(ys)),
-                            })
-            except Exception as e2:
-                self.logger.error(f"PaddleOCR legacy API also failed: {e2}")
+            self.logger.error(f"PaddleOCR extraction failed: {e}")
         
         return results
     

@@ -207,7 +207,7 @@ from src.core_engine.stages.s4_reasoning import (
 config = ReasoningConfig(
     engine="gemini",
     gemini=GeminiConfig(
-        model_name="gemini-2.0-flash-exp",
+        model_name="gemini-3.0-flash-preview",
         temperature=0.3,
     ),
 )
