@@ -356,7 +356,7 @@ class Stage3Extraction(BaseStage):
             bars = element_result.bars
             markers = element_result.markers
             slices = element_result.slices
-            elements = self._convert_elements(bars, markers, slices)
+            elements = self._convert_elements(bars, markers, slices, w, h)
         
         # Calculate confidence
         classification_conf = 0.0
@@ -507,7 +507,7 @@ class Stage3Extraction(BaseStage):
             slices = element_result.slices
             
             # Convert to ChartElement format
-            elements = self._convert_elements(bars, markers, slices)
+            elements = self._convert_elements(bars, markers, slices, w, h)
         
         # [FIX] Note: OCR already extracted in Step 2 (before skeletonization)
         # No duplicate extraction needed
@@ -624,6 +624,8 @@ class Stage3Extraction(BaseStage):
         bars,
         markers,
         slices,
+        image_width: int | None = None,
+        image_height: int | None = None,
     ) -> List[ChartElement]:
         """Convert detected elements to ChartElement format."""
         elements = []
@@ -632,11 +634,13 @@ class Stage3Extraction(BaseStage):
         for bar in bars:
             elements.append(ChartElement(
                 element_type=ElementType.BAR.value,
-                bbox=BoundingBox(
+                bbox=BoundingBox.from_coords(
                     x_min=int(bar.x_min),
                     y_min=int(bar.y_min),
                     x_max=int(bar.x_max),
                     y_max=int(bar.y_max),
+                    image_width=image_width,
+                    image_height=image_height,
                 ),
                 center=Point(
                     x=int(bar.center.x),
@@ -651,11 +655,13 @@ class Stage3Extraction(BaseStage):
             size = int(marker.size)
             elements.append(ChartElement(
                 element_type=ElementType.POINT.value,
-                bbox=BoundingBox(
+                bbox=BoundingBox.from_coords(
                     x_min=int(marker.center.x - size // 2),
                     y_min=int(marker.center.y - size // 2),
                     x_max=int(marker.center.x + size // 2),
                     y_max=int(marker.center.y + size // 2),
+                    image_width=image_width,
+                    image_height=image_height,
                 ),
                 center=Point(
                     x=int(marker.center.x),
@@ -671,11 +677,13 @@ class Stage3Extraction(BaseStage):
             cx, cy = int(slice_elem.center.x), int(slice_elem.center.y)
             elements.append(ChartElement(
                 element_type=ElementType.SLICE.value,
-                bbox=BoundingBox(
+                bbox=BoundingBox.from_coords(
                     x_min=cx - r,
                     y_min=cy - r,
                     x_max=cx + r,
                     y_max=cy + r,
+                    image_width=image_width,
+                    image_height=image_height,
                 ),
                 center=Point(x=cx, y=cy),
                 color=slice_elem.color,

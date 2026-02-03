@@ -2,7 +2,7 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
-| 1.0.0 | 2026-01-25 | That Le | Getting started with Geo-SLM Chart Analysis |
+| 2.0.0 | 2026-02-04 | That Le | Updated with current project state |
 
 ## 1. Prerequisites
 

@@ -2,7 +2,17 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
-| 1.0.0 | 2026-01-19 | That Le | Detailed pipeline flow with mermaid diagrams |
+| 2.0.0 | 2026-02-04 | That Le | Updated pipeline status |
+
+## Implementation Status
+
+| Stage | Status | Notes |
+|-------|--------|-------|
+| Stage 1 | ✅ Complete | PDF/Image ingestion |
+| Stage 2 | ✅ Complete | YOLO 93.5% mAP@50 |
+| Stage 3 | ✅ Complete | 139/140 tests pass |
+| Stage 4 | 🔄 In Progress | SLM integration |
+| Stage 5 | ⏳ Planned | Reporting |
 
 ## 1. Pipeline Overview
 

@@ -9,8 +9,8 @@ Utility scripts for training, evaluation, and data processing.
 | Script | Purpose | Status |
 |--------|---------|--------|
 | `train_resnet18_v2.py` | Train ResNet-18 chart classifier | Production |
-| `train_yolo.py` | Generic YOLO training script | Ready |
-| `train_yolo_chart_detector.py` | YOLO chart detection training | Needs update |
+| `train_yolo_chart_detector.py` | YOLO chart detection training | Production |
+| `train_slm_lora.py` | Fine-tune Qwen SLM with LoRA | Ready |
 
 ### Model Evaluation & Export
 
@@ -26,45 +26,52 @@ Utility scripts for training, evaluation, and data processing.
 | Script | Purpose | Status |
 |--------|---------|--------|
 | `download_arxiv_batch.py` | Download papers from arXiv | Ready |
+| `batch_stage3_parallel.py` | Batch Stage 3 extraction (parallel) | Production |
+| `prepare_slm_training_data.py` | Merge QA + Stage3 for SLM training | Ready |
 | `extract_backgrounds.py` | Extract text-only pages for YOLO training | Ready |
 | `generate_synthetic_dataset.py` | Generate synthetic YOLO training data | Ready |
 | `verify_qa_dataset.py` | Verify QA dataset integrity | Ready |
 
-### Testing
+### Testing & Demo
 
 | Script | Purpose | Status |
 |--------|---------|--------|
+| `demo_full_pipeline.py` | Demo full pipeline end-to-end | Ready |
 | `test_element_detector.py` | Test element detection module | Ready |
 | `test_stage4.py` | Test Stage 4 reasoning | Ready |
+| `test_qwen_slm.py` | Test Qwen SLM integration | Ready |
 
 ## Usage Examples
 
-### Train ResNet-18 v2
+### Batch Stage 3 Extraction
 
 ```bash
-# Full training with preprocessing
+# Run parallel extraction on all classified charts
+.venv/Scripts/python.exe scripts/batch_stage3_parallel.py --workers 8
+
+# Limit to specific chart type
+.venv/Scripts/python.exe scripts/batch_stage3_parallel.py --workers 8 --chart-type bar
+```
+
+### Train ResNet-18 Classifier
+
+```bash
 .venv/Scripts/python.exe scripts/train_resnet18_v2.py \
     --epochs 50 \
     --batch-size 128 \
     --preprocess
 ```
 
-### Generate YOLO Dataset
+### Prepare SLM Training Data
 
 ```bash
-# Extract backgrounds from PDFs
-.venv/Scripts/python.exe scripts/extract_backgrounds.py \
-    --pdf-dir data/raw_pdfs \
-    --output-dir data/backgrounds \
-    --max-pages 5000
+.venv/Scripts/python.exe scripts/prepare_slm_training_data.py
 
-# Generate synthetic dataset
-.venv/Scripts/python.exe scripts/generate_synthetic_dataset.py \
-    --num-samples 10000 \
-    --output-dir data/yolo_chart_detection
+# With curriculum stage
+.venv/Scripts/python.exe scripts/prepare_slm_training_data.py --curriculum stage2
 ```
 
-### Train YOLO
+### Train YOLO Chart Detector
 
 ```bash
 .venv/Scripts/python.exe scripts/train_yolo_chart_detector.py \
@@ -79,10 +86,3 @@ Utility scripts for training, evaluation, and data processing.
     --model models/weights/resnet18_chart_classifier_v2_best.pt \
     --output models/onnx/resnet18_chart_classifier_v2.onnx
 ```
-
-## Deleted Scripts (Obsolete)
-
-- `merge_chartqa_labels.py` - Replaced by Gemini batch processing
-- `prepare_training_data.py` - Replaced by `train_resnet18_v2.py` preprocessing
-- `train_classifier.py` - Replaced by `train_resnet18_v2.py`
-- `train_resnet18_classifier.py` - Replaced by v2 version

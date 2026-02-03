@@ -2,7 +2,7 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
-| 1.0.0 | 2026-01-19 | That Le | High-level system architecture |
+| 2.0.0 | 2026-02-04 | That Le | Updated with current architecture |
 
 ## 1. Architecture Philosophy
 

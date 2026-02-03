@@ -2,7 +2,15 @@
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
-| 1.0.0 | 2026-02-XX | That Le | Initial fine-tuning plan |
+| 2.0.0 | 2026-02-04 | That Le | Updated with data preparation status |
+
+## Status: DATA PREPARATION
+
+**Prerequisites Complete:**
+- ✅ 32,445 classified charts
+- ✅ OCR cache (46,910 entries)
+- ✅ ResNet-18 classifier (94.14%)
+- 🔄 SLM training data generation (next)
 
 ## 1. Model Selection
 

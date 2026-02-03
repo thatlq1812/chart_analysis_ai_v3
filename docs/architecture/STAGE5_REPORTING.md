@@ -2,11 +2,11 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
-| 1.0.0 | 2026-01-25 | That Le | Stage 5 architecture documentation (PLANNED) |
+| 2.0.0 | 2026-02-04 | That Le | Updated planned architecture |
 
 ## Status: PLANNED
 
-This document outlines the planned architecture for Stage 5 (Reporting) which generates final output and insights.
+Scheduled for implementation after Stage 4 SLM integration.
 
 ## 1. Overview
 

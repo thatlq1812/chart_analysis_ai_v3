@@ -2,52 +2,21 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
-| 1.1.0 | 2026-01-24 | That Le | Updated with final statistics |
-| 1.0.0 | 2026-01-23 | That Le | Complete guide for Chart QA pipeline |
+| 2.0.0 | 2026-02-04 | That Le | Updated with v2 pipeline using ResNet-18 |
 
-## Status: [COMPLETED]
+## Status: [COMPLETED - V2]
 
-**Final Statistics:**
+**Final Statistics (V2 Pipeline):**
 | Metric | Value |
 | --- | --- |
-| Total Images Processed | 2,852 |
-| Total QA Pairs Generated | 13,297 |
-| Dataset Location | `data/academic_dataset/chart_qa/dataset.json` |
+| Total Charts | 32,445 |
+| Classification Model | ResNet-18 (94.14% accuracy) |
+| OCR Cache | 46,910 entries |
+| Dataset Location | `data/academic_dataset/classified_charts/` |
 
 ## 1. Overview
 
-Module **Chart QA Data Generator** su dung Google Gemini API de:
-- Phan loai hinh anh la chart hay khong
-- Xac dinh loai chart (bar, line, pie, scatter, etc.)
-- Tao 5 cap cau hoi-tra loi (QA pairs) cho moi chart
-
-### 1.1. Use Cases
-
-| Use Case | Description |
-| --- | --- |
-| Training Data | Tao dataset de train Chart QA models |
-| Fine-tuning | Data cho fine-tune multimodal LLMs |
-| Benchmarking | Tao test set de danh gia models |
-
-### 1.2. Pipeline Flow
-
-```
-PDF Files (800+)
-      |
-      v
-[1] PDF Miner -----> Extracted Images (~12,000)
-      |
-      v
-[2] Gemini Classifier -----> Is Chart? + Chart Type
-      |
-      v
-[3] QA Generator -----> 5 QA pairs per chart
-      |
-      v
-[4] Dataset Export -----> dataset.json
-```
-
-## 2. Installation
+The Chart QA pipeline has been upgraded to V2 using local models:
 
 ### 2.1. Dependencies
 

@@ -2,6 +2,7 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 1.7.0 | 2026-02-04 | That Le | Project cleanup, documentation refresh |
 | 1.6.0 | 2026-01-30 | That Le | Stage 4 core implemented (ValueMapper + PromptBuilder) |
 | 1.5.0 | 2026-01-29 | That Le | Stage 3 fully enhanced and validated (100% accuracy) |
 | 1.4.0 | 2026-01-26 | That Le | ResNet-18 classifier integrated and validated |
@@ -24,6 +25,8 @@
 | **Language** | Python 3.11+ |
 | **Current Phase** | Phase 2 - Core Engine (Stage 4 In Progress) |
 | **Target** | Academic Thesis + Research Paper |
+| **Tests** | 176/177 passing (99.4%) |
+| **OCR Cache** | 46,910 entries (~600MB) |
 
 ---
 
@@ -410,6 +413,54 @@ Reports generated:
 | Task | Chart understanding and data extraction |
 | Hardware | RTX 3060 6GB VRAM |
 | Expected Output | Local SLM for Stage 4 inference |
+
+### 5.4. OCR Cache Status (2026-02-04)
+
+| Metric | Value |
+| --- | --- |
+| Total Entries | 46,910 |
+| File Size | ~600MB |
+| File Location | `data/cache/ocr_cache.json` |
+| Key Format | `{chart_type}\{filename}` |
+| OCR Engine | PaddleOCR v2.9.1 |
+
+**Coverage by Chart Type:**
+
+| Type | Cached | Notes |
+| --- | --- | --- |
+| line | ~10,000 | Complete |
+| bar | ~9,000 | Complete |
+| scatter | ~5,000 | Complete |
+| box | ~5,000 | Complete |
+| pie | ~2,400 | Complete |
+| histogram | ~2,000 | Complete |
+| area | ~1,200 | Complete |
+| heatmap | ~700 | Complete |
+
+### 5.5. Test Coverage (2026-02-04)
+
+| Test Suite | Passed | Failed | Total |
+| --- | --- | --- | --- |
+| Schemas | 19 | 0 | 19 |
+| Stage 3 Extraction | 139 | 1 | 140 |
+| Stage 4 Reasoning | 18 | 0 | 18 |
+| **Total** | **176** | **1** | **177** |
+
+**Known Issue:** 1 test fails due to LINE chart classified as AREA (edge case)
+
+### 5.6. Project Cleanup (2026-02-04)
+
+**Deleted:**
+- Root trash files: `chatlog*.md`, `log3.md`, `nul`
+- `.venv_paddle/` (~2GB)
+- `data/academic_dataset/classified_charts_preprocessed/` (383MB)
+- 6 duplicate scripts in `scripts/`
+- Old training runs in `runs/`
+
+**Updated:**
+- `scripts/README.md` - Current script list
+- `notebooks/README.md` - Current notebook list
+- All docs version headers updated to v2.0.0
 
 **Stage 5 Planned Architecture:**
 

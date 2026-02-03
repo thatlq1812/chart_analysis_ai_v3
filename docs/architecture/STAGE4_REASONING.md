@@ -2,12 +2,11 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
-| 1.0.0 | 2026-01-25 | That Le | Stage 4 architecture documentation (PLANNED) |
-| 1.1.0 | 2026-01-26 | That Le | Implemented Gemini API integration |
+| 2.0.0 | 2026-02-04 | That Le | Updated status, SLM plan |
 
 ## Status: IN PROGRESS
 
-Stage 4 reasoning is now implemented with Gemini API support.
+Stage 4 reasoning implemented with Gemini API. Planning Qwen 2.5-1.5B integration for local inference.
 
 ## 1. Overview
 

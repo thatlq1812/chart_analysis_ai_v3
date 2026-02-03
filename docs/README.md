@@ -1,147 +1,94 @@
 # Documentation Index
 
 | Version | Date | Author | Description |
-| --- | --- | --- | --- |
-| 2.0.0 | 2026-01-25 | That Le | Restructured documentation with full navigation |
-| 1.1.0 | 2026-01-24 | That Le | Updated to reflect Phase 1 completion |
-| 1.0.0 | 2026-01-19 | That Le | Documentation structure for V3 |
+|---------|------|--------|-------------|
+| 2.0.0 | 2026-02-04 | That Le | Complete documentation refresh |
 
-## Overview
+## Quick Links
 
-This directory contains all technical documentation for the **Geo-SLM Chart Analysis** project - a hybrid AI system for extracting structured data from chart images.
+| Document | Purpose | Audience |
+|----------|---------|----------|
+| [MASTER_CONTEXT.md](MASTER_CONTEXT.md) | Project overview & status | Everyone |
+| [architecture/SYSTEM_OVERVIEW.md](architecture/SYSTEM_OVERVIEW.md) | System architecture | Developers |
+| [guides/QUICK_START.md](guides/QUICK_START.md) | Getting started | New developers |
 
----
-
-## Quick Navigation
-
-| Need to... | Go to |
-| --- | --- |
-| Understand the project | [MASTER_CONTEXT.md](MASTER_CONTEXT.md) |
-| Get started quickly | [guides/QUICK_START.md](guides/QUICK_START.md) |
-| Set up development | [guides/DEVELOPMENT.md](guides/DEVELOPMENT.md) |
-| Understand pipeline flow | [architecture/PIPELINE_FLOW.md](architecture/PIPELINE_FLOW.md) |
-| See test results | [reports/ACADEMIC_DATASET_TEST_REPORT.md](reports/ACADEMIC_DATASET_TEST_REPORT.md) |
-
----
-
-## Directory Structure
+## Documentation Structure
 
 ```
 docs/
-|
-+-- MASTER_CONTEXT.md           # Project overview (START HERE)
-+-- README.md                   # This file
-|
-+-- architecture/               # System design documentation
-|   +-- SYSTEM_OVERVIEW.md      # High-level architecture
-|   +-- PIPELINE_FLOW.md        # Stage-by-stage data flow
-|   +-- STAGE3_EXTRACTION.md    # Stage 3: Extraction details
-|   +-- STAGE4_REASONING.md     # Stage 4: SLM Reasoning (planned)
-|   +-- STAGE5_REPORTING.md     # Stage 5: Reporting (planned)
-|
-+-- guides/                     # How-to guides
-|   +-- QUICK_START.md          # Getting started guide
-|   +-- DEVELOPMENT.md          # Development setup
-|   +-- ARXIV_DOWNLOAD_GUIDE.md # PDF download from Arxiv
-|   +-- CHART_QA_GUIDE.md       # Chart QA dataset guide
-|
-+-- research/                   # Research documentation
-|   +-- METHODOLOGY.md          # Research methodology
-|
-+-- reports/                    # Generated reports & benchmarks
-|   +-- ACADEMIC_DATASET_TEST_REPORT.md
-|   +-- STAGE3_VISUALIZATION.md
-|   +-- CLASSIFIER_IMPROVEMENTS.md
-|   +-- *.json                  # Benchmark results
-|
-+-- images/                     # Generated visualizations
-|   +-- stage3/                 # Stage 3 test outputs
-|   +-- stage3_academic/        # Academic dataset outputs
-|
-+-- archive/                    # Historical/completed docs
-    +-- CONFIRM_CHART_QA_PIPELINE.md
-    +-- SESSION_LOG_*.md
-    +-- instruction_p2_*.md
+├── MASTER_CONTEXT.md          # Main project overview
+├── README.md                  # This file
+├── architecture/              # System design docs
+│   ├── SYSTEM_OVERVIEW.md     # High-level architecture
+│   ├── PIPELINE_FLOW.md       # Pipeline diagrams
+│   ├── STAGE3_EXTRACTION.md   # Stage 3 details
+│   ├── STAGE4_REASONING.md    # Stage 4 details
+│   └── STAGE5_REPORTING.md    # Stage 5 details
+├── guides/                    # How-to guides
+│   ├── QUICK_START.md         # Getting started
+│   ├── DEVELOPMENT.md         # Development workflow
+│   ├── TESTING.md             # Testing guide
+│   └── DATA_COLLECTION.md     # Data collection guide
+├── research/                  # Research documents
+│   └── SLM_FINE_TUNING_PLAN.md # SLM training plan
+└── reports/                   # Progress reports
+    └── WEEKLY_PROGRESS_*.md   # Weekly updates
 ```
 
----
+## Project Status Summary
 
-## Key Documents
+| Component | Status | Details |
+|-----------|--------|---------|
+| **Data Collection** | ✅ Complete | 32,445 charts, 8 types |
+| **Chart Detection** | ✅ Complete | YOLO 93.5% mAP@50 |
+| **Chart Classification** | ✅ Complete | ResNet-18 94.14% accuracy |
+| **Stage 3 Extraction** | ✅ Complete | OCR + Element Detection |
+| **OCR Cache** | ✅ Complete | 46,910 entries |
+| **Stage 4 Reasoning** | 🔄 In Progress | SLM integration |
+| **Stage 5 Reporting** | ⏳ Planned | - |
 
-### Core Documentation
+## Key Documents by Role
 
-| Document | Description | Status |
-| --- | --- | --- |
-| [MASTER_CONTEXT.md](MASTER_CONTEXT.md) | Project overview, architecture, status | [CURRENT] |
-| [architecture/SYSTEM_OVERVIEW.md](architecture/SYSTEM_OVERVIEW.md) | System design philosophy | [CURRENT] |
-| [architecture/PIPELINE_FLOW.md](architecture/PIPELINE_FLOW.md) | Data flow diagrams | [CURRENT] |
+### For New Team Members
+1. Start with [QUICK_START.md](guides/QUICK_START.md)
+2. Read [MASTER_CONTEXT.md](MASTER_CONTEXT.md)
+3. Review [SYSTEM_OVERVIEW.md](architecture/SYSTEM_OVERVIEW.md)
 
-### Stage Documentation
+### For Developers
+1. [DEVELOPMENT.md](guides/DEVELOPMENT.md) - Development workflow
+2. [TESTING.md](guides/TESTING.md) - Testing guide
+3. [PIPELINE_FLOW.md](architecture/PIPELINE_FLOW.md) - Pipeline details
 
-| Stage | Document | Status |
-| --- | --- | --- |
-| Stage 1-2 | [architecture/SYSTEM_OVERVIEW.md](architecture/SYSTEM_OVERVIEW.md) | [DONE] |
-| Stage 3 | [architecture/STAGE3_EXTRACTION.md](architecture/STAGE3_EXTRACTION.md) | [DONE] |
-| Stage 4 | [architecture/STAGE4_REASONING.md](architecture/STAGE4_REASONING.md) | [PLANNED] |
-| Stage 5 | [architecture/STAGE5_REPORTING.md](architecture/STAGE5_REPORTING.md) | [PLANNED] |
+### For Researchers
+1. [SLM_FINE_TUNING_PLAN.md](research/SLM_FINE_TUNING_PLAN.md) - SLM training
+2. [STAGE4_REASONING.md](architecture/STAGE4_REASONING.md) - Reasoning design
+3. Weekly reports in `reports/`
 
-### Guides
+## Recent Updates
 
-| Guide | Purpose | Audience |
-| --- | --- | --- |
-| [QUICK_START.md](guides/QUICK_START.md) | Get up and running | All users |
-| [DEVELOPMENT.md](guides/DEVELOPMENT.md) | Dev environment setup | Developers |
-| [ARXIV_DOWNLOAD_GUIDE.md](guides/ARXIV_DOWNLOAD_GUIDE.md) | Download academic PDFs | Data collection |
-| [CHART_QA_GUIDE.md](guides/CHART_QA_GUIDE.md) | Generate QA dataset | ML training |
-
-### Research
-
-| Document | Description |
-| --- | --- |
-| [research/METHODOLOGY.md](research/METHODOLOGY.md) | Research approach and contributions |
-
----
-
-## Project Progress
-
-| Phase | Status | Documentation |
-| --- | --- | --- |
-| Phase 1: Foundation | [COMPLETED] | Dataset: 2,852 charts |
-| Phase 2: Core Engine | [IN PROGRESS] | Stage 3 done, 4-5 pending |
-| Phase 3: Optimization | [PLANNED] | Benchmarking, fine-tuning |
-| Phase 4: Presentation | [PLANNED] | Demo, thesis |
-
----
+| Date | Document | Change |
+|------|----------|--------|
+| 2026-02-04 | All docs | Complete refresh after cleanup |
+| 2026-01-30 | MASTER_CONTEXT.md | Stage 3 completion |
+| 2026-01-29 | WEEKLY_PROGRESS | Progress report |
 
 ## Documentation Standards
 
-All documentation follows standards in: `.github/instructions/docs.instructions.md`
+### Formatting
+- Use Markdown tables for structured data
+- Include version and date in document headers
+- Use mermaid diagrams for architecture
 
-### Key Rules
+### Naming Conventions
+- Architecture docs: `COMPONENT_NAME.md` (uppercase)
+- Guides: `GUIDE_NAME.md` (uppercase)
+- Reports: `WEEKLY_PROGRESS_YYYYMMDD.md`
 
-1. **Version Header**: Every file must start with a version table
-2. **Mermaid Diagrams**: Use mermaid for flow/architecture diagrams
-3. **No Emojis**: Use text indicators `[DONE]`, `[TODO]`, `[IN PROGRESS]`
-4. **Code Blocks**: Always specify language
-5. **Keep Updated**: Update docs when code changes
-
----
-
-## Related Files
-
-| File | Location | Purpose |
-| --- | --- | --- |
-| AI Instructions | `.github/instructions/` | Guidelines for AI agents |
-| Configuration | `config/` | YAML config files |
-| Source Code | `src/core_engine/` | Implementation |
-| Tests | `tests/` | Test suite |
-| Notebooks | `notebooks/` | Interactive exploration |
+### Language
+- Technical docs: English
+- Comments: English
+- Conversation: Vietnamese
 
 ---
 
-## Contributing to Documentation
-
-1. Follow the standards in `.github/instructions/docs.instructions.md`
-2. Update this README when adding new docs
-3. Keep `MASTER_CONTEXT.md` current with project status
-4. Archive completed/obsolete docs in `archive/`
+*Last updated: 2026-02-04*

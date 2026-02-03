@@ -2,7 +2,7 @@
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
-| 1.0.0 | 2026-01-20 | That Le | Step-by-step guide for downloading Arxiv papers |
+| 2.0.0 | 2026-02-04 | That Le | Updated guide with current workflow |
 
 ## 1. Overview
 

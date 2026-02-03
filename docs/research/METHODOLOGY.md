@@ -2,7 +2,7 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
-| 1.0.0 | 2026-01-25 | That Le | Research methodology and hybrid approach rationale |
+| 2.0.0 | 2026-02-04 | That Le | Updated methodology documentation |
 
 ## 1. Research Problem
 

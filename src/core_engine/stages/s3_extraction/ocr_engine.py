@@ -306,33 +306,35 @@ class OCREngine:
         except ValueError:
             key = str(image_path.name)
         
-        # Normalize path separators
-        key = key.replace("\\", "/")
+        # Try both path separator formats (Windows uses \, normalized uses /)
+        key_backslash = key.replace("/", "\\")
+        key_forward = key.replace("\\", "/")
         
-        # Check cache
-        if key in self._cache:
-            cached = self._cache[key]
-            if cached.get("error"):
-                self.logger.debug(f"Cache hit (error) | key={key}")
-                return []
-            
-            # Convert cached format to raw_results format
-            raw_results = []
-            for text_entry in cached.get("texts", []):
-                bbox = text_entry.get("bbox", {})
-                raw_results.append({
-                    "text": text_entry.get("text", ""),
-                    "confidence": text_entry.get("confidence", 0.0),
-                    "bbox": (
-                        bbox.get("x_min", 0),
-                        bbox.get("y_min", 0),
-                        bbox.get("x_max", 0),
-                        bbox.get("y_max", 0),
-                    ),
-                })
-            
-            self.logger.debug(f"Cache hit | key={key} | texts={len(raw_results)}")
-            return raw_results
+        # Check cache with both key formats
+        for try_key in [key_backslash, key_forward, key]:
+            if try_key in self._cache:
+                cached = self._cache[try_key]
+                if cached.get("error"):
+                    self.logger.debug(f"Cache hit (error) | key={try_key}")
+                    return []
+                
+                # Convert cached format to raw_results format
+                raw_results = []
+                for text_entry in cached.get("texts", []):
+                    bbox = text_entry.get("bbox", {})
+                    raw_results.append({
+                        "text": text_entry.get("text", ""),
+                        "confidence": text_entry.get("confidence", 0.0),
+                        "bbox": (
+                            bbox.get("x_min", 0),
+                            bbox.get("y_min", 0),
+                            bbox.get("x_max", 0),
+                            bbox.get("y_max", 0),
+                        ),
+                    })
+                
+                self.logger.debug(f"Cache hit | key={try_key} | texts={len(raw_results)}")
+                return raw_results
         
         return None
     
@@ -419,12 +421,14 @@ class OCREngine:
             
             ocr_text = OCRText(
                 text=text_value,
-                bbox=BoundingBox(
+                bbox=BoundingBox.from_coords(
                     x_min=int(result["bbox"][0]),
                     y_min=int(result["bbox"][1]),
                     x_max=int(result["bbox"][2]),
                     y_max=int(result["bbox"][3]),
                     confidence=result["confidence"],
+                    image_width=w,
+                    image_height=h,
                 ),
                 confidence=result["confidence"],
                 role=role,

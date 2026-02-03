@@ -2,7 +2,7 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
-| 1.0.0 | 2026-01-25 | That Le | Development setup and contribution guide |
+| 2.0.0 | 2026-02-04 | That Le | Updated development workflow |
 
 ## 1. Development Environment Setup
 

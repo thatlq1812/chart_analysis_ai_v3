@@ -66,6 +66,60 @@ class BoundingBox(BaseModel):
     def to_xywh(self) -> Tuple[int, int, int, int]:
         """Return as (x, y, width, height) tuple."""
         return (self.x_min, self.y_min, self.width, self.height)
+    
+    @classmethod
+    def from_coords(
+        cls,
+        x_min: int,
+        y_min: int,
+        x_max: int,
+        y_max: int,
+        confidence: float = 1.0,
+        image_width: int | None = None,
+        image_height: int | None = None,
+    ) -> "BoundingBox":
+        """
+        Create BoundingBox with automatic clamping to valid range.
+        
+        Args:
+            x_min: Left edge (will be clamped to >= 0)
+            y_min: Top edge (will be clamped to >= 0)
+            x_max: Right edge (will be clamped to >= 1)
+            y_max: Bottom edge (will be clamped to >= 1)
+            confidence: Detection confidence (0-1)
+            image_width: Optional image width for upper bound clamping
+            image_height: Optional image height for upper bound clamping
+            
+        Returns:
+            BoundingBox with valid coordinates
+        """
+        # Clamp to minimum valid values
+        x_min = max(0, int(x_min))
+        y_min = max(0, int(y_min))
+        x_max = max(1, int(x_max))
+        y_max = max(1, int(y_max))
+        
+        # Clamp to image bounds if provided
+        if image_width is not None:
+            x_max = min(x_max, image_width)
+            x_min = min(x_min, x_max - 1)
+        if image_height is not None:
+            y_max = min(y_max, image_height)
+            y_min = min(y_min, y_max - 1)
+        
+        # Ensure x_max > x_min and y_max > y_min
+        if x_max <= x_min:
+            x_max = x_min + 1
+        if y_max <= y_min:
+            y_max = y_min + 1
+        
+        return cls(
+            x_min=x_min,
+            y_min=y_min,
+            x_max=x_max,
+            y_max=y_max,
+            confidence=float(confidence),
+        )
 
 
 class Point(BaseModel):

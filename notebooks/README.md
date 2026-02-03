@@ -34,6 +34,7 @@ This directory contains Jupyter notebooks organized into two categories:
 
 | Notebook | Stage | Purpose | Status | Runnable |
 | --- | --- | --- | --- | --- |
+| [00_full_pipeline_test.ipynb](00_full_pipeline_test.ipynb) | S3 | Full Stage 3 test with synthetic charts | ACTIVE | YES |
 | [00_quick_start.ipynb](00_quick_start.ipynb) | All | Quick introduction and overview | STABLE | YES |
 | [01_stage1_ingestion.ipynb](01_stage1_ingestion.ipynb) | S1 | PDF/Image loading, quality validation | STABLE | YES |
 | [02_stage2_detection.ipynb](02_stage2_detection.ipynb) | S2 | YOLO chart detection, cropping | STABLE | YES |
