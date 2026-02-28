@@ -32,6 +32,7 @@ from ..base import BaseStage
 from .gemini_engine import GeminiConfig, GeminiReasoningEngine
 from .prompt_builder import GeminiPromptBuilder, PromptConfig, CanonicalContext
 from .reasoning_engine import ReasoningEngine, ReasoningResult
+from .router_engine import AIRouterEngine
 from .value_mapper import GeometricValueMapper, ValueMapperConfig, MappingResult
 
 logger = logging.getLogger(__name__)
@@ -125,22 +126,35 @@ class Stage4Reasoning(BaseStage):
             f"value_mapping={config.enable_value_mapping}"
         )
     
-    def _initialize_engine(self):
+    def _initialize_engine(self) -> None:
         """Initialize the reasoning engine based on config."""
         engine_type = self.config.engine.lower()
-        
-        if engine_type == "gemini":
+
+        if engine_type == "router":
+            # Multi-provider routing with automatic fallback (recommended)
+            self.engine = AIRouterEngine()
+            self.logger.info("Stage4Reasoning | using AIRouterEngine (multi-provider)")
+
+        elif engine_type == "gemini":
             self.engine = GeminiReasoningEngine(self.config.gemini)
+
         elif engine_type == "local_slm":
-            # TODO: Implement local SLM engine
-            self.logger.warning("Local SLM not yet implemented, using Gemini fallback")
-            self.engine = GeminiReasoningEngine(self.config.gemini)
+            # Use router to handle local_slm primary with gemini fallback
+            self.logger.info(
+                "Stage4Reasoning | local_slm requested, routing via AIRouterEngine"
+            )
+            self.engine = AIRouterEngine()
+
         elif engine_type == "rule_based":
-            # No engine needed - use pure rule-based fallback
+            # No LLM -- pure rule-based fallback only
             self.engine = None
+
         else:
-            self.logger.warning(f"Unknown engine: {engine_type}, using Gemini")
-            self.engine = GeminiReasoningEngine(self.config.gemini)
+            self.logger.warning(
+                f"Stage4Reasoning | unknown engine '{engine_type}' | "
+                "falling back to AIRouterEngine"
+            )
+            self.engine = AIRouterEngine()
     
     def process(self, input_data: Stage3Output) -> Stage4Output:
         """

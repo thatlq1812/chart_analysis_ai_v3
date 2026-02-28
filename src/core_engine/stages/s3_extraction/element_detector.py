@@ -1042,18 +1042,29 @@ class ElementDetector:
                 # [NEW] Auto-detect stacked bars:
                 # If we found few bars but they might be stacked (overlapping X positions),
                 # try K-Means for better separation
-                if self._is_likely_stacked(color_bars, color_image):
-                    self.logger.debug(
-                        f"Auto-detected stacked pattern | chart_id={chart_id} | "
-                        f"trying K-Means for better separation"
-                    )
-                    kmeans_bars = self._detect_stacked_bars_by_kmeans(color_image, chart_id)
-                    if len(kmeans_bars) > len(color_bars):
+                # [FIX v2.1] Only try K-Means if chart_type explicitly indicates stacking
+                # Auto-detection was causing false positives due to grid lines being
+                # counted as "multiple colors" within bar regions
+                if chart_type in ("stacked", "stacked_bar", "100_stacked"):
+                    if self._is_likely_stacked(color_bars, color_image):
                         self.logger.debug(
-                            f"K-Means improved detection: {len(color_bars)} -> {len(kmeans_bars)} bars | "
-                            f"chart_id={chart_id}"
+                            f"Auto-detected stacked pattern | chart_id={chart_id} | "
+                            f"trying K-Means for better separation"
                         )
-                        return kmeans_bars
+                        kmeans_bars = self._detect_stacked_bars_by_kmeans(color_image, chart_id)
+                        # [FIX v2.1] Only accept K-Means if result is reasonable
+                        # (not more than 3x the original count - avoids grid line noise)
+                        if len(color_bars) < len(kmeans_bars) <= len(color_bars) * 3:
+                            self.logger.debug(
+                                f"K-Means improved detection: {len(color_bars)} -> {len(kmeans_bars)} bars | "
+                                f"chart_id={chart_id}"
+                            )
+                            return kmeans_bars
+                        else:
+                            self.logger.debug(
+                                f"K-Means rejected (count explosion): {len(color_bars)} -> {len(kmeans_bars)} bars | "
+                                f"chart_id={chart_id}"
+                            )
                 
                 return color_bars
         

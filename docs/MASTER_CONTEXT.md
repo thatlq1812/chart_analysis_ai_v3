@@ -1,7 +1,8 @@
-# MASTER CONTEXT - Geo-SLM Chart Analysis
+# MASTER CONTEXT - Chart Analysis AI v3
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 2.0.0 | 2026-02-28 | That Le | Production-ready architecture upgrade (AI Routing, SLM Training, Serving) |
 | 1.7.0 | 2026-02-04 | That Le | Project cleanup, documentation refresh |
 | 1.6.0 | 2026-01-30 | That Le | Stage 4 core implemented (ValueMapper + PromptBuilder) |
 | 1.5.0 | 2026-01-29 | That Le | Stage 3 fully enhanced and validated (100% accuracy) |
@@ -18,15 +19,16 @@
 
 | Property | Value |
 | --- | --- |
-| **Project Name** | Geo-SLM Chart Analysis |
+| **Project Name** | Chart Analysis AI v3 |
 | **Project Type** | AI Research / Thesis Project |
 | **Core Philosophy** | Hybrid Intelligence (Neural + Symbolic) |
-| **Primary Method** | YOLO Detection + Geometric Mapping + SLM Reasoning |
+| **Primary Method** | YOLO Detection + Geometric Mapping + Multi-Provider AI Reasoning |
 | **Language** | Python 3.11+ |
-| **Current Phase** | Phase 2 - Core Engine (Stage 4 In Progress) |
+| **Current Phase** | Phase 2 → Phase 3 Transition (Architecture Upgrade) |
 | **Target** | Academic Thesis + Research Paper |
 | **Tests** | 176/177 passing (99.4%) |
 | **OCR Cache** | 46,910 entries (~600MB) |
+| **Instructions** | 13 files (3-tier hierarchy) |
 
 ---
 
@@ -73,11 +75,30 @@ A **hybrid AI system** for extracting structured data from chart images with aca
 | OCR | PaddleOCR | Latest | Best multi-language |
 | Image Processing | OpenCV + Pillow | Latest | Industry standard |
 | Geometric | NumPy + SciPy | Latest | Precise calculations |
-| SLM | Qwen-2.5-1.5B | Latest | Local inference |
 | Validation | Pydantic | v2 | Schema enforcement |
 | Config | OmegaConf | Latest | Hierarchical config |
 
-### 2.2. Research & Training
+### 2.2. AI Reasoning (Multi-Provider)
+
+| Provider | Model | Purpose | Status |
+| --- | --- | --- | --- |
+| Local SLM | Qwen-2.5-1.5B + LoRA | Primary reasoning (offline) | TRAINING |
+| Gemini | gemini-2.0-flash | Cloud fallback (high accuracy) | ACTIVE |
+| OpenAI | gpt-4o-mini | Secondary fallback | OPTIONAL |
+
+All providers accessed through **AIRouter** with fallback chains. See `module-reasoning.instructions.md`.
+
+### 2.3. SLM Training Stack
+
+| Component | Technology | Purpose |
+| --- | --- | --- |
+| Base Models | Qwen-2.5-1.5B / Llama-3.2 | Fine-tuning candidates |
+| Fine-tuning | LoRA + PEFT | Parameter-efficient training |
+| Quantization | BitsAndBytes 4-bit (QLoRA) | RTX 3060 6GB fit |
+| Trainer | SFTTrainer (trl) | Supervised fine-tuning |
+| Format | ChatML | Standard conversation format |
+
+### 2.4. Research & Training
 
 | Component | Technology | Purpose |
 | --- | --- | --- |
@@ -85,6 +106,15 @@ A **hybrid AI system** for extracting structured data from chart images with aca
 | Experiment Tracking | MLflow / W&B | Metrics logging |
 | Model Training | PyTorch + Ultralytics | Fine-tuning |
 | Data Versioning | DVC (optional) | Dataset management |
+
+### 2.5. Serving Layer (NEW)
+
+| Component | Technology | Purpose |
+| --- | --- | --- |
+| API | FastAPI | REST endpoints + OpenAPI |
+| Task Queue | Celery + Redis | Async pipeline jobs |
+| State | SQLAlchemy + Alembic | Job tracking + persistence |
+| Deployment | Docker Compose | Multi-container orchestration |
 
 ### 2.3. Interface Layer
 
@@ -109,6 +139,12 @@ A **hybrid AI system** for extracting structured data from chart images with aca
                               |
                               v
 +------------------------------------------------------------------+
+|                        SERVING LAYER (NEW)                        |
+|  [FastAPI Routes]  →  [Celery Tasks]  →  [SQLAlchemy State]     |
++------------------------------------------------------------------+
+                              |
+                              v
++------------------------------------------------------------------+
 |                        CORE ENGINE                                |
 |  +------------------------------------------------------------+  |
 |  |                    Pipeline Orchestrator                    |  |
@@ -118,6 +154,12 @@ A **hybrid AI system** for extracting structured data from chart images with aca
 |  +------------------------------------------------------------+  |
 |  |                    Pydantic Schemas                         |  |
 |  +------------------------------------------------------------+  |
++------------------------------------------------------------------+
+                              |
+                              v
++------------------------------------------------------------------+
+|                     AI ROUTING LAYER (NEW)                        |
+|  [AIRouter] → [LocalSLM | Gemini | OpenAI] (fallback chains)   |
 +------------------------------------------------------------------+
                               |
                               v
@@ -169,13 +211,19 @@ Output (JSON + Report)
 chart_analysis_ai_v3/
 |
 +-- .github/
-|   +-- instructions/           # AI Agent guidelines
-|       +-- coding-standards.instructions.md
-|       +-- docs.instructions.md
-|       +-- pipeline.instructions.md
-|       +-- project.instructions.md
-|       +-- research.instructions.md
-|       +-- system.instructions.md
+|   +-- instructions/           # AI Agent guidelines (3-tier hierarchy)
+|       +-- system.instructions.md           # Tier 1: Global agent rules
+|       +-- project.instructions.md          # Tier 1: Project architecture
+|       +-- workflow.instructions.md         # Tier 2: CI/CD, Git, releases
+|       +-- module-detection.instructions.md # Tier 3: YOLO detection
+|       +-- module-extraction.instructions.md# Tier 3: OCR, classification
+|       +-- module-reasoning.instructions.md # Tier 3: AI routing, adapters
+|       +-- module-training.instructions.md  # Tier 3: SLM fine-tuning
+|       +-- module-serving.instructions.md   # Tier 3: API, Celery, Docker
+|       +-- pipeline.instructions.md         # Tier 3: Pipeline stages
+|       +-- coding-standards.instructions.md # Tier 3: Python conventions
+|       +-- research.instructions.md         # Tier 3: Experiments
+|       +-- docs.instructions.md             # Tier 3: Documentation
 |
 +-- config/
 |   +-- base.yaml               # Shared configuration
@@ -200,7 +248,10 @@ chart_analysis_ai_v3/
 |   +-- archive/                # Historical docs
 |
 +-- models/
-|   +-- weights/                # Trained model files
+|   +-- weights/                # Trained model files (YOLO, ResNet)
+|   +-- onnx/                   # ONNX exports
+|   +-- slm/                    # SLM LoRA adapters (NEW)
+|   +-- evaluation/             # Model evaluation results
 |
 +-- notebooks/
 |   +-- 01_data_exploration.ipynb
@@ -222,11 +273,16 @@ chart_analysis_ai_v3/
 |           +-- s2_detection/   # Stage 2
 |           +-- s3_extraction/  # Stage 3 (OCR, geometry, elements)
 |           +-- s4_reasoning/   # Stage 4 (value mapper, prompts)
-|               +-- value_mapper.py    # Pixel-to-value conversion
-|               +-- prompt_builder.py  # Canonical Format builder
-|               +-- prompts/           # Template files
 |           +-- s5_reporting/   # Stage 5 (TODO)
+|       +-- ai/                 # AI Routing Layer (NEW)
+|           +-- adapters/       # Provider adapters (Gemini, SLM, OpenAI)
+|           +-- router.py       # Task-based routing with fallbacks
+|           +-- task_types.py   # AI task enum
+|           +-- prompts.py      # Shared prompt templates
+|           +-- exceptions.py   # AI-specific exceptions
 |       +-- validators/         # Input validators
+|   +-- api/                    # FastAPI serving layer (NEW)
+|   +-- worker/                 # Celery task workers (NEW)
 |
 +-- interface/                  # Interface layer (future)
 |
@@ -394,25 +450,62 @@ Reports generated:
 - [STAGE3_COMPLETION_SUMMARY.md](reports/STAGE3_COMPLETION_SUMMARY.md)
 - [STAGE3_CLASSIFIED_TEST_REPORT.md](reports/STAGE3_CLASSIFIED_TEST_REPORT.md)
 
-### 5.3. Upcoming Phases
+### 5.3. Phase 3: Production Architecture [NEW - v2.0.0]
+
+Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-platform.
+
+| Task | Status | Notes |
+| --- | --- | --- |
+| AI Adapter Pattern design | [DONE] | BaseAIAdapter ABC → GeminiAdapter, LocalSLMAdapter, OpenAIAdapter |
+| AI Router with fallback chains | [DONE] | Confidence-based routing, health checks |
+| SLM Training Framework design | [DONE] | Qwen-2.5-1.5B + LoRA, 4-stage curriculum |
+| Training scripts | [EXISTS] | train_slm_lora.py (320L), prepare_slm_training_data.py (467L) |
+| Training data | [EXISTS] | 84 conversations (bar only), needs expansion to all 8 types |
+| Serving Layer design | [DONE] | FastAPI + Celery + Redis + SQLAlchemy |
+| CI/CD Pipeline design | [DONE] | workflow.instructions.md with YAML specs |
+| Instruction system upgrade | [DONE] | 3-tier hierarchy, 13 instruction files |
+| `src/core_engine/ai/` creation | [TODO] | Implement adapter + router code |
+| `src/api/` creation | [TODO] | Implement FastAPI endpoints |
+| `src/worker/` creation | [TODO] | Implement Celery tasks |
+| Docker Compose setup | [TODO] | Multi-container deployment |
+| SLM model training | [TODO] | Run training after data expansion |
+| Model comparison experiment | [TODO] | Qwen vs Llama vs Gemini vs GPT-4o-mini |
+
+**New Instruction Files Created:**
+- `module-training.instructions.md` - SLM fine-tuning framework
+- `module-reasoning.instructions.md` - AI adapter pattern, routing
+- `module-serving.instructions.md` - API, task queue, deployment
+- `module-detection.instructions.md` - YOLO detection stage
+- `module-extraction.instructions.md` - OCR, classification stage
+- `workflow.instructions.md` - CI/CD, Git, releases
+
+**Key Architecture Documents:**
+- [UPGRADE_REPORT_PRODUCTION_READY.md](reports/UPGRADE_REPORT_PRODUCTION_READY.md) - Full gap analysis
+- `.github/instructions/README.md` - Instruction hierarchy overview
+
+### 5.4. Upcoming Phases
 
 | Phase | Focus | Timeline |
 | --- | --- | --- |
-| **Stage 4** | SLM fine-tuning (Qwen2.5 on 32K QA pairs) | Current |
-| **Stage 5** | Parallel processing, insights generation | After Stage 4 |
-| Phase 3 | Optimization & Benchmarking | Week 5-6 |
-| Phase 4 | Demo & Documentation | Week 7-8 |
+| **SLM Training** | Expand training data + fine-tune Qwen2.5 | Next |
+| **AI Router** | Implement `src/core_engine/ai/` with adapters | After SLM |
+| **Stage 5** | Parallel processing, insights generation | After Router |
+| **Serving Layer** | FastAPI + Celery + Docker | After Stage 5 |
+| **Benchmarking** | Model comparison experiment (thesis contrib.) | Final |
 
-**SLM Training Plan:**
+**SLM Training Plan (Expanded):**
 
 | Item | Description |
 | --- | --- |
-| Base Model | Qwen2.5-1.5B-Instruct |
-| Dataset | 32,445 QA pairs (image + question-answer) |
-| Training Type | LoRA fine-tuning |
-| Task | Chart understanding and data extraction |
+| Base Model | Qwen2.5-1.5B-Instruct (PRIMARY), Llama-3.2-1B/3B (CANDIDATES) |
+| Current Data | 84 conversations (bar charts only) |
+| Target Data | 1,000+ conversations (all 8 chart types) |
+| Training Type | QLoRA (4-bit quantization + LoRA rank 16) |
+| Curriculum | 4 stages (Structure → Numeric → Reasoning → Robustness) |
 | Hardware | RTX 3060 6GB VRAM |
-| Expected Output | Local SLM for Stage 4 inference |
+| Expected Output | LoRA adapter (~50MB) for local inference |
+| Evaluation | JSON valid rate >95%, field accuracy >90%, latency <2s |
+| Full Design | See `module-training.instructions.md` |
 
 ### 5.4. OCR Cache Status (2026-02-04)
 
@@ -511,6 +604,12 @@ Final Output (PipelineResult)
 | Stage 4 = Gemini prototype | Rapid iteration, then train local SLM | 2026-01-30 |
 | Canonical Format prompts | Anti-hallucination, structured output | 2026-01-30 |
 | Stage 5 = Parallel processing | Async insights for throughput | 2026-01-30 |
+| AI Adapter Pattern | Decouple providers from pipeline (from elix) | 2026-02-28 |
+| AI Router with fallbacks | Reliability: local_slm → gemini → openai | 2026-02-28 |
+| QLoRA for SLM training | Fit Qwen-2.5-1.5B in RTX 3060 6GB | 2026-02-28 |
+| 4-stage curriculum learning | Progressive difficulty for small dataset | 2026-02-28 |
+| Celery + Redis task queue | Async processing (from elix pattern) | 2026-02-28 |
+| 3-tier instruction hierarchy | Scalable AI agent guidance system | 2026-02-28 |
 
 ---
 

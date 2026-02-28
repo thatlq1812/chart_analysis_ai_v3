@@ -85,9 +85,9 @@ class TestStage3Integration:
         cv2.putText(img, "50", (20, 250), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
         cv2.putText(img, "100", (15, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
         
-        # Save image
+        # Save image (img is in BGR as OpenCV draws natively)
         chart_path = tmp_path / "bar_chart.png"
-        cv2.imwrite(str(chart_path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(str(chart_path), img)
         
         return chart_path
 
@@ -114,7 +114,7 @@ class TestStage3Integration:
                    0.7, (0, 0, 0), 2)
         
         chart_path = tmp_path / "line_chart.png"
-        cv2.imwrite(str(chart_path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(str(chart_path), img)
         
         return chart_path
 
@@ -136,7 +136,7 @@ class TestStage3Integration:
                    0.7, (0, 0, 0), 2)
         
         chart_path = tmp_path / "pie_chart.png"
-        cv2.imwrite(str(chart_path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(str(chart_path), img)
         
         return chart_path
 

@@ -39,7 +39,9 @@ from .s4_reasoning import (
     ReasoningConfig,
     GeminiReasoningEngine,
     GeminiConfig,
+    AIRouterEngine,
 )
+from .s5_reporting import Stage5Reporting, ReportingConfig
 
 __all__ = [
     # Base
@@ -72,4 +74,8 @@ __all__ = [
     "ReasoningConfig",
     "GeminiReasoningEngine",
     "GeminiConfig",
+    "AIRouterEngine",
+    # Stage 5: Reporting
+    "Stage5Reporting",
+    "ReportingConfig",
 ]

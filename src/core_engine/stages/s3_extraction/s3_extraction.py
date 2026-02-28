@@ -110,6 +110,16 @@ class ExtractionConfig(BaseModel):
         default=None,
         description="Path to ResNet-18 model weights (defaults to models/weights/resnet18_chart_classifier_v2_best.pt)"
     )
+    resnet_confidence_threshold: float = Field(
+        default=0.65,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Minimum ResNet confidence to trust the prediction without rule-based cross-check. "
+            "When confidence < threshold, rule-based classifier is used as a tie-breaker "
+            "after element detection (step 10). Typical borderline: area vs line (0.56)."
+        ),
+    )
     
     # [FIX] Post-negative cleaning options
     use_cleaned_for_skeleton: bool = Field(
@@ -294,7 +304,7 @@ class Stage3Extraction(BaseStage):
         # Classify using best available classifier
         chart_type = ChartType.UNKNOWN
         if self.config.enable_classification:
-            chart_type = self._classify_chart(image_bgr, chart_id)
+            chart_type, _ = self._classify_chart(image_bgr, chart_id)
         
         # Preprocessing
         preprocess_result = self.preprocessor.process(image_bgr, chart_id)
@@ -483,8 +493,9 @@ class Stage3Extraction(BaseStage):
         # Step 7: Early chart type classification (before element detection)
         # Use unified _classify_chart method which prioritizes ResNet > ML > rule-based
         chart_type = ChartType.UNKNOWN
+        resnet_classification_confidence: float = 0.0
         if self.config.enable_classification:
-            chart_type = self._classify_chart(image_bgr, chart_id)
+            chart_type, resnet_classification_confidence = self._classify_chart(image_bgr, chart_id)
         
         # Step 8: Detect discrete elements (bars, markers)
         # Note: Uses original binary_image (not cleaned) to preserve element shapes
@@ -515,40 +526,47 @@ class Stage3Extraction(BaseStage):
         # Step 9: Axis calibration from OCR
         axis_info = self._calibrate_axes(texts, w, h)
         
-        # Step 10: Final chart type classification (if still unknown)
-        # Already classified in Step 7 using _classify_chart, but fallback to rule-based if needed
-        if chart_type == ChartType.UNKNOWN and self.config.enable_classification:
-            # Rule-based fallback using extracted features
-            class_result = self.classifier.classify(
-                bars=bars,
-                polylines=polylines,
-                markers=markers,
-                slices=slices,
-                texts=texts,
-                image_shape=(h, w),
-                chart_id=chart_id,
+        # Step 10: Final chart type refinement
+        # Case A: ResNet returned UNKNOWN → full rule-based fallback
+        # Case B: ResNet confidence < threshold → rule-based used as tie-breaker
+        if self.config.enable_classification:
+            needs_rule_based = (
+                chart_type == ChartType.UNKNOWN
+                or resnet_classification_confidence < self.config.resnet_confidence_threshold
             )
-            chart_type = class_result.chart_type
+            if needs_rule_based:
+                class_result = self.classifier.classify(
+                    bars=bars,
+                    polylines=polylines,
+                    markers=markers,
+                    slices=slices,
+                    texts=texts,
+                    image_shape=(h, w),
+                    chart_id=chart_id,
+                )
+                if chart_type == ChartType.UNKNOWN:
+                    # Full fallback: accept rule-based unconditionally
+                    chart_type = class_result.chart_type
+                elif class_result.chart_type != ChartType.UNKNOWN:
+                    # Tie-break: ResNet low confidence, rule-based has a verdict
+                    # Prefer rule-based since it uses actual extracted geometry
+                    self.logger.info(
+                        f"Classification tie-break | chart_id={chart_id} | "
+                        f"resnet={chart_type.value}@{resnet_classification_confidence:.2f} "
+                        f"-> rule_based={class_result.chart_type.value}@{class_result.confidence:.2f}"
+                    )
+                    chart_type = class_result.chart_type
         
         # Build RawMetadata with confidence scores
         # Calculate confidence components
         warnings = []
-        
-        # Classification confidence - get from ResNet or ML classifier
-        classification_conf = 0.0
-        if self.resnet_classifier is not None and chart_type != ChartType.UNKNOWN:
-            try:
-                _, classification_conf = self.resnet_classifier.predict_with_confidence(image_bgr)
-            except Exception:
-                classification_conf = 0.9  # ResNet default high confidence
-        elif self.ml_classifier is not None and chart_type != ChartType.UNKNOWN:
-            try:
-                ml_result = self.ml_classifier.classify(image_bgr, chart_id=chart_id)
-                classification_conf = ml_result.confidence
-            except Exception:
-                classification_conf = 0.5  # Default moderate confidence
-        elif chart_type != ChartType.UNKNOWN:
-            classification_conf = 0.7  # Rule-based has lower default confidence
+
+        # Classification confidence -- reuse the value captured at step 7
+        # (avoids a redundant second inference call)
+        classification_conf = resnet_classification_confidence
+        if classification_conf == 0.0 and chart_type != ChartType.UNKNOWN:
+            # Came from rule-based fallback at step 10: assign a default confidence
+            classification_conf = 0.7
         
         if classification_conf < 0.7:
             warnings.append(f"Low classification confidence: {classification_conf:.2f}")
@@ -695,21 +713,23 @@ class Stage3Extraction(BaseStage):
         self,
         image_bgr: np.ndarray,
         chart_id: str,
-    ) -> ChartType:
+    ) -> tuple:
         """
         Classify chart type using best available classifier.
-        
+
         Priority order:
-        1. ResNet-18 (94.14% accuracy)
+        1. ResNet-18 (94.14% accuracy) -- returns (ChartType, confidence)
         2. Random Forest ML classifier
-        3. Rule-based classifier
-        
+        3. ChartType.UNKNOWN with confidence=0.0 (rule-based handles in step 10)
+
         Args:
             image_bgr: BGR image array
             chart_id: Chart identifier for logging
-        
+
         Returns:
-            ChartType enum value
+            Tuple of (ChartType, float confidence)
+            When confidence < config.resnet_confidence_threshold, Step 10 will
+            cross-check with the rule-based classifier using extracted geometry.
         """
         # Try ResNet-18 first (best accuracy)
         if self.resnet_classifier is not None:
@@ -720,10 +740,10 @@ class Stage3Extraction(BaseStage):
                     f"ResNet classification | chart_id={chart_id} | "
                     f"type={chart_type.value} | confidence={confidence:.2f}"
                 )
-                return chart_type
+                return chart_type, confidence
             except Exception as e:
                 self.logger.warning(f"ResNet classification failed: {e}. Trying fallback.")
-        
+
         # Fall back to Random Forest
         if self.ml_classifier is not None:
             try:
@@ -732,13 +752,13 @@ class Stage3Extraction(BaseStage):
                     f"ML classification | chart_id={chart_id} | "
                     f"type={ml_result.chart_type.value} | confidence={ml_result.confidence:.2f}"
                 )
-                return ml_result.chart_type
+                return ml_result.chart_type, ml_result.confidence
             except Exception as e:
                 self.logger.warning(f"ML classification failed: {e}. Using rule-based.")
-        
-        # Final fallback: rule-based (requires extracted features)
-        self.logger.debug(f"Using rule-based classification | chart_id={chart_id}")
-        return ChartType.UNKNOWN
+
+        # No ML classifier available: rule-based will handle in Step 10
+        self.logger.debug(f"No ML classifier available | chart_id={chart_id} | using rule-based in step 10")
+        return ChartType.UNKNOWN, 0.0
     
     def _calibrate_axes(
         self,

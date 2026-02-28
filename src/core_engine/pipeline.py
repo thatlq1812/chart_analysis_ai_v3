@@ -115,40 +115,79 @@ class ChartAnalysisPipeline:
     
     def _initialize_stages(self) -> List:
         """
-        Initialize all pipeline stages.
-        
+        Initialize all pipeline stages from configuration.
+
         Returns:
-            List of stage processor instances
+            List of stage processor instances in execution order
         """
-        # TODO: Import and initialize actual stage classes
-        # For now, return empty list as placeholder
+        from .stages import (
+            Stage1Ingestion,
+            IngestionConfig,
+            Stage2Detection,
+            DetectionConfig,
+            Stage3Extraction,
+            ExtractionConfig,
+            Stage4Reasoning,
+            ReasoningConfig,
+            Stage5Reporting,
+            ReportingConfig,
+        )
+        from .stages.s4_reasoning import GeminiConfig
+
         stages = []
-        
-        if self.config.pipeline.stages.ingestion.enabled:
-            # from .stages import Stage1Ingestion
-            # stages.append(Stage1Ingestion(self.config.ingestion))
-            pass
-            
-        if self.config.pipeline.stages.detection.enabled:
-            # from .stages import Stage2Detection
-            # stages.append(Stage2Detection(self.config.detection))
-            pass
-            
-        if self.config.pipeline.stages.extraction.enabled:
-            # from .stages import Stage3Extraction
-            # stages.append(Stage3Extraction(self.config.extraction))
-            pass
-            
-        if self.config.pipeline.stages.reasoning.enabled:
-            # from .stages import Stage4Reasoning
-            # stages.append(Stage4Reasoning(self.config.reasoning))
-            pass
-            
-        if self.config.pipeline.stages.reporting.enabled:
-            # from .stages import Stage5Reporting
-            # stages.append(Stage5Reporting(self.config.reporting))
-            pass
-        
+        cfg = self.config
+
+        # Stage 1: Ingestion
+        if cfg.pipeline.stages.ingestion.enabled:
+            s1_config = IngestionConfig(
+                pdf_dpi=cfg.ingestion.pdf.dpi,
+                max_image_size=cfg.ingestion.image.max_size,
+                min_image_size=cfg.ingestion.image.min_size,
+                min_blur_threshold=cfg.ingestion.quality.blur_threshold,
+            )
+            stages.append(Stage1Ingestion(s1_config))
+            logger.info("Stage 1 (Ingestion) initialized")
+
+        # Stage 2: Detection
+        if cfg.pipeline.stages.detection.enabled:
+            s2_config = DetectionConfig(
+                model_path=cfg.yolo.path,
+                device=cfg.yolo.device,
+                conf_threshold=cfg.detection.confidence_threshold,
+                iou_threshold=cfg.yolo.iou_threshold,
+                imgsz=cfg.yolo.input_size,
+            )
+            stages.append(Stage2Detection(s2_config))
+            logger.info("Stage 2 (Detection) initialized")
+
+        # Stage 3: Extraction
+        if cfg.pipeline.stages.extraction.enabled:
+            stages.append(Stage3Extraction())
+            logger.info("Stage 3 (Extraction) initialized")
+
+        # Stage 4: Reasoning -- uses AIRouter by default (multi-provider)
+        if cfg.pipeline.stages.reasoning.enabled:
+            gemini_cfg = GeminiConfig(
+                model_name=cfg.ai_routing.providers.gemini.model,
+            )
+            s4_config = ReasoningConfig(
+                engine="router",  # Use multi-provider AIRouter
+                gemini=gemini_cfg,
+            )
+            stages.append(Stage4Reasoning(s4_config))
+            logger.info("Stage 4 (Reasoning) initialized | engine=router")
+
+        # Stage 5: Reporting
+        if cfg.pipeline.stages.reporting.enabled:
+            s5_config = ReportingConfig(
+                enable_insights=cfg.reporting.insights.enabled,
+                save_json=True,
+                save_report=True,
+            )
+            stages.append(Stage5Reporting(s5_config))
+            logger.info("Stage 5 (Reporting) initialized")
+
+        logger.info(f"Pipeline initialized | active_stages={len(stages)}")
         return stages
     
     def _create_session(self, input_path: Path) -> SessionInfo:
@@ -196,46 +235,51 @@ class ChartAnalysisPipeline:
         self._start_time = time.time()
         session = self._create_session(input_path)
         
-        logger.info(f"Starting pipeline run: {session.session_id}")
+        logger.info(f"Pipeline run started | session={session.session_id}")
         logger.info(f"Input: {input_path}")
-        
+
         try:
-            # Stage 1: Ingestion
-            # stage1_output = self._run_stage1(input_path, session)
-            
+            from .schemas.stage_outputs import Stage4Output
+
+            # Stage 1: Ingestion (critical - must succeed)
+            stage1_output = self.stages[0].process(input_path)
+            logger.info(f"Stage 1 complete | images={stage1_output.total_images}")
+
             # Stage 2: Detection
-            # stage2_output = self._run_stage2(stage1_output)
-            
+            stage2_output = self.stages[1].process(stage1_output)
+            logger.info(f"Stage 2 complete | charts={len(stage2_output.charts)}")
+
+            if not stage2_output.charts:
+                processing_time = time.time() - self._start_time
+                logger.info("No charts detected -- returning empty result")
+                return PipelineResult(
+                    session=session,
+                    charts=[],
+                    summary="No charts detected in input document.",
+                    processing_time_seconds=round(processing_time, 3),
+                    model_versions={},
+                )
+
             # Stage 3: Extraction
-            # stage3_output = self._run_stage3(stage2_output)
-            
+            stage3_output = self.stages[2].process(stage2_output)
+            logger.info(f"Stage 3 complete | metadata={len(stage3_output.metadata)}")
+
             # Stage 4: Reasoning
-            # stage4_output = self._run_stage4(stage3_output)
-            
+            stage4_output = self.stages[3].process(stage3_output)
+            logger.info(f"Stage 4 complete | refined={len(stage4_output.charts)}")
+
             # Stage 5: Reporting
-            # result = self._run_stage5(stage4_output)
-            
-            # TODO: Implement actual stage execution
-            # For now, return placeholder result
+            result = self.stages[4].process(stage4_output)
+
             processing_time = time.time() - self._start_time
-            
-            result = PipelineResult(
-                session=session,
-                charts=[],
-                summary="Pipeline execution placeholder - stages not yet implemented",
-                processing_time_seconds=processing_time,
-                model_versions={
-                    "yolo": "placeholder",
-                    "ocr": "placeholder",
-                    "slm": "placeholder",
-                },
+            logger.info(
+                f"Pipeline complete | session={session.session_id} | "
+                f"charts={len(result.charts)} | elapsed={processing_time:.2f}s"
             )
-            
-            logger.info(f"Pipeline completed in {processing_time:.2f}s")
             return result
-            
+
         except Exception as e:
-            logger.exception(f"Pipeline failed: {e}")
+            logger.exception(f"Pipeline failed | session={session.session_id} | error={e}")
             raise PipelineError(
                 message=str(e),
                 stage="unknown",

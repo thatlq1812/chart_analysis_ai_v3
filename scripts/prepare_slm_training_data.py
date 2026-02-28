@@ -228,17 +228,23 @@ def process_qa_pair(
 ) -> List[Dict]:
     """Process a single QA entry into training samples."""
     samples = []
-    
+
     data = qa_entry.get("data", {})
     qa_pairs = data.get("qa_pairs", [])
-    
-    # Format context
+
+    # Format context — pass QA record caption/context when stage3 features absent
+    caption = data.get("caption") or ""
+    context_text = data.get("context_text") or ""
     context = format_chart_context(features, ocr_data, chart_type)
+    if caption:
+        context += f"\n[CAPTION]: {caption}"
+    if context_text:
+        context += f"\n[CONTEXT]: {context_text}"
     
     for qa in qa_pairs:
         question = qa.get("question", "")
         answer = qa.get("answer", "")
-        q_type = qa.get("type", "unknown")
+        q_type = qa.get("question_type", qa.get("type", "unknown"))
         
         if not question or not answer:
             continue
@@ -255,6 +261,9 @@ def process_qa_pair(
             curriculum_stage=stage,
         )
         conv["metadata"]["chart_type"] = chart_type
+        conv["metadata"]["image_id"] = data.get("image_id", "")
+        conv["metadata"]["difficulty"] = qa.get("difficulty", 3)
+        conv["metadata"]["source"] = data.get("generator_model", "gemini")
         
         samples.append(conv)
     
@@ -283,6 +292,12 @@ def save_jsonl(samples: List[Dict], output_path: Path):
     with open(output_path, "w", encoding="utf-8") as f:
         for sample in samples:
             f.write(json.dumps(sample, ensure_ascii=False) + "\n")
+
+
+def save_json(samples: List[Dict], output_path: Path):
+    """Save samples as JSON array (compatible with train_slm_lora.py)."""
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(samples, f, ensure_ascii=False, indent=2)
 
 
 def main():
@@ -423,6 +438,10 @@ def main():
     save_jsonl(train, args.output_dir / "train.jsonl")
     save_jsonl(val, args.output_dir / "val.jsonl")
     save_jsonl(test, args.output_dir / "test.jsonl")
+    # Also save as .json arrays for train_slm_lora.py
+    save_json(train, args.output_dir / "train.json")
+    save_json(val, args.output_dir / "val.json")
+    save_json(test, args.output_dir / "test.json")
     
     # Save dataset info
     info = {

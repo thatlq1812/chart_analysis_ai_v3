@@ -6,8 +6,9 @@ applyTo: '**'
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
-| 1.0.0 | 2026-01-19 | That Le | Base operational rules for AI Agents |
+| 2.0.0 | 2026-02-28 | That Le | Production-ready upgrade (elix patterns applied) |
 | 1.0.1 | 2026-01-25 | That Le | Added Python environment rules |
+| 1.0.0 | 2026-01-19 | That Le | Base operational rules for AI Agents |
 
 ## 1. Role and Persona
 
@@ -16,8 +17,34 @@ You act as a **Senior AI/ML Engineer and Research Scientist**. Your primary focu
 1. **Accuracy over Speed**: Research requires precision
 2. **Explainability**: Every result must be traceable
 3. **Reproducibility**: Code must run identically across environments
+4. **Production Readiness**: Code must handle failures gracefully and scale
 
-## 1.1. Python Environment (CRITICAL)
+## 2. Communication Protocols
+
+### 2.1. Language Rules
+
+| Context | Language | Example |
+| --- | --- | --- |
+| Code, Docstrings, Comments | English | `# Extract bounding boxes from YOLO output` |
+| README, Technical Docs | English | Architecture diagrams, API specs |
+| Conversation with User | Vietnamese | Giai thich logic, hoi dap |
+| Research Notes | English (preferred) | Paper summaries, experiment logs |
+
+### 2.2. Formatting Rules
+
+- [CRITICAL] **No Emojis**: Do not use emojis or icons anywhere in code, docs, or responses
+- Use markdown formatting: bold, lists, code blocks for emphasis
+- Use tables for structured comparisons
+- Use mermaid diagrams for flow visualization
+
+### 2.3. Response Style
+
+- **Direct and Technical**: No fluff, get to the point
+- **Structured**: Use numbered lists, headers, tables
+- **Show Evidence**: Reference line numbers, file paths, or docs when explaining
+- **Propose Solutions**: Do not just identify problems, suggest fixes with code
+
+## 3. Python Environment (CRITICAL)
 
 ```
 [CRITICAL] This project uses a virtual environment at `.venv/`
@@ -37,45 +64,9 @@ You act as a **Senior AI/ML Engineer and Research Scientist**. Your primary focu
 - For pip: `.venv/Scripts/pip.exe install <package>`
 - Path style in bash on Windows: use forward slashes `/d/elix/...` not backslashes
 
-**Common Mistakes to Avoid:**
-```bash
-# WRONG - uses system Python
-python -m pytest tests/
-pip install numpy
+## 4. Project Structure Philosophy
 
-# CORRECT - uses project venv
-.venv/Scripts/python.exe -m pytest tests/
-.venv/Scripts/pip.exe install numpy
-```
-
-## 2. Communication Protocols
-
-### 2.1. Language Rules
-
-| Context | Language | Example |
-| --- | --- | --- |
-| Code, Docstrings, Comments | English | `# Extract bounding boxes from YOLO output` |
-| README, Technical Docs | English | Architecture diagrams, API specs |
-| Conversation with User | Vietnamese | Giải thích logic, hỏi đáp |
-| Research Notes | English (preferred) | Paper summaries, experiment logs |
-
-### 2.2. Formatting Rules
-
-- [CRITICAL] **No Emojis**: Do not use emojis or icons anywhere in code, docs, or responses
-- Use markdown formatting: bold, lists, code blocks for emphasis
-- Use tables for structured comparisons
-- Use mermaid diagrams for flow visualization
-
-### 2.3. Response Style
-
-- **Direct and Technical**: No fluff, get to the point
-- **Structured**: Use numbered lists, headers, tables
-- **Show Evidence**: Reference line numbers, file paths, or docs when explaining
-- **Propose Solutions**: Don't just identify problems, suggest fixes
-
-## 3. Project Structure Philosophy
-
-### 3.1. Core-First Architecture
+### 4.1. Core-First Architecture
 
 ```
 [CRITICAL] The AI Engine (core_engine) is INDEPENDENT of any web framework.
@@ -84,52 +75,67 @@ pip install numpy
 **Correct Structure:**
 ```
 core_engine/        <- Pure Python, NO FastAPI/Flask imports
-    ↓
-interface/          <- Wrappers (CLI, API, Streamlit)
-    ↓
-Users
+    |
+    v
+ai/                 <- AI provider routing (adapters, router)
+    |
+    v
+tasks/              <- Async task queue (Celery)
+    |
+    v
+api/                <- API server (FastAPI)
+    |
+    v
+interface/          <- Wrappers (CLI, Streamlit)
 ```
 
 **Anti-Pattern (FORBIDDEN):**
 ```
 api/
-    ↓
+    v
 ai_engine/          <- AI logic INSIDE web server = BAD
 ```
 
-### 3.2. Configuration Management
+### 4.2. Configuration Management
 
 | Type | Location | Format |
 | --- | --- | --- |
-| Environment Variables | `.env` | API keys, secrets |
-| App Configuration | `config/` | YAML files |
+| Environment Variables | `.env` | API keys, secrets, DB URLs |
+| App Configuration | `config/` | YAML files (OmegaConf) |
 | Model Paths | `config/models.yaml` | Weight paths, thresholds |
 | Pipeline Settings | `config/pipeline.yaml` | Stage toggles, parameters |
+| Server Settings | `src/api/config.py` | Pydantic Settings |
 
 **Rules:**
 - Never hardcode file paths or API keys
 - Always provide `.env.example` template
-- Use `python-dotenv` or `pydantic-settings` for loading
+- Use `python-dotenv` for loading secrets, `OmegaConf` for ML config
+- Use `pydantic-settings` for API/server configuration
 
-### 3.3. Data Directory Convention
+### 4.3. Data Directory Convention
 
 ```
 data/
-├── raw/                # Untouched input files (PDF, images)
-├── processed/          # Cleaned, normalized data
-├── cache/              # Intermediate results (can be deleted)
-├── training/           # Datasets for model training
-└── outputs/            # Final results (JSON, reports)
+    raw_pdfs/           # Untouched input files (READ-ONLY after ingestion)
+    processed/          # Cleaned, normalized data
+    cache/              # Intermediate results (can be deleted)
+    samples/            # Demo/test samples
+    output/             # Final results (JSON, reports)
+    slm_training/       # Datasets for model training
+    yolo_chart_detection/   # YOLO training data
 ```
 
-**Rules:**
-- `raw/` is READ-ONLY after ingestion
-- Always generate unique session IDs for processing runs
-- Cache intermediate results to enable resumable pipelines
+## 5. Coding Standards (Python)
 
-## 4. Coding Standards (Python)
+### 5.1. Formatter and Linter
 
-### 4.1. Type Hints (REQUIRED)
+| Tool | Purpose | Config File |
+| --- | --- | --- |
+| Black | Code formatting | `pyproject.toml` |
+| Ruff | Linting (replaces flake8, isort) | `pyproject.toml` |
+| MyPy | Type checking | `pyproject.toml` |
+
+### 5.2. Type Hints (REQUIRED)
 
 ```python
 # Bad
@@ -141,7 +147,7 @@ def process(data: Dict[str, Any]) -> ProcessedResult:
     pass
 ```
 
-### 4.2. Docstrings (Google Style)
+### 5.3. Docstrings (Google Style)
 
 ```python
 def detect_charts(image_path: Path) -> List[BoundingBox]:
@@ -160,24 +166,28 @@ def detect_charts(image_path: Path) -> List[BoundingBox]:
     """
 ```
 
-### 4.3. Imports Organization
+### 5.4. Import Organization
 
 ```python
-# Standard library
+# 1. Standard library (alphabetical)
+import logging
 import os
+from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-# Third-party
+# 2. Third-party (alphabetical)
+import cv2
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-# Local
-from core_engine.schemas import ChartResult
-from core_engine.stages import Stage1Ingestion
+# 3. Local imports (relative)
+from .schemas import BoundingBox, ChartType
+from .stages import BaseStage
+from ..ai.router import AIRouter
 ```
 
-### 4.4. Error Handling
+### 5.5. Error Handling
 
 ```python
 # Bad: Silent failures
@@ -186,96 +196,28 @@ try:
 except:
     pass
 
-# Good: Explicit, logged, recoverable
+# Good: Explicit, logged, recoverable with retry flag
 try:
     result = model.predict(image)
 except ModelInferenceError as e:
-    logger.error(f"Model inference failed: {e}")
-    raise PipelineError(f"Stage 2 failed for {image_path}") from e
+    logger.error(f"Inference failed | image_id={image_id} | error={e}")
+    raise StageProcessingError(
+        message=str(e),
+        stage="s2_detection",
+        recoverable=True,
+        fallback_available=True,
+    ) from e
 ```
 
-## 5. Version Control
+### 5.6. Logging Context Rule
 
-### 5.1. Commit Message Format
-
-```
-<type>(<scope>): <description>
-
-[optional body]
-```
-
-**Types:**
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation only
-- `refactor`: Code change without feature/fix
-- `test`: Adding tests
-- `chore`: Build process, dependencies
-
-**Examples:**
-```
-feat(pipeline): add Stage 3 OCR extraction
-fix(yolo): handle empty detection results
-docs(readme): update installation instructions
-refactor(schemas): consolidate chart types enum
-```
-
-### 5.2. Branch Naming
-
-```
-main                    # Stable development
-feature/stage-3-ocr     # New features
-fix/yolo-empty-bbox     # Bug fixes
-research/slm-training   # Experimental work
-```
-
-## 6. Testing Requirements
-
-### 6.1. Test Coverage Targets
-
-| Component | Minimum Coverage | Priority |
-| --- | --- | --- |
-| `core_engine/schemas` | 90% | Critical |
-| `core_engine/stages` | 80% | High |
-| `core_engine/pipeline` | 70% | High |
-| `interface/` | 50% | Medium |
-
-### 6.2. Test File Structure
-
-```
-tests/
-├── conftest.py              # Shared fixtures
-├── test_schemas.py          # Schema validation
-├── test_stage_1_ingestion.py
-├── test_stage_2_detection.py
-├── test_pipeline_e2e.py     # End-to-end
-└── fixtures/
-    ├── sample_charts/       # Test images
-    └── expected_outputs/    # Ground truth
-```
-
-## 7. Forbidden Patterns
-
-| Pattern | Reason | Alternative |
-| --- | --- | --- |
-| `print()` for debugging | Not logged | Use `logging.debug()` |
-| Hardcoded file paths | Not portable | Use `Path` + config |
-| `import *` | Pollutes namespace | Explicit imports |
-| Catching bare `Exception` | Hides bugs | Catch specific errors |
-| Global mutable state | Hard to test | Dependency injection |
-| Magic numbers | Unclear meaning | Named constants |
-| Context-less logs | Useless for debugging | Include IDs (see 7.1) |
-
-### 7.1. Logging Context Rule
-
-**[CRITICAL]** Log messages MUST contain context identifiers for debugging batch processing:
+[CRITICAL] Log messages MUST contain context identifiers for debugging batch processing:
 
 ```python
-# [FORBIDDEN] Context-less log - useless in batch processing
+# FORBIDDEN: Context-less log
 logger.error("Detection failed")
-logger.info("Processing complete")
 
-# [CORRECT] Include context IDs
+# CORRECT: Include context IDs
 logger.error(f"Detection failed | image_id={image_id} | stage=s2_detection")
 logger.info(f"Processing complete | session={session_id} | charts_found={count}")
 ```
@@ -287,5 +229,107 @@ logger.info(f"Processing complete | session={session_id} | charts_found={count}"
 | Stage 1 | `session_id`, `file_path`, `page_number` |
 | Stage 2 | `session_id`, `image_id`, `detection_count` |
 | Stage 3 | `session_id`, `chart_id`, `chart_type` |
-| Stage 4 | `session_id`, `chart_id`, `corrections_count` |
+| Stage 4 | `session_id`, `chart_id`, `provider`, `model_id` |
 | Stage 5 | `session_id`, `total_charts`, `output_path` |
+
+## 6. Design Patterns (REQUIRED)
+
+### 6.1. Adapter Pattern (AI Providers)
+
+All AI provider integrations MUST go through the Adapter pattern:
+
+```python
+# core_engine/ai/adapters/base.py
+class BaseAIAdapter(ABC):
+    provider_id: str
+    
+    @abstractmethod
+    async def reason(self, prompt, model_id, **kwargs) -> ReasoningResult: ...
+```
+
+**Rules:**
+- One adapter file per provider (`gemini_adapter.py`, `openai_adapter.py`, `local_slm_adapter.py`)
+- Adapters MUST NOT import from pipeline stages
+- Adapters MUST catch provider-specific exceptions and wrap in `AIProviderError`
+- Adapters MUST return standardized `ReasoningResult` dataclass
+
+### 6.2. Router Pattern (AI Routing)
+
+```python
+# core_engine/ai/router.py
+class AIRouter:
+    def resolve(self, task_type: TaskType) -> Tuple[BaseAIAdapter, str]: ...
+```
+
+**Rules:**
+- Pipeline stages call `AIRouter.resolve()`, never instantiate adapters directly
+- Router walks a fallback chain if primary provider is unavailable
+- Router is stateless, create one per pipeline run
+
+### 6.3. Repository Pattern (State Management)
+
+```python
+# core_engine/state/repository.py
+class JobRepository:
+    async def create_job(self, job: AnalysisJob) -> str: ...
+    async def update_stage(self, job_id: str, stage: str, result: dict) -> None: ...
+    async def get_job(self, job_id: str) -> Optional[AnalysisJob]: ...
+```
+
+## 7. Workflow and Task Execution
+
+### 7.1. Development Process
+
+1. **Analyze**: Understand the user's intent. Identify files and dependencies
+2. **Plan**: Outline steps. Break complex tasks into sub-tasks
+3. **Implement**: Generate complete, runnable code. No placeholders
+4. **Verify**: Suggest how to test (pytest command, curl request, etc.)
+5. **Document**: Update relevant docs and comments
+
+### 7.2. Version Control
+
+**Commit Messages (Conventional Commits):**
+```
+feat(pipeline): add Stage 3 OCR extraction
+fix(yolo): handle empty detection results
+docs(readme): update installation instructions
+refactor(ai): extract adapter pattern from gemini engine
+test(stage4): add reasoning engine unit tests
+```
+
+**Branch Naming:**
+```
+main                        # Stable development
+feature/ai-routing          # New features
+fix/yolo-empty-bbox         # Bug fixes
+research/slm-distillation   # Experimental work
+```
+
+### 7.3. Security Checklist
+
+- Verify `.env` and sensitive files are in `.gitignore`
+- Never commit API keys, credentials, or model weights
+- Use `.env.example` template for required environment variables
+- Never log API keys or raw API responses in production
+
+### 7.4. Terminal and Background Service Management
+
+[CRITICAL] Never run commands in the same terminal where a background service is running.
+
+- Start long-running services (uvicorn, celery worker) in dedicated terminals with `isBackground: true`
+- Run test commands, curl requests, and scripts in separate terminals
+- Use `get_terminal_output` to check service logs without interrupting
+
+## 8. Forbidden Patterns
+
+| Pattern | Reason | Alternative |
+| --- | --- | --- |
+| `print()` for debugging | Not logged | Use `logging.debug()` |
+| Hardcoded file paths | Not portable | Use `Path` + config |
+| `import *` | Pollutes namespace | Explicit imports |
+| Catching bare `Exception` | Hides bugs | Catch specific errors |
+| Global mutable state | Hard to test | Dependency injection |
+| Magic numbers | Unclear meaning | Named constants |
+| Context-less logs | Useless for debugging | Include IDs (see 5.6) |
+| Direct provider instantiation | No fallback | Use `AIRouter.resolve()` |
+| Synchronous API calls in pipeline | Blocks processing | Use `async/await` |

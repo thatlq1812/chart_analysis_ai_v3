@@ -44,13 +44,55 @@ ocr:
     oem: 3
 
 slm:
-  # Small Language Model for reasoning
+  # Small Language Model for reasoning (local inference)
   name: "Qwen/Qwen2.5-1.5B-Instruct"
   device: "auto"
   max_tokens: 512
   temperature: 0.3
   top_p: 0.9
   
+  # LoRA adapter (after training, uncomment)
+  # lora_path: "models/slm/qwen2.5-1.5b-chart-lora/final"
+  # merged_path: "models/slm/qwen2.5-1.5b-chart-merged"
+  
   # Fallback to rules if SLM fails
   fallback_to_rules: true
   timeout_seconds: 30
+
+# =============================================================================
+# AI Routing Configuration (NEW - v2.0.0)
+# =============================================================================
+# Multi-provider routing with fallback chains.
+# See: .github/instructions/module-reasoning.instructions.md
+
+ai_routing:
+  confidence_threshold: 0.7     # Below this, try next provider
+  timeout_seconds: 30           # Per-provider timeout
+  max_retries_per_provider: 2
+  
+  # Provider configurations
+  providers:
+    local_slm:
+      enabled: false              # Enable after training
+      model_path: "models/slm/qwen2.5-1.5b-chart-merged"
+      device: "auto"
+      priority: 1                 # Highest priority (try first)
+    
+    gemini:
+      enabled: true
+      model: "gemini-2.0-flash"
+      api_key_env: "GOOGLE_API_KEY"
+      priority: 2
+    
+    openai:
+      enabled: false
+      model: "gpt-4o-mini"
+      api_key_env: "OPENAI_API_KEY"
+      priority: 3
+  
+  # Task-specific fallback chains
+  fallback_chains:
+    chart_reasoning: ["local_slm", "gemini", "openai"]
+    ocr_correction: ["local_slm", "gemini"]
+    description_gen: ["local_slm", "gemini", "openai"]
+    data_validation: ["gemini", "openai"]
