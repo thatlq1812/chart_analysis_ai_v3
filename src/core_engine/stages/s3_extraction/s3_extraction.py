@@ -367,7 +367,10 @@ class Stage3Extraction(BaseStage):
             markers = element_result.markers
             slices = element_result.slices
             elements = self._convert_elements(bars, markers, slices, w, h)
-        
+
+        # Axis calibration from OCR tick labels (same as _process_single_chart)
+        axis_info = self._calibrate_axes(texts, w, h)
+
         # Calculate confidence
         classification_conf = 0.0
         if self.resnet_classifier is not None and chart_type != ChartType.UNKNOWN:
@@ -375,23 +378,33 @@ class Stage3Extraction(BaseStage):
                 _, classification_conf = self.resnet_classifier.predict_with_confidence(image_bgr)
             except Exception:
                 classification_conf = 0.9
-        
+
         ocr_conf = sum(t.confidence for t in texts) / len(texts) if texts else 0.0
         element_conf = min(1.0, len(elements) * 0.1) if elements else 0.0
-        
+
+        # Axis calibration confidence: average of x/y calibration confidences
+        axis_cal_conf = 0.0
+        if axis_info:
+            cal_confs = []
+            if axis_info.y_calibration_confidence > 0:
+                cal_confs.append(axis_info.y_calibration_confidence)
+            if axis_info.x_calibration_confidence > 0:
+                cal_confs.append(axis_info.x_calibration_confidence)
+            axis_cal_conf = sum(cal_confs) / len(cal_confs) if cal_confs else 0.0
+
         confidence = ExtractionConfidence(
             classification_confidence=classification_conf,
             ocr_mean_confidence=ocr_conf,
-            axis_calibration_confidence=0.0,
+            axis_calibration_confidence=axis_cal_conf,
             element_detection_confidence=element_conf,
         )
-        
+
         return RawMetadata(
             chart_id=chart_id,
             chart_type=chart_type,
             texts=texts,
             elements=elements,
-            axis_info=None,
+            axis_info=axis_info,
             confidence=confidence,
         )
 

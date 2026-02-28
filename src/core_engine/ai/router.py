@@ -35,14 +35,23 @@ from .task_types import TaskType
 logger = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Default fallback chains
-# Key: TaskType, Value: ordered list of provider_ids to try
-# ─────────────────────────────────────────────────────────────────────────────
+# Default fallback chains — cloud providers as fallback after local SLM
 DEFAULT_FALLBACK_CHAINS: Dict[TaskType, List[str]] = {
     TaskType.CHART_REASONING: ["local_slm", "gemini", "openai"],
     TaskType.OCR_CORRECTION: ["local_slm", "gemini"],
     TaskType.DESCRIPTION_GEN: ["local_slm", "gemini", "openai"],
     TaskType.DATA_VALIDATION: ["gemini", "openai"],
+}
+
+# Local-only chains — NO cloud API fallback.
+# [POLICY] For production inference, local SLM is the ONLY provider.
+# Cloud APIs are strictly forbidden in this mode (privacy + cost).
+# Set local_only=True on AIRouter to activate.
+LOCAL_ONLY_CHAINS: Dict[TaskType, List[str]] = {
+    TaskType.CHART_REASONING: ["local_slm"],
+    TaskType.OCR_CORRECTION: ["local_slm"],
+    TaskType.DESCRIPTION_GEN: ["local_slm"],
+    TaskType.DATA_VALIDATION: ["local_slm"],
 }
 
 
@@ -69,6 +78,7 @@ class AIRouter:
         fallback_chains: Optional[Dict[TaskType, List[str]]] = None,
         confidence_threshold: float = 0.7,
         max_retries_per_provider: int = 2,
+        local_only: bool = False,
     ) -> None:
         """
         Initialize the AI Router.
@@ -79,11 +89,24 @@ class AIRouter:
             fallback_chains: Override default fallback chains.
             confidence_threshold: Accept response only if confidence >= this.
             max_retries_per_provider: Max retry attempts per provider.
+            local_only: If True, use LOCAL_ONLY_CHAINS — no cloud API fallback.
+                        [POLICY] Must be True for production inference.
+                        Cloud APIs (Gemini/OpenAI) are forbidden in local_only mode.
         """
         self._adapters: Dict[str, BaseAIAdapter] = adapters or self._default_adapters()
-        self._chains: Dict[TaskType, List[str]] = (
-            fallback_chains or DEFAULT_FALLBACK_CHAINS
-        )
+        self.local_only = local_only
+
+        if local_only:
+            # Enforce: only local_slm, regardless of what caller passes
+            if fallback_chains is not None:
+                logger.warning(
+                    "AIRouter | local_only=True overrides fallback_chains argument. "
+                    "Cloud providers will NOT be used."
+                )
+            self._chains: Dict[TaskType, List[str]] = LOCAL_ONLY_CHAINS
+        else:
+            self._chains = fallback_chains or DEFAULT_FALLBACK_CHAINS
+
         self.confidence_threshold = confidence_threshold
         self.max_retries_per_provider = max_retries_per_provider
 
@@ -93,6 +116,7 @@ class AIRouter:
         logger.info(
             f"AIRouter | initialized | "
             f"providers={list(self._adapters.keys())} | "
+            f"local_only={local_only} | "
             f"confidence_threshold={confidence_threshold}"
         )
 

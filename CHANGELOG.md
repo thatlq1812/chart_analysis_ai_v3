@@ -9,7 +9,52 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- **SLM Dataset v3 Rebuild** (`data/slm_training_v2/`)
+- **Adaptive LoRA target_modules detection** (`scripts/train_slm_lora.py`)
+  - `detect_lora_target_modules(model_path)`: reads model `config.json` (no weight download)
+    and maps `model_type` / `architectures` to correct LoRA target layers
+  - Architecture map covers: Qwen2, Llama, Mistral, Mixtral, Phi, Phi3, Gemma, Gemma2, GPT-2, OPT, Falcon
+  - Falls back to universal set (`q_proj`...`down_proj`) for unknown architectures
+  - `setup_lora_config()` now accepts `target_modules` parameter
+  - `train()` calls `detect_lora_target_modules(model_path)` automatically before creating LoraConfig
+  - Default `DATA_PATH` updated to `data/slm_training_v2` (32k balanced dataset)
+
+- **AIRouter local-only policy** (`src/core_engine/ai/router.py`)
+  - `LOCAL_ONLY_CHAINS` constant: maps all TaskTypes to `["local_slm"]` only
+  - `local_only: bool = False` parameter on `AIRouter.__init__()`
+  - When `local_only=True`, cloud providers (Gemini, OpenAI) are completely excluded,
+    `fallback_chains` argument is ignored, warning is logged
+  - `[POLICY]` comment marks this as the required mode for production inference
+  - Log message now includes `local_only=` flag
+
+- **Stage 3 batch extraction: CUDA-aware rewrite** (`scripts/batch_stage3_parallel.py`)
+  - Full rewrite with `multiprocessing.set_start_method("spawn")` — required for CUDA safety on Windows
+  - `--gpu-workers N`: enable CUDA PaddleOCR in N workers (recommended 1-2 for 6GB VRAM)
+  - `--no-gpu`: force CPU-only mode for all workers
+  - `--status`: print per-type progress bar without running extraction
+  - Worker init: explicit GPU/CPU tag in log; forces OCR cache load on startup
+  - Processing order: smallest chart types first (area, box, pie...) for fast early progress
+  - `print_status()`: shows ASCII progress bars per chart type
+  - All previous flags retained: `--workers`, `--chart-type`, `--limit`
+
+### Fixed
+- **Stage 3 `process_image` always returned `axis_info=None`**
+  (`src/core_engine/stages/s3_extraction/s3_extraction.py`)
+  - `process_image()` (used by batch extraction script) never called `_calibrate_axes()`
+  - Root cause: method was written as a simplified test path; fix was omitted
+  - Fix: added `axis_info = self._calibrate_axes(texts, w, h)` after element detection
+  - Fix: `axis_calibration_confidence` now computed from x/y calibration confidences
+  - Fix: `axis_info` now passed to returned `RawMetadata` (was hardcoded `None`)
+  - Impact: all future batch extraction runs will produce axis_info with min/max/scale_factor
+
+### Notes
+- **Dataset v1 deprecation**: `data/slm_training/` (9.7k line-heavy samples) is superseded by
+  `data/slm_training_v2/` (32k balanced). Safe to delete after qwen-0.5b training completes.
+  Do NOT delete while training terminal is still running.
+- **QA count 32k vs 47k explained**: 46,910 classified images include non-chart classes
+  (diagram, not_a_chart, other, table, uncertain = ~14,500 images). QA was generated only for
+  the 8 valid chart types (bar/line/scatter/heatmap/box/histogram/pie/area = 32,364 images).
+
+
   - `scripts/prepare_slm_training_data.py` now fully consumes 32,445 per-chart Gemini QA JSON files
     (`data/academic_dataset/chart_qa_v2/generated/{type}/`) across 8 chart types
   - Target: ~30k balanced training samples (4,000 per chart type x 8 types)

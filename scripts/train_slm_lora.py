@@ -54,7 +54,10 @@ logger = logging.getLogger(__name__)
 # Model registry (mirrors download_models.py)
 # ─────────────────────────────────────────────────────────────────────────────
 MODELS_DIR = PROJECT_ROOT / "models" / "slm"
-DATA_PATH = PROJECT_ROOT / "data" / "slm_training"
+# v2 dataset: 32k balanced samples (all 8 chart types, Gemini-2.0-flash annotations)
+# v1 dataset:  9.7k line-heavy samples (legacy, to be removed after v2 training completes)
+DATA_PATH = PROJECT_ROOT / "data" / "slm_training_v2"
+DATA_PATH_LEGACY = PROJECT_ROOT / "data" / "slm_training"
 DEFAULT_MODEL = "qwen-1.5b"
 
 MODEL_REGISTRY: Dict[str, Dict] = {
@@ -193,19 +196,137 @@ def load_dataset_split(data_path: Path, split: str, tokenizer, chat_format: str)
     return Dataset.from_list(records)
 
 
-def setup_lora_config(rank: int = 16, alpha: int = 32):
-    """Create LoRA configuration targeting attention + MLP projections."""
+def detect_lora_target_modules(model_path: str) -> List[str]:
+    """
+    Auto-detect LoRA target modules from model config.json.
+
+    Reads the model's config.json (without loading weights) and maps the
+    model_type / architectures to the correct linear layer names for LoRA.
+    Falls back to a safe universal set if the architecture is unknown.
+
+    Args:
+        model_path: Local path or HuggingFace repo_id
+
+    Returns:
+        List of module name patterns to inject LoRA adapters into
+    """
+    # Architecture -> known target_modules mapping
+    # Covers most decoder-only transformer variants used for SLM fine-tuning
+    ARCH_TO_TARGETS: Dict[str, List[str]] = {
+        # Qwen2 / Qwen2.5 family
+        "qwen2": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        "qwen2moe": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        # Llama / Llama-2 / Llama-3 family
+        "llama": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        # Mistral / Mixtral
+        "mistral": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        "mixtral": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        # Phi / Phi-3
+        "phi": ["q_proj", "k_proj", "v_proj", "dense", "fc1", "fc2"],
+        "phi3": ["qkv_proj", "o_proj", "gate_up_proj", "down_proj"],
+        # Gemma / Gemma2
+        "gemma": ["q_proj", "k_proj", "v_proj", "o_proj"],
+        "gemma2": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        # GPT-2
+        "gpt2": ["c_attn", "c_proj", "c_fc"],
+        # OPT
+        "opt": ["q_proj", "k_proj", "v_proj", "out_proj", "fc1", "fc2"],
+        # Falcon
+        "RefinedWeb": ["query_key_value", "dense", "dense_h_to_4h", "dense_4h_to_h"],
+        "falcon": ["query_key_value", "dense", "dense_h_to_4h", "dense_4h_to_h"],
+    }
+
+    # Safest universal fallback (works for most LlamaForCausalLM-derived models)
+    UNIVERSAL_FALLBACK = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
+    import json
+    from pathlib import Path
+
+    config_candidates = [
+        Path(model_path) / "config.json",   # local path
+    ]
+
+    model_config: Optional[Dict] = None
+
+    # Try loading local config.json first (fast, no download)
+    for config_path in config_candidates:
+        if config_path.exists():
+            try:
+                model_config = json.loads(config_path.read_text(encoding="utf-8"))
+                logger.info(f"Loaded model config from {config_path}")
+                break
+            except Exception as exc:
+                logger.warning(f"Failed to read {config_path}: {exc}")
+
+    # If not local, fetch from HuggingFace Hub (config only, no weights)
+    if model_config is None:
+        try:
+            from huggingface_hub import hf_hub_download
+            tmp = hf_hub_download(repo_id=model_path, filename="config.json")
+            model_config = json.loads(Path(tmp).read_text(encoding="utf-8"))
+            logger.info(f"Fetched config.json from HuggingFace: {model_path}")
+        except Exception as exc:
+            logger.warning(f"Could not fetch config.json from {model_path}: {exc}")
+
+    if model_config is None:
+        logger.warning(
+            f"Could not load config.json for {model_path}. "
+            f"Using universal LoRA target_modules: {UNIVERSAL_FALLBACK}"
+        )
+        return UNIVERSAL_FALLBACK
+
+    # Extract architecture identifier
+    model_type = model_config.get("model_type", "").lower()
+    architectures = [a.lower() for a in model_config.get("architectures", [])]
+
+    # Try model_type first, then architecture class names
+    candidates = [model_type] + architectures
+    for cand in candidates:
+        for arch_key, targets in ARCH_TO_TARGETS.items():
+            if arch_key.lower() in cand:
+                logger.info(
+                    f"Detected architecture '{arch_key}' for '{model_type}' "
+                    f"-> target_modules: {targets}"
+                )
+                return targets
+
+    logger.warning(
+        f"Unknown architecture: model_type='{model_type}', architectures={architectures}. "
+        f"Using universal fallback: {UNIVERSAL_FALLBACK}. "
+        "To get exact modules, inspect model.named_modules() after loading."
+    )
+    return UNIVERSAL_FALLBACK
+
+
+def setup_lora_config(
+    rank: int = 16,
+    alpha: int = 32,
+    target_modules: Optional[List[str]] = None,
+):
+    """Create LoRA configuration targeting attention + MLP projections.
+
+    Args:
+        rank: LoRA rank (r). Higher = more capacity, more VRAM.
+        alpha: LoRA alpha scaling factor (typically 2x rank).
+        target_modules: Module names to inject LoRA into.
+                        If None, uses default Qwen/Llama set.
+                        Use detect_lora_target_modules() for automatic detection.
+    """
     from peft import LoraConfig, TaskType
+
+    # Default target_modules for Qwen2/Llama3 (works for all models in MODEL_REGISTRY)
+    default_targets = [
+        "q_proj", "k_proj", "v_proj", "o_proj",
+        "gate_proj", "up_proj", "down_proj",
+    ]
+    modules = target_modules if target_modules is not None else default_targets
 
     return LoraConfig(
         task_type=TaskType.CAUSAL_LM,
         r=rank,
         lora_alpha=alpha,
         lora_dropout=0.05,
-        target_modules=[
-            "q_proj", "k_proj", "v_proj", "o_proj",
-            "gate_proj", "up_proj", "down_proj",
-        ],
+        target_modules=modules,
         bias="none",
     )
 
@@ -318,8 +439,11 @@ def train(
         train_dataset = train_dataset.select(range(min(4, len(train_dataset))))
         val_dataset = val_dataset.select(range(min(2, len(val_dataset))))
 
-    # LoRA config — passed directly to SFTTrainer (trl 0.29 API)
-    lora_config = setup_lora_config(rank=lora_rank)
+    # LoRA config — auto-detect target_modules from model architecture
+    # This ensures correct module names whether using Qwen, Llama, Phi, Gemma, etc.
+    detected_targets = detect_lora_target_modules(model_path)
+    logger.info(f"Auto-detected LoRA target_modules: {detected_targets}")
+    lora_config = setup_lora_config(rank=lora_rank, target_modules=detected_targets)
 
     # SFTConfig replaces TrainingArguments for trl 0.29+
     sft_config = SFTConfig(

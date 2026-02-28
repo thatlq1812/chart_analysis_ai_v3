@@ -1,0 +1,13 @@
+{
+  "model_key": "qwen-0.5b",
+  "base_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "lora_rank": 16,
+  "epochs": 3,
+  "batch_size": 2,
+  "learning_rate": 0.0002,
+  "max_length": 512,
+  "use_4bit": true,
+  "train_samples": 7763,
+  "val_samples": 970,
+  "completed_at": "2026-02-28T19:21:49.152523"
+}
