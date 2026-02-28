@@ -716,7 +716,7 @@ class GeometricMapper:
             r_squared = 1.0 - (ss_res / ss_tot)
         
         residual_std = np.std(inlier_values - predicted)
-        outliers_removed = n - best_num_inliers
+        outliers_removed = int(n - best_num_inliers)  # cast: np.int64 -> int
         
         # Confidence based on inlier ratio and R-squared
         inlier_ratio = best_num_inliers / n
@@ -800,7 +800,7 @@ class GeometricMapper:
         residuals = np.abs(values - predicted)
         threshold = 2.0 * residual_std
         inliers = residuals < threshold
-        outliers_removed = n - np.sum(inliers)
+        outliers_removed = int(n - np.sum(inliers))  # cast: np.int64 -> int
         
         scale = ScaleMapping(
             slope=slope,

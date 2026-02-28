@@ -447,7 +447,67 @@ The MASTER_CONTEXT.md file should follow this structure:
 - [Documentation](url)
 ```
 
-## 6. Weekly Report Template
+## 6. Report & Document Management Rules
+
+### 6.1. Report Types and Placement
+
+| Report Type | Location | Naming Convention | Trigger |
+| --- | --- | --- | --- |
+| Weekly progress | `docs/progress/` | `WEEKLY_PROGRESS_YYYYMMDD.md` | Every Sunday (or start of work week) |
+| Data pipeline | `docs/reports/` | `data_pipeline_report_vN.md` | After major data stage completion |
+| Failure analysis | `docs/reports/` | `failure_analysis_<component>_vN.md` | When bug/regression is resolved |
+| Experiment log | `docs/reports/` | `experiment_<name>_YYYYMMDD.md` | After each training run |
+| Architecture decision | `docs/architecture/` | `ADR_<topic>.md` | When a major design decision is made |
+
+### 6.2. When to Update Existing Docs vs Create New
+
+| Situation | Action |
+| --- | --- |
+| Tech stack addition/removal | Update `MASTER_CONTEXT.md` + relevant architecture doc |
+| Bug discovered and fixed | Create `failure_analysis_*.md` + update MASTER_CONTEXT status |
+| Phase transition (e.g., data done, training starts) | Update `MASTER_CONTEXT.md` version |
+| Training run completed | Create `experiment_*.md` + update `module-training.instructions.md` status |
+| New script added | Update `scripts/README.md` + relevant module instruction |
+| Script archived/removed | Update `scripts/README.md`, mark `[DEPRECATED]` in relevant instruction |
+| New week starts | Create new `WEEKLY_PROGRESS_*.md` |
+
+**Rules:**
+- NEVER silently delete or rename a document without updating references to it
+- ALWAYS bump the version table at the top of a doc when making significant edits
+- DO NOT create a new report for minor single-line fixes; use inline comments instead
+- Reports in `docs/reports/` are write-once; to revise, increment the version table header
+
+### 6.3. Instruction File Update Rules
+
+When updating `.github/instructions/*.instructions.md`:
+
+| Condition | What to Update |
+| --- | --- |
+| Module status changes | Update the status tables in the relevant module instruction |
+| Dataset numbers change | Update `module-training.instructions.md` Section 3.1 |
+| New file/script created | Add to the "Key Files" section of the appropriate instruction |
+| File archived | Mark `[DEPRECATED]` in Key Files table with archive path |
+| Command syntax changes | Update all code blocks in Step-by-Step sections |
+| Config structure changes | Update YAML examples to match real config |
+
+**CRITICAL:** Instruction files are not just documentation — they are loaded by AI agents as context. Outdated values (wrong sample counts, wrong paths, wrong status) directly cause incorrect agent behavior. Keep them accurate.
+
+### 6.4. MASTER_CONTEXT Update Triggers
+
+The `docs/MASTER_CONTEXT.md` MUST be updated when:
+
+1. A development phase completes or starts
+2. A major dataset milestone is reached (e.g., extraction 100%)
+3. A trained model is ready for integration
+4. The test count changes significantly
+5. A new permanent tool/resource is added to the stack
+
+Bump the version as follows:
+- Patch (x.y.**Z**): Typo fixes, wording improvements
+- Minor (x.**Y**.0): Status updates, new scripts, new docs
+- Major (**X**.0.0): Phase transitions, architecture changes
+
+## 7. Weekly Report Template
 
 ```markdown
 # Week N Progress Report

@@ -2,6 +2,7 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 3.0.0 | 2026-03-01 | That Le | Data pipeline complete, SLM training dataset v3 ready (268,799 samples) |
 | 2.0.0 | 2026-02-28 | That Le | Production-ready architecture upgrade (AI Routing, SLM Training, Serving) |
 | 1.7.0 | 2026-02-04 | That Le | Project cleanup, documentation refresh |
 | 1.6.0 | 2026-01-30 | That Le | Stage 4 core implemented (ValueMapper + PromptBuilder) |
@@ -24,11 +25,13 @@
 | **Core Philosophy** | Hybrid Intelligence (Neural + Symbolic) |
 | **Primary Method** | YOLO Detection + Geometric Mapping + Multi-Provider AI Reasoning |
 | **Language** | Python 3.11+ |
-| **Current Phase** | Phase 2 → Phase 3 Transition (Architecture Upgrade) |
+| **Current Phase** | Phase 3 - SLM Training (Data Pipeline Complete) |
 | **Target** | Academic Thesis + Research Paper |
 | **Tests** | 176/177 passing (99.4%) |
 | **OCR Cache** | 46,910 entries (~600MB) |
 | **Instructions** | 13 files (3-tier hierarchy) |
+| **Stage3 Dataset** | 32,364 charts extracted (100%, 0% error) |
+| **SLM Train Dataset** | 268,799 samples (v3, all 8 types, ready) |
 
 ---
 
@@ -450,7 +453,39 @@ Reports generated:
 - [STAGE3_COMPLETION_SUMMARY.md](reports/STAGE3_COMPLETION_SUMMARY.md)
 - [STAGE3_CLASSIFIED_TEST_REPORT.md](reports/STAGE3_CLASSIFIED_TEST_REPORT.md)
 
-### 5.3. Phase 3: Production Architecture [NEW - v2.0.0]
+### 5.3. Phase 2b: Data Pipeline & SLM Dataset [COMPLETED - v3.0.0]
+
+Completed 2026-03-01. Stage 3 extraction complete, training dataset v3 built and validated.
+
+| Task | Status | Notes |
+| --- | --- | --- |
+| Stage 3 batch extraction | [DONE] | 32,364/32,364 files, 0% corruption, atomic write + float cast fix |
+| Stage 3 quality audit | [DONE] | All 8 types healthy, axis info 69.9% coverage |
+| QA cross-validation | [DONE] | 87% OCR text overlap between Stage3 features and QA answers |
+| SLM training v3 build | [DONE] | 268,799 samples via `prepare_slm_training_v3.py` (dry-run validated) |
+| Data pipeline report | [DONE] | `docs/reports/data_pipeline_report_v1.md` (9 sections, academic grade) |
+| Instructions update | [DONE] | docs.instructions.md, module-training.instructions.md updated to v1.1.0 |
+
+**V3 Dataset Breakdown:**
+
+| Type | Samples | Notes |
+| --- | --- | --- |
+| line | 108,419 | Highest volume |
+| scatter | 52,163 | |
+| bar | 47,330 | |
+| heatmap | 33,373 | |
+| box | 13,948 | |
+| pie | 7,408 | |
+| histogram | 4,159 | |
+| area | 1,999 | Fewest (617 source charts) |
+| **Total** | **268,799** | 9.9x increase over v2 |
+
+**Build command:**
+```bash
+.venv/Scripts/python.exe scripts/prepare_slm_training_v3.py --output-dir data/slm_training_v3
+```
+
+### 5.4. Phase 3: Production Architecture [IN PROGRESS - v2.0.0]
 
 Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-platform.
 
@@ -459,8 +494,8 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 | AI Adapter Pattern design | [DONE] | BaseAIAdapter ABC → GeminiAdapter, LocalSLMAdapter, OpenAIAdapter |
 | AI Router with fallback chains | [DONE] | Confidence-based routing, health checks |
 | SLM Training Framework design | [DONE] | Qwen-2.5-1.5B + LoRA, 4-stage curriculum |
-| Training scripts | [EXISTS] | train_slm_lora.py (320L), prepare_slm_training_data.py (467L) |
-| Training data | [EXISTS] | 84 conversations (bar only), needs expansion to all 8 types |
+| Training scripts | [EXISTS] | train_slm_lora.py (320L), prepare_slm_training_v3.py (PRIMARY) |
+| Training data | [READY] | 268,799 samples (all 8 types), saved to `data/slm_training_v3/` |
 | Serving Layer design | [DONE] | FastAPI + Celery + Redis + SQLAlchemy |
 | CI/CD Pipeline design | [DONE] | workflow.instructions.md with YAML specs |
 | Instruction system upgrade | [DONE] | 3-tier hierarchy, 13 instruction files |
@@ -483,11 +518,11 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 - [UPGRADE_REPORT_PRODUCTION_READY.md](reports/UPGRADE_REPORT_PRODUCTION_READY.md) - Full gap analysis
 - `.github/instructions/README.md` - Instruction hierarchy overview
 
-### 5.4. Upcoming Phases
+### 5.5. Upcoming Phases
 
 | Phase | Focus | Timeline |
 | --- | --- | --- |
-| **SLM Training** | Expand training data + fine-tune Qwen2.5 | Next |
+| **SLM Training** | Fine-tune Qwen2.5-1.5B on 268,799 samples (v3 dataset) | CURRENT |
 | **AI Router** | Implement `src/core_engine/ai/` with adapters | After SLM |
 | **Stage 5** | Parallel processing, insights generation | After Router |
 | **Serving Layer** | FastAPI + Celery + Docker | After Stage 5 |
@@ -498,8 +533,8 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 | Item | Description |
 | --- | --- |
 | Base Model | Qwen2.5-1.5B-Instruct (PRIMARY), Llama-3.2-1B/3B (CANDIDATES) |
-| Current Data | 84 conversations (bar charts only) |
-| Target Data | 1,000+ conversations (all 8 chart types) |
+| Current Data | 268,799 samples (all 8 types, 69.9% with axis info) |
+| Data Location | `data/slm_training_v3/` (train/val/test split by chart_id) |
 | Training Type | QLoRA (4-bit quantization + LoRA rank 16) |
 | Curriculum | 4 stages (Structure → Numeric → Reasoning → Robustness) |
 | Hardware | RTX 3060 6GB VRAM |
@@ -507,7 +542,7 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 | Evaluation | JSON valid rate >95%, field accuracy >90%, latency <2s |
 | Full Design | See `module-training.instructions.md` |
 
-### 5.4. OCR Cache Status (2026-02-04)
+### 5.6. OCR Cache Status (2026-02-04)
 
 | Metric | Value |
 | --- | --- |
@@ -530,7 +565,7 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 | area | ~1,200 | Complete |
 | heatmap | ~700 | Complete |
 
-### 5.5. Test Coverage (2026-02-04)
+### 5.7. Test Coverage (2026-02-04)
 
 | Test Suite | Passed | Failed | Total |
 | --- | --- | --- | --- |
@@ -541,7 +576,7 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 
 **Known Issue:** 1 test fails due to LINE chart classified as AREA (edge case)
 
-### 5.6. Project Cleanup (2026-02-04)
+### 5.8. Project Cleanup (2026-02-04)
 
 **Deleted:**
 - Root trash files: `chatlog*.md`, `log3.md`, `nul`

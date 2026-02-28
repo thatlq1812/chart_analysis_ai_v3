@@ -1811,3 +1811,132 @@ data chartqa
 [27/01/2026 22:45:08] Tlq: Vậy thôi
 [27/01/2026 22:46:23] Hoàng: T dang finetune deplot
 [27/01/2026 22:46:28] Hoàng: =))
+[27/01/2026 22:46:28] Hoàng: =))
+[27/01/2026 22:49:06] Tlq: T kh đụng cái deplot đâu đấy
+[27/01/2026 22:49:35] Hoàng: Oce
+[27/01/2026 22:49:40] Hoàng: M coi cai con LLm đi
+[27/01/2026 22:49:46] Tlq: Chốt input output để merge được là được
+[27/01/2026 22:50:25] Hoàng: gio cai phan data extraction
+[27/01/2026 22:50:27] Hoàng: mà làm ngon
+[27/01/2026 22:50:32] Hoàng: là do án ngon
+[28/01/2026 00:55:49] Tlq: [Photo] 
+[28/01/2026 00:56:12] Tlq: [Photo] 
+[28/01/2026 00:56:44] Tlq: [Photo] 
+[28/01/2026 00:57:32] Hoàng: Nhớ lọc ra xg mốt báo vs thay nha m
+[28/01/2026 00:59:48] Tlq: Báo cái gì
+[28/01/2026 01:01:14] Hoàng: bao so luong
+[28/01/2026 01:01:35] Hoàng: mot review 2 cx nói hay s ay
+[29/01/2026 04:52:50] Tlq: [File: WEEKLY_PROGRESS_20260129.pdf]
+[29/01/2026 14:42:58] Hoàng: @Tlq ủa chạy dc extraction k
+[29/01/2026 14:43:10] Hoàng: Chạy thu data tieng viet các thử chú
+[29/01/2026 14:50:38] Tlq: Thử làm gì
+[29/01/2026 14:50:43] Tlq: Đổi ocr engine là đọc được
+[29/01/2026 14:51:03] Hoàng: chưa chắc đâu
+[29/01/2026 14:51:04] Hoàng: ::))
+[29/01/2026 14:52:13] Tlq: /-strong
+[29/01/2026 17:56:32] Tlq: [Photo] 
+[29/01/2026 17:56:36] Tlq: Bắt đầu mất tiền r nhé
+[29/01/2026 17:57:02] Hoàng: nay la gi v
+[29/01/2026 17:57:45] Hoàng: ngưng đi ch chốt bộ data mà
+[29/01/2026 17:58:33] Hoàng: nào chot 1 tập data r chạy api
+[29/01/2026 18:31:10] Tlq: mỗi cái data chốt tới chốt lui hơn 1 tháng r đó
+[29/01/2026 18:40:05] Hoàng: thì train con LLM là ve sau mà m
+[29/01/2026 18:41:00] Hoàng: @Mai
+[29/01/2026 18:41:27] Hoàng: T còn ch biet co ket hop vs bộ chartqa ko
+[29/01/2026 18:46:16] Hoàng: vs data ảnh tieng việt nữa ::))
+[29/01/2026 21:33:12] Hoàng: @Tlq ê that up data m len drive di gui t xem
+[29/01/2026 21:33:26] Hoàng: R t add data cac thứ vo r gui lại r m finetune
+[29/01/2026 21:44:19] Tlq: add là add cái gì
+[29/01/2026 21:44:23] Tlq: cấu trúc thế nào
+[29/01/2026 21:44:26] Tlq: m đang có sẵn cái gì
+[29/01/2026 21:44:33] Hoàng: ảnh
+[29/01/2026 21:44:35] Hoàng: m gui ảnh th
+[29/01/2026 21:47:59] Tlq: là m sẽ làm những gì với data đó?
+[29/01/2026 21:50:51] Hoàng: T đọc bộ data đó
+[29/01/2026 21:51:29] Tlq: r lam gi
+[29/01/2026 21:53:37] Hoàng: Chú vô day đọc nè 
+https://huggingface.co/datasets/5CD-AI/Viet-Chart-VQA
+[29/01/2026 21:53:53] Hoàng: Mấy chart nó đơn giản chuẩn th chart bài báo khoa học nó ket hợp nó nhiễu
+[29/01/2026 21:57:31] Tlq: t reject y kien cua m
+[29/01/2026 21:57:45] Hoàng: Chứ m muon sao
+[29/01/2026 22:00:01] Tlq: neu m follow theo structure data do
+[29/01/2026 22:00:05] Tlq: Thi m cu chay theo cai data do
+[29/01/2026 22:00:11] Tlq: Merge data t lam la merge the nao
+[29/01/2026 22:00:17] Tlq: No van la data tu paper thoi
+[29/01/2026 22:01:25] Hoàng: Ủa format chuẩn mà chỉ chưa có Question answer th
+[29/01/2026 22:06:36] Tlq: cai data cua m qua sach va qua nho be de co the train cho viec test thuc te
+[29/01/2026 22:07:30] Tlq: M cu thu tao cau hoi, train va test di
+[29/01/2026 22:07:32] Tlq: M se thay thoi
+[29/01/2026 22:07:58] Hoàng: Nhưng mà từ đầu làm là đơn biểu đồ xong phải đưa qua bước extract
+[29/01/2026 22:08:09] Hoàng: Nma bar kết hợp line các thứ sao extract
+[29/01/2026 22:08:35] Tlq: thi lam phan xu ly cho viec do
+[29/01/2026 22:09:38] Hoàng: Làm được thì tốt th nma data extraction phần khó nhất project này đang mắc ở đó
+[29/01/2026 22:10:08] Tlq: full pipeline cua m dang lam tu dau cho den buoc do la gi
+[29/01/2026 22:10:56] Hoàng: [Photo] 
+[29/01/2026 22:11:10] Hoàng: Phần extraction giờ có 2 hướng Xài model hoặc tự xử lý
+[29/01/2026 22:11:27] Hoàng: Model thì phải train tiếng việt còn hướng tự xử lý thì hơi khó
+[29/01/2026 22:11:39] Hoàng: T tự xử lý duoc bar th còn mắc line pie
+[29/01/2026 22:12:22] Hoàng: Mình cần tập trung vo xử lý cái data extraction này nè tại nó chạy ra sạch ổn thì con LLM dựa vô đó trả lời
+[29/01/2026 22:13:49] Hoàng: Còn có phương pháp là cho con LLM nhìn ảnh rồi mình hỏi nó tự trả lời là end2end
+[29/01/2026 22:14:02] Hoàng: CHú muon theo hướng nào cũng được á
+[29/01/2026 22:14:19] Hoàng: Chủ yếu là có kết quả ổn là oce
+[29/01/2026 22:16:02] Hoàng: Finetuning con LLM nhìn ảnh cũng ok ko gọi api là ổn
+[29/01/2026 22:19:14] Tlq: vay tu dau den gio m da nghien cuu cai gi, da lam duoc cai gi, chay duoc cai gi, co module nao xu ly tot khong
+[29/01/2026 22:25:10] Hoàng: Từ đầu giờ t nghiên cứu đọc báo ra dc mấy pphap này 
+Xong chạy pipeline nó chạy ok hết
+Giờ đến tiếng việt, 
+deplot đang train tiếng việt( mặc định nó là tiếng anh) 
+còn hướng tự làm thuật toán các kiểu thì phải train yolo để có plot area t train luôn rồi và xử lý bar tốt, pie và line chưa ok
+[29/01/2026 22:27:12] Hoàng: Thg deplot nó khôn sẵn để làm mấy cái này nhưng mà nó ko duoc học tiếng việt nên khi có ảnh tiếng việt nó rất loạn
+[29/01/2026 22:28:01] Hoàng: GIo chú làm kiểu gì cũng được chú chạy test ổn ảnh tiếng việt là ok
+[29/01/2026 22:28:10] Hoàng: Code bữa chú đó chú chạy thử xem ok k
+[29/01/2026 22:39:53] Hoàng: https://www.kaggle.com/datasets/taitruong270/fine-tune-vintern1b-chart-vqa-model
+[29/01/2026 22:40:20] Hoàng: O day bon này co train model nhìn ảnh nói luôn mình có the tham khảo
+[29/01/2026 22:45:28] Tlq: M
+[29/01/2026 22:45:32] Tlq: Và chú Leader
+[29/01/2026 22:45:41] Tlq: Xem xét đọc nhiều nội dung hơn
+[29/01/2026 22:45:56] Tlq: Tự code chạy thử full pipeline từ input image chart ra output table đi
+[29/01/2026 22:45:58] Tlq: Tệ cũng được
+[29/01/2026 22:46:05] Tlq: Chỉ như thế mới biết được vấn đề ở đâu
+[29/01/2026 22:46:15] Hoàng: CHạy r chứ
+[29/01/2026 22:46:17] Hoàng: ::))
+[29/01/2026 22:46:59] Hoàng: Van de là ở extract data
+[29/01/2026 22:49:40] Hoàng: @Tlq cho t biết hướng đi m đi kiểu m se làm nhu nào
+[29/01/2026 22:50:07] Hoàng: Theo code ở tren m gửi là xử lý chart bằng code dko
+[29/01/2026 22:50:14] Hoàng: Kiểu geo
+[29/01/2026 22:50:31] Tlq: Hiện tại không phải là ai làm theo ai
+[29/01/2026 22:50:39] Tlq: Mà là ai làm được cái tốt nhất và chạy được thì báo
+[29/01/2026 22:50:46] Tlq: Cứ nghiên cứu kĩ đi
+[29/01/2026 22:50:49] Hoàng: CHuẩn
+[29/01/2026 22:50:52] Hoàng: Chú nói chuẩn
+[29/01/2026 22:51:16] Hoàng: CHú làm ra output chuẩn nho hú nha
+[29/01/2026 22:52:48] Tlq: Cái đó không quan trọng
+[29/01/2026 22:52:59] Tlq: Nếu m thích thì làm được gì cứ export ra pdf rồi quăng vô đây
+[29/01/2026 22:53:03] Tlq: @Mai có làm cùng m k
+[29/01/2026 22:53:09] Hoàng: Mai t k biet
+[29/01/2026 22:53:21] Tlq: T nhắc rồi đấy
+[31/01/2026 14:21:51] Hoàng: [Photo] 
+[31/01/2026 14:21:51] Hoàng: [Photo] 
+[31/01/2026 14:21:51] Hoàng: [Photo] 
+[31/01/2026 14:21:52] Hoàng: [Photo] 
+[31/01/2026 14:22:05] Hoàng: Ổn v
+[31/01/2026 14:22:32] Hoàng: T sử dụng PaddleOCR VL1.5
+[31/01/2026 15:21:02] Hoàng: @Tlq chú thấy ok k nếu mình vừa cho model nhận ảnh,quesion, table
+[31/01/2026 15:21:17] Hoàng: Model QA ấy
+[03/02/2026 21:03:47] Tlq: @Hoàng không
+[03/02/2026 21:04:53] Tlq: nếu đã đẩy cả ảnh vào thì đưa table vào làm gì
+[04/02/2026 10:47:22] Hoàng: Tại vì nó chuẩn hơn
+[04/02/2026 10:47:37] Hoàng: Model nhỏ dễ sai số liệu
+[04/02/2026 10:55:28] Hoàng: Mà làm lạ lạ khác ngta viết báo cx dc
+[04/02/2026 10:55:29] Hoàng: ::))
+[04/02/2026 18:12:24] Tlq: Vậy m tự thử nghiệm đi
+[04/02/2026 18:12:41] Tlq: Xem chuẩn hơn là thế nào
+[07/02/2026 06:59:51] Tlq: 30k ảnh nhé
+[07/02/2026 07:00:02] Tlq: Từ 200k ảnh lộn xộn kia
+[11/02/2026 17:43:39] Tlq: [File: chart_analysis_ai_v3.rar]
+[11/02/2026 17:43:49] Tlq: Gửi mây chú pipeline t làm được nhé
+[11/02/2026 17:43:56] Tlq: Ở mức tạm ổn th
+[11/02/2026 17:44:13] Tlq: Mấy chú cứ im im t cũng kh biết mấy chú đang làm gì nữa
+[11/02/2026 17:49:48] Hoàng: Bữa nói đó chạy dc extract data r ch train th
+[11/02/2026 17:53:30] Tlq: ok
+[21/02/2026 13:21:52] Tlq: Bao giờ bắt đầu làm tiếp thì bảo nhé

@@ -34,12 +34,30 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 import time
 import traceback
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
+
+
+class _NumpyEncoder(json.JSONEncoder):
+    """JSON encoder that converts numpy scalar and array types to Python natives."""
+
+    def default(self, obj: Any) -> Any:  # type: ignore[override]
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        return super().default(obj)
 
 # Add project root to path BEFORE multiprocessing import
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -217,8 +235,18 @@ def process_single_image(task: Tuple[Path, Path, str]) -> Dict[str, Any]:
         }
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(output_data, f, indent=2, ensure_ascii=False)
+        # Atomic write: write to temp file first, then rename.
+        # Prevents partially-written files from being permanently skipped
+        # on restart (skip-existing logic would treat them as done).
+        tmp_path = output_path.with_suffix(".tmp")
+        try:
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(output_data, f, indent=2, ensure_ascii=False,
+                          cls=_NumpyEncoder)
+            os.replace(tmp_path, output_path)  # atomic on same filesystem
+        except Exception:
+            tmp_path.unlink(missing_ok=True)  # clean up on failure
+            raise
 
         return {
             "status": "success",
