@@ -21,6 +21,19 @@ Usage:
     # Custom hyperparameters:
     python scripts/train_slm_lora.py --epochs 5 --batch-size 2 --lora-rank 32
 
+    # --- INCREMENTAL / RESUME TRAINING ---
+    # Session 1: train epoch 1
+    python scripts/train_slm_lora.py --model llama-1b --data-dir data/slm_training_v3 --epochs 1
+
+    # Session 2: resume and train up to epoch 2 (auto-detects latest checkpoint)
+    python scripts/train_slm_lora.py --model llama-1b --data-dir data/slm_training_v3 --epochs 2 --resume
+
+    # Session 3: resume up to epoch 3
+    python scripts/train_slm_lora.py --model llama-1b --data-dir data/slm_training_v3 --epochs 3 --resume
+
+    # Resume from explicit checkpoint path:
+    python scripts/train_slm_lora.py --epochs 2 --resume-from-checkpoint models/slm/llama-3.2-1b-instruct-chart-lora/checkpoint-28500
+
 Requirements:
     pip install transformers peft trl datasets accelerate bitsandbytes
 
@@ -35,7 +48,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import torch
 
@@ -54,11 +67,11 @@ logger = logging.getLogger(__name__)
 # Model registry (mirrors download_models.py)
 # ─────────────────────────────────────────────────────────────────────────────
 MODELS_DIR = PROJECT_ROOT / "models" / "slm"
-# v2 dataset: 32k balanced samples (all 8 chart types, Gemini-2.0-flash annotations)
-# v1 dataset:  9.7k line-heavy samples (legacy, to be removed after v2 training completes)
-DATA_PATH = PROJECT_ROOT / "data" / "slm_training_v2"
-DATA_PATH_LEGACY = PROJECT_ROOT / "data" / "slm_training"
-DEFAULT_MODEL = "qwen-1.5b"
+# v3 dataset: 268k samples (all 8 chart types, Stage3 geometric features + axis info)
+# v2 dataset: 32k balanced samples (legacy baseline)
+DATA_PATH = PROJECT_ROOT / "data" / "slm_training_v3"
+DATA_PATH_LEGACY = PROJECT_ROOT / "data" / "slm_training_v2"
+DEFAULT_MODEL = "llama-1b"
 
 MODEL_REGISTRY: Dict[str, Dict] = {
     "qwen-0.5b": {
@@ -379,6 +392,34 @@ def load_model_and_tokenizer(model_path: str, trust_remote_code: bool, use_4bit:
     return model, tokenizer
 
 
+def find_latest_checkpoint(output_dir: Path) -> Optional[str]:
+    """
+    Scan output_dir for checkpoint-* subdirectories and return the path
+    with the highest step number.
+
+    Args:
+        output_dir: Training output directory (e.g. models/slm/llama-3.2-1b-instruct-chart-lora)
+
+    Returns:
+        Absolute path string of the latest checkpoint, or None if not found.
+    """
+    if not output_dir.exists():
+        return None
+    checkpoints = sorted(
+        [
+            d for d in output_dir.iterdir()
+            if d.is_dir() and d.name.startswith("checkpoint-")
+            and d.name.split("-")[-1].isdigit()
+        ],
+        key=lambda d: int(d.name.split("-")[-1]),
+    )
+    if not checkpoints:
+        return None
+    latest = checkpoints[-1]
+    logger.info(f"Auto-detected latest checkpoint: {latest}")
+    return str(latest)
+
+
 def train(
     model_key: str = DEFAULT_MODEL,
     data_path: Path = DATA_PATH,
@@ -392,15 +433,21 @@ def train(
     eval_steps: int = 50,
     save_steps: int = 100,
     smoke_test: bool = False,
+    resume_from_checkpoint: Optional[str] = None,
 ) -> None:
     """
     Run LoRA fine-tuning with trl 0.29 SFTTrainer + SFTConfig API.
+
+    Supports incremental training: call with --epochs N --resume to continue
+    from a previous session's checkpoint. HuggingFace Trainer automatically
+    skips already-completed epochs and trains only the remaining ones.
 
     Args:
         model_key: Key from MODEL_REGISTRY
         data_path: Directory with train.json / val.json
         output_dir: Where to save adapter and training artifacts
-        epochs: Training epochs
+        epochs: Total epochs target (not epochs *this run*). If resuming from
+                epoch 1, set epochs=2 to train only epoch 2.
         batch_size: Per-device batch size
         learning_rate: Peak LR (cosine schedule)
         max_length: Maximum token sequence length
@@ -409,6 +456,8 @@ def train(
         eval_steps: Run eval every N steps
         save_steps: Checkpoint every N steps
         smoke_test: If True, train for 2 steps only and exit
+        resume_from_checkpoint: Path to checkpoint dir, or None for fresh start.
+                                 Use find_latest_checkpoint() to auto-detect.
     """
     from trl import SFTConfig, SFTTrainer
 
@@ -489,8 +538,15 @@ def train(
     logger.info("Trainable parameters:")
     trainer.model.print_trainable_parameters()
 
+    # Log resume status clearly
+    if resume_from_checkpoint:
+        logger.info(f"Resuming from checkpoint: {resume_from_checkpoint}")
+        logger.info(f"Target total epochs: {epochs} (trainer will skip completed epochs)")
+    else:
+        logger.info(f"Fresh training run. Target epochs: {epochs}")
+
     logger.info("Starting training...")
-    trainer.train()
+    trainer.train(resume_from_checkpoint=resume_from_checkpoint)
 
     if smoke_test:
         logger.info("Smoke test passed — pipeline is functional")
@@ -502,24 +558,42 @@ def train(
     trainer.save_model(str(final_dir))
     tokenizer.save_pretrained(str(final_dir))
 
-    # Persist training metadata
+    # Load existing info if resuming, then update
+    info_path = output_dir / "training_info.json"
+    existing_info: Dict = {}
+    if info_path.exists():
+        try:
+            with open(info_path) as f:
+                existing_info = json.load(f)
+        except Exception:
+            pass
+
+    sessions = existing_info.get("sessions", [])
+    sessions.append({
+        "epochs_target": epochs,
+        "resumed_from": resume_from_checkpoint,
+        "completed_at": datetime.now().isoformat(),
+    })
+
     info = {
         "model_key": model_key,
         "base_model": entry["repo_id"],
         "lora_rank": lora_rank,
-        "epochs": epochs,
+        "total_epochs_target": epochs,
         "batch_size": batch_size,
         "learning_rate": learning_rate,
         "max_length": max_length,
         "use_4bit": use_4bit,
         "train_samples": len(train_dataset),
         "val_samples": len(val_dataset),
-        "completed_at": datetime.now().isoformat(),
+        "sessions": sessions,
+        "last_updated": datetime.now().isoformat(),
     }
-    with open(output_dir / "training_info.json", "w") as f:
+    with open(info_path, "w") as f:
         json.dump(info, f, indent=2)
 
     logger.info(f"Training complete. Adapter saved to {final_dir}")
+    logger.info(f"Sessions logged: {len(sessions)} total")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -561,6 +635,19 @@ def main() -> None:
         action="store_true",
         help="Run 2 training steps to verify pipeline without downloading large models",
     )
+    resume_group = parser.add_mutually_exclusive_group()
+    resume_group.add_argument(
+        "--resume",
+        action="store_true",
+        help="Auto-detect and resume from the latest checkpoint in output-dir",
+    )
+    resume_group.add_argument(
+        "--resume-from-checkpoint",
+        type=str,
+        default=None,
+        metavar="CHECKPOINT_PATH",
+        help="Resume from an explicit checkpoint directory path",
+    )
     args = parser.parse_args()
 
     check_dependencies()
@@ -573,8 +660,26 @@ def main() -> None:
 
     if not args.data_dir.exists():
         logger.error(f"Data directory not found: {args.data_dir}")
-        logger.error("Run: python scripts/prepare_slm_training_data.py")
+        logger.error("Run: python scripts/prepare_slm_training_v3.py --output-dir data/slm_training_v3")
         sys.exit(1)
+
+    # Resolve checkpoint path for resume
+    checkpoint_path: Optional[str] = None
+    if args.resume_from_checkpoint:
+        checkpoint_path = args.resume_from_checkpoint
+    elif args.resume:
+        # Determine output_dir the same way train() does, to find checkpoints
+        effective_output_dir = args.output_dir
+        if effective_output_dir is None:
+            entry = MODEL_REGISTRY[args.model]
+            effective_output_dir = MODELS_DIR / f"{entry['local_name']}-chart-lora"
+        checkpoint_path = find_latest_checkpoint(effective_output_dir)
+        if checkpoint_path is None:
+            logger.error(
+                f"--resume specified but no checkpoints found in {effective_output_dir}. "
+                "Run without --resume for a fresh start."
+            )
+            sys.exit(1)
 
     train(
         model_key=args.model,
@@ -589,6 +694,7 @@ def main() -> None:
         eval_steps=args.eval_steps,
         save_steps=args.save_steps,
         smoke_test=args.smoke_test,
+        resume_from_checkpoint=checkpoint_path,
     )
 
 
