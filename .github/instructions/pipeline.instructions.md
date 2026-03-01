@@ -6,6 +6,7 @@ applyTo: 'src/core_engine/**'
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 1.1.0 | 2026-03-02 | That Le | Updated to reflect all 5 stages implemented, AI Router wired, 232 tests |
 | 1.0.0 | 2026-01-19 | That Le | Pipeline architecture and schema definitions |
 
 ## 1. Pipeline Architecture

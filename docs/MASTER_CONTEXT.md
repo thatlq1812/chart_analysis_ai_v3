@@ -2,6 +2,7 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 4.0.0 | 2026-03-02 | That Le | Full pipeline implemented, thesis complete (39 pages), 232 tests passing |
 | 3.0.0 | 2026-03-01 | That Le | Data pipeline complete, SLM training dataset v3 ready (268,799 samples) |
 | 2.0.0 | 2026-02-28 | That Le | Production-ready architecture upgrade (AI Routing, SLM Training, Serving) |
 | 1.7.0 | 2026-02-04 | That Le | Project cleanup, documentation refresh |
@@ -25,13 +26,15 @@
 | **Core Philosophy** | Hybrid Intelligence (Neural + Symbolic) |
 | **Primary Method** | YOLO Detection + Geometric Mapping + Multi-Provider AI Reasoning |
 | **Language** | Python 3.11+ |
-| **Current Phase** | Phase 3 - SLM Training (Data Pipeline Complete) |
+| **Current Phase** | Phase 3 - SLM Training |
 | **Target** | Academic Thesis + Research Paper |
-| **Tests** | 176/177 passing (99.4%) |
+| **Source Files** | 47 Python modules (~18,900 LOC) |
+| **Tests** | 232 tests passing (21 test files) |
 | **OCR Cache** | 46,910 entries (~600MB) |
 | **Instructions** | 13 files (3-tier hierarchy) |
 | **Stage3 Dataset** | 32,364 charts extracted (100%, 0% error) |
 | **SLM Train Dataset** | 268,799 samples (v3, all 8 types, ready) |
+| **Thesis** | 39 pages, 7 chapters, 25 visual assets, 0 LaTeX errors |
 
 ---
 
@@ -232,33 +235,72 @@ chart_analysis_ai_v3/
 |   +-- base.yaml               # Shared configuration
 |   +-- models.yaml             # Model paths & thresholds
 |   +-- pipeline.yaml           # Stage configuration
+|   +-- training.yaml           # SLM training config
+|   +-- yolo_chart_v3.yaml      # YOLO training config
 |   +-- secrets/                # API keys (gitignored)
 |
 +-- data/
 |   +-- academic_dataset/       # Arxiv chart images + metadata
-|   +-- raw/                    # Input files (PDF, images)
-|   +-- processed/              # Pipeline outputs
-|   +-- cache/                  # Intermediate results
-|   +-- output/                 # Stage reports
+|   |   +-- chart_qa_v2/        # QA pairs per chart type
+|   |   +-- classified_charts/  # Classified chart images
+|   |   +-- detected_charts/    # YOLO-detected charts
+|   |   +-- images/             # Raw extracted images
+|   |   +-- manifests/          # Processing manifests
+|   |   +-- metadata/           # Image metadata
+|   |   +-- stage3_features/    # Extracted features per chart
+|   +-- cache/                  # OCR cache (46,910 entries)
+|   +-- output/                 # Pipeline outputs
+|   +-- raw_pdfs/               # Input PDF files
 |   +-- samples/                # Demo/test samples
+|   +-- slm_training_v2/       # Training dataset v2 (32k)
+|   +-- slm_training_v3/       # Training dataset v3 (268,799 samples)
+|   +-- yolo_chart_detection/   # YOLO training data
 |
-+-- docs/                       # Documentation (see docs/README.md)
++-- docs/
 |   +-- MASTER_CONTEXT.md       # This file
+|   +-- CHANGELOG.md            # Change log
 |   +-- architecture/           # System design docs
+|   |   +-- PIPELINE_FLOW.md
+|   |   +-- STAGE3_EXTRACTION.md
+|   |   +-- STAGE4_REASONING.md
+|   |   +-- STAGE5_REPORTING.md
+|   |   +-- SYSTEM_OVERVIEW.md
 |   +-- guides/                 # How-to guides
+|   |   +-- QUICK_START.md
+|   |   +-- DEVELOPMENT.md
+|   |   +-- SLM_TRAINING_GUIDE.md
+|   |   +-- CHART_QA_GUIDE.md
+|   |   +-- ARXIV_DOWNLOAD_GUIDE.md
+|   +-- progress/               # Weekly progress reports
+|   +-- reports/                # Technical reports
+|   +-- thesis_capstone/        # LaTeX thesis (39 pages)
+|   |   +-- main.tex            # Master document (XeLaTeX)
+|   |   +-- refs.bib            # Bibliography (21 entries)
+|   |   +-- contents/           # 7 chapter .tex files
+|   |   +-- figures/            # 7 PDFs + 12 tables + 6 TikZ diagrams
 |   +-- research/               # Research methodology
-|   +-- reports/                # Test reports & benchmarks
 |   +-- archive/                # Historical docs
 |
 +-- models/
 |   +-- weights/                # Trained model files (YOLO, ResNet)
-|   +-- onnx/                   # ONNX exports
-|   +-- slm/                    # SLM LoRA adapters (NEW)
+|   +-- onnx/                   # ONNX exports (ResNet-18: 42.64 MB)
+|   +-- slm/                    # SLM LoRA adapters
 |   +-- evaluation/             # Model evaluation results
+|   +-- explainability/         # Grad-CAM visualizations
 |
-+-- notebooks/
-|   +-- 01_data_exploration.ipynb
-|   +-- 02_stage3_visualization.ipynb
++-- notebooks/                  # 12 Jupyter notebooks
+|   +-- 00_full_pipeline_test.ipynb
+|   +-- 00_quick_start.ipynb
+|   +-- 01_stage1_ingestion.ipynb
+|   +-- 01a_data_collection.ipynb
+|   +-- 01b_image_extraction.ipynb
+|   +-- 01c_chart_detection.ipynb
+|   +-- 01d_chart_classification.ipynb
+|   +-- 01e_qa_generation.ipynb
+|   +-- 01f_review_uncertain.ipynb
+|   +-- 02_stage2_detection.ipynb
+|   +-- 03_stage3_extraction.ipynb
+|   +-- 04_stage4_reasoning.ipynb
 |
 +-- research/
 |   +-- experiments/            # Experiment scripts
@@ -266,43 +308,51 @@ chart_analysis_ai_v3/
 |   +-- prototypes/             # Quick tests
 |
 +-- src/
-|   +-- core_engine/
+|   +-- core_engine/            # Core AI engine (47 files, ~18,900 LOC)
 |       +-- __init__.py
-|       +-- pipeline.py         # Main orchestrator
-|       +-- exceptions.py       # Custom exceptions
-|       +-- schemas/            # Pydantic models
+|       +-- pipeline.py         # Main orchestrator (all 5 stages wired)
+|       +-- exceptions.py       # Custom exception hierarchy
+|       +-- schemas/            # Pydantic models (6 files)
+|       |   +-- common.py, enums.py, extraction.py
+|       |   +-- stage_outputs.py, qa_schemas.py
 |       +-- stages/             # Pipeline stages
-|           +-- s1_ingestion/   # Stage 1
-|           +-- s2_detection/   # Stage 2
-|           +-- s3_extraction/  # Stage 3 (OCR, geometry, elements)
-|           +-- s4_reasoning/   # Stage 4 (value mapper, prompts)
-|           +-- s5_reporting/   # Stage 5 (TODO)
-|       +-- ai/                 # AI Routing Layer (NEW)
-|           +-- adapters/       # Provider adapters (Gemini, SLM, OpenAI)
-|           +-- router.py       # Task-based routing with fallbacks
-|           +-- task_types.py   # AI task enum
-|           +-- prompts.py      # Shared prompt templates
-|           +-- exceptions.py   # AI-specific exceptions
-|       +-- validators/         # Input validators
-|   +-- api/                    # FastAPI serving layer (NEW)
-|   +-- worker/                 # Celery task workers (NEW)
+|       |   +-- base.py         # BaseStage ABC
+|       |   +-- s1_ingestion.py # Stage 1: PDF/image loading
+|       |   +-- s2_detection.py # Stage 2: YOLO detection
+|       |   +-- s3_extraction/  # Stage 3: OCR + geometry (10 submodules)
+|       |   +-- s4_reasoning/   # Stage 4: AI reasoning (6 submodules)
+|       |   +-- s5_reporting.py # Stage 5: Insights + reports
+|       +-- ai/                 # AI Routing Layer (8 files)
+|       |   +-- router.py       # Task-based routing with fallbacks
+|       |   +-- task_types.py   # TaskType enum
+|       |   +-- prompts.py      # Shared prompt templates
+|       |   +-- exceptions.py   # AI-specific exceptions
+|       |   +-- adapters/       # Provider adapters
+|       |       +-- base.py         # BaseAIAdapter ABC + AIResponse
+|       |       +-- gemini_adapter.py   # Google Gemini SDK
+|       |       +-- openai_adapter.py   # OpenAI Chat Completions
+|       |       +-- local_slm_adapter.py # HuggingFace Transformers + LoRA
+|       +-- validators/         # Output validators
+|       +-- data_factory/       # QA data generation
 |
-+-- interface/                  # Interface layer (future)
-|
-+-- tests/
++-- tests/                      # 232 tests (21 files)
 |   +-- conftest.py             # Shared fixtures
-|   +-- test_schemas.py
-|   +-- test_s3_extraction/     # Stage 3 tests (129 cases)
-|   +-- test_s4_reasoning/      # Stage 4 tests (36 cases)
-|       +-- test_value_mapper.py
-|       +-- test_prompt_builder.py
+|   +-- test_schemas.py         # Schema validation tests
+|   +-- test_s3_extraction/     # Stage 3 tests (8 files, ~140 tests)
+|   +-- test_s4_reasoning/      # Stage 4 tests (3 files, ~36 tests)
+|   +-- test_ai/                # AI routing tests (5 files, ~55 tests)
 |   +-- fixtures/               # Test data
 |
-+-- scripts/                    # Utility scripts
-|   +-- benchmark_classifier.py
-|   +-- generate_stage3_report.py
-|   +-- test_stage3_academic_dataset.py
-|   +-- train_yolo.py
++-- scripts/                    # Utility scripts (18 files)
+|   +-- train_resnet18_v2.py    # ResNet-18 training
+|   +-- train_slm_lora.py       # SLM LoRA fine-tuning
+|   +-- train_yolo_chart_detector.py # YOLO training
+|   +-- prepare_slm_training_v3.py   # Build SLM dataset v3
+|   +-- batch_stage3_parallel.py     # CUDA-aware batch extraction
+|   +-- demo_full_pipeline.py        # Full pipeline demo
+|   +-- evaluate_resnet18.py         # Model evaluation
+|   +-- export_resnet18_onnx.py      # ONNX export
+|   +-- download_models.py           # HuggingFace model downloader
 |
 +-- logs/                       # Log files
 +-- pyproject.toml
@@ -325,14 +375,16 @@ chart_analysis_ai_v3/
 | Stage 1: Ingestion | [DONE] | PDF/Image loading implemented |
 | Stage 2: Detection | [DONE] | YOLO integration complete |
 
-### 5.2. Phase 2: Core Engine [IN PROGRESS]
+### 5.2. Phase 2: Core Engine [COMPLETED]
 
 | Task | Status | Notes |
 | --- | --- | --- |
 | Stage 3: Extraction | [DONE] | Geo-SLM hybrid approach implemented |
 | Stage 3 Testing | [DONE] | Tested on 800+ images (100% accuracy) |
-| Stage 4: Reasoning | [IN PROGRESS] | Core components implemented |
-| Stage 5: Reporting | [TODO] | Output formatting |
+| Stage 4: Reasoning | [DONE] | Core + RouterEngine + AI adapters |
+| Stage 5: Reporting | [DONE] | Insights, validation, JSON + text output |
+| AI Router + Adapters | [DONE] | 4 adapters, fallback chains, health checks |
+| Pipeline Wiring | [DONE] | All 5 stages live-instantiated from config |
 
 **Stage 4 Implementation Details:**
 
@@ -341,10 +393,12 @@ chart_analysis_ai_v3/
 | GeometricValueMapper | [DONE] | Pixel-to-value conversion using AxisInfo calibration |
 | GeminiPromptBuilder | [DONE] | Canonical Format prompts with anti-hallucination |
 | ReasoningEngine | [DONE] | Orchestrator integrating mapper + builder |
+| RouterEngine | [DONE] | AIRouter bridge implementing ReasoningEngine ABC |
 | Prompt Templates | [DONE] | reasoning.txt + canonical_format.md |
 | Unit Tests | [DONE] | 36 test cases (16 mapper + 20 builder) |
-| Gemini Integration | [PROTOTYPE] | Using API for rapid development |
-| Local SLM | [TODO] | Self-trained model for production |
+| Gemini Integration | [DONE] | Google Generative AI SDK adapter with vision |
+| OpenAI Integration | [DONE] | Chat Completions adapter with vision |
+| Local SLM | [DONE] | HuggingFace adapter (4-bit quantization, LoRA) |
 
 **Stage 4 Architecture:**
 
@@ -485,25 +539,28 @@ Completed 2026-03-01. Stage 3 extraction complete, training dataset v3 built and
 .venv/Scripts/python.exe scripts/prepare_slm_training_v3.py --output-dir data/slm_training_v3
 ```
 
-### 5.4. Phase 3: Production Architecture [IN PROGRESS - v2.0.0]
+### 5.4. Phase 3: Production Architecture [PARTIALLY COMPLETED - v2.0.0]
 
 Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-platform.
 
 | Task | Status | Notes |
 | --- | --- | --- |
-| AI Adapter Pattern design | [DONE] | BaseAIAdapter ABC → GeminiAdapter, LocalSLMAdapter, OpenAIAdapter |
-| AI Router with fallback chains | [DONE] | Confidence-based routing, health checks |
+| AI Adapter Pattern design | [DONE] | BaseAIAdapter ABC, GeminiAdapter, LocalSLMAdapter, OpenAIAdapter |
+| AI Router with fallback chains | [DONE] | Confidence-based routing, health checks, local-only policy |
+| AI Routing implementation | [DONE] | `src/core_engine/ai/` - 8 files fully implemented |
+| AI Routing tests | [DONE] | `tests/test_ai/` - 55 unit tests, all mock-based |
 | SLM Training Framework design | [DONE] | Qwen-2.5-1.5B + LoRA, 4-stage curriculum |
-| Training scripts | [EXISTS] | train_slm_lora.py (320L), prepare_slm_training_v3.py (PRIMARY) |
-| Training data | [READY] | 268,799 samples (all 8 types), saved to `data/slm_training_v3/` |
+| Training scripts | [DONE] | train_slm_lora.py (320L), prepare_slm_training_v3.py |
+| Training data | [DONE] | 268,799 samples (all 8 types), saved to `data/slm_training_v3/` |
+| Stage 5 implementation | [DONE] | Insights, validation, JSON + text report output |
+| Pipeline wiring | [DONE] | All 5 stages live in `pipeline.py`, sequential execution |
 | Serving Layer design | [DONE] | FastAPI + Celery + Redis + SQLAlchemy |
 | CI/CD Pipeline design | [DONE] | workflow.instructions.md with YAML specs |
 | Instruction system upgrade | [DONE] | 3-tier hierarchy, 13 instruction files |
-| `src/core_engine/ai/` creation | [TODO] | Implement adapter + router code |
 | `src/api/` creation | [TODO] | Implement FastAPI endpoints |
 | `src/worker/` creation | [TODO] | Implement Celery tasks |
 | Docker Compose setup | [TODO] | Multi-container deployment |
-| SLM model training | [TODO] | Run training after data expansion |
+| SLM model training | [IN PROGRESS] | QLoRA fine-tuning on Qwen-2.5-1.5B |
 | Model comparison experiment | [TODO] | Qwen vs Llama vs Gemini vs GPT-4o-mini |
 
 **New Instruction Files Created:**
@@ -518,15 +575,42 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 - [UPGRADE_REPORT_PRODUCTION_READY.md](reports/UPGRADE_REPORT_PRODUCTION_READY.md) - Full gap analysis
 - `.github/instructions/README.md` - Instruction hierarchy overview
 
-### 5.5. Upcoming Phases
+### 5.5. Phase 4: Academic Thesis [COMPLETED - 2026-03-02]
+
+| Task | Status | Notes |
+| --- | --- | --- |
+| Thesis structure design | [DONE] | 7 chapters, XeLaTeX build, FPT University template |
+| Chapter 1: Introduction | [DONE] | Problem statement, objectives, scope, Vietnamese integration |
+| Chapter 2: Literature Review | [DONE] | 21 references, related work comparison table |
+| Chapter 3: Methodology | [DONE] | Hybrid pipeline design, geometric analysis, AI routing |
+| Chapter 4: System Design | [DONE] | Architecture, data flow, AI Router, database schema |
+| Chapter 5: Results | [DONE] | ResNet-18, YOLO, dataset stats, feature quality analysis |
+| Chapter 6: Project Management | [DONE] | Timeline, Git statistics, resource allocation |
+| Chapter 7: Conclusion | [DONE] | Summary, contributions, future work, Vietnamese research |
+| Visual assets | [DONE] | 7 PDF figures + 12 LaTeX tables + 6 TikZ diagrams |
+| Bibliography | [DONE] | refs.bib with 21 entries |
+| LaTeX compilation | [DONE] | 0 errors, 0 undefined references, 39 pages |
+| Vietnamese content | [DONE] | Core-first Localize-second architecture documented |
+
+**Thesis Asset Count:**
+
+| Type | Count | Location |
+| --- | --- | --- |
+| Content chapters (.tex) | 7 | `docs/thesis_capstone/contents/` |
+| PDF figures | 7 | `docs/thesis_capstone/figures/` |
+| LaTeX tables | 12 | `docs/thesis_capstone/figures/tables/` |
+| TikZ diagrams | 6 | `docs/thesis_capstone/figures/tikz/` |
+| Bibliography entries | 21 | `docs/thesis_capstone/refs.bib` |
+| Total pages | 39 | `docs/thesis_capstone/main.pdf` |
+
+### 5.6. Upcoming Phases
 
 | Phase | Focus | Timeline |
 | --- | --- | --- |
 | **SLM Training** | Fine-tune Qwen2.5-1.5B on 268,799 samples (v3 dataset) | CURRENT |
-| **AI Router** | Implement `src/core_engine/ai/` with adapters | After SLM |
-| **Stage 5** | Parallel processing, insights generation | After Router |
-| **Serving Layer** | FastAPI + Celery + Docker | After Stage 5 |
+| **Serving Layer** | FastAPI + Celery + Docker | After SLM |
 | **Benchmarking** | Model comparison experiment (thesis contrib.) | Final |
+| **Optimization** | Performance tuning, demo interface (Streamlit) | Final |
 
 **SLM Training Plan (Expanded):**
 
@@ -565,16 +649,15 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 | area | ~1,200 | Complete |
 | heatmap | ~700 | Complete |
 
-### 5.7. Test Coverage (2026-02-04)
+### 5.8. Test Coverage (2026-03-02)
 
-| Test Suite | Passed | Failed | Total |
+| Test Suite | Tests | Files | Notes |
 | --- | --- | --- | --- |
-| Schemas | 19 | 0 | 19 |
-| Stage 3 Extraction | 139 | 1 | 140 |
-| Stage 4 Reasoning | 18 | 0 | 18 |
-| **Total** | **176** | **1** | **177** |
-
-**Known Issue:** 1 test fails due to LINE chart classified as AREA (edge case)
+| Schemas | ~19 | 1 | Schema validation |
+| Stage 3 Extraction | ~140 | 8 | OCR, geometry, elements, integration |
+| Stage 4 Reasoning | ~36 | 3 | ValueMapper, PromptBuilder |
+| AI Routing | ~55 | 5 | Adapters, router, task types, prompts, exceptions |
+| **Total** | **232** | **21** | **All passing** |
 
 ### 5.8. Project Cleanup (2026-02-04)
 
@@ -590,7 +673,7 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 - `notebooks/README.md` - Current notebook list
 - All docs version headers updated to v2.0.0
 
-**Stage 5 Planned Architecture:**
+**Stage 5 Architecture (Implemented):**
 
 ```
 Stage 4 Output (RefinedChartData[])

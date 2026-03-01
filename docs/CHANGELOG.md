@@ -6,6 +6,66 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.0.0] - 2026-03-02
+
+### Full Pipeline Complete + Academic Thesis
+
+#### Added
+- **Academic Thesis** (`docs/thesis_capstone/`)
+  - 7 content chapters: introduction, literature review, methodology, system design and implementation, results and discussion, project management, conclusion
+  - 25 visual assets: 7 PDF figures + 12 LaTeX tables + 6 TikZ diagrams
+  - 21 bibliography entries (refs.bib)
+  - Vietnamese content integration across all chapters (Core-first, Localize-second architecture)
+  - XeLaTeX build with fontspec + babel[vietnamese]
+  - 39 pages, 0 LaTeX errors, 0 undefined references
+
+- **Thesis Figure Generation Scripts**
+  - Scripts to generate all 7 PDF figures from project data
+  - Scripts to generate all 12 LaTeX table .tex files
+  - 6 TikZ architecture/flow diagrams (pipeline, AI router, layer architecture, etc.)
+
+- **Stage 5: Reporting** (`src/core_engine/stages/s5_reporting.py`)
+  - Insight generation: summary stats, trend (linear regression), comparison, anomaly (z-score)
+  - JSON + human-readable text report output to `data/output/`
+  - `ReportingConfig` Pydantic config model
+
+- **Pipeline Wiring** (`src/core_engine/pipeline.py`)
+  - `_initialize_stages()`: All 5 stages now live-instantiated from OmegaConf config
+  - `run()`: Full sequential stage pipeline with proper session_id-context logging
+
+- **AI Routing Layer** (`src/core_engine/ai/`)
+  - `task_types.py`: `TaskType` enum (CHART_REASONING, OCR_CORRECTION, DESCRIPTION_GEN, DATA_VALIDATION)
+  - `exceptions.py`: Typed exception hierarchy (AIProviderError, AIRateLimitError, AIAuthenticationError, AITimeoutError, AIInvalidResponseError, AIProviderExhaustedError)
+  - `prompts.py`: All system prompts and user prompt formatter functions (versioned)
+  - `adapters/base.py`: `BaseAIAdapter` ABC and `AIResponse` standardized dataclass
+  - `adapters/gemini_adapter.py`: Google Generative AI SDK adapter with vision support
+  - `adapters/openai_adapter.py`: OpenAI Chat Completions adapter with vision support
+  - `adapters/local_slm_adapter.py`: HuggingFace Transformers adapter (4-bit quantization, LoRA; enabled=False until training complete)
+  - `router.py`: `AIRouter` with per-task fallback chains, exponential backoff, health check caching, and `route_sync()` for non-async callers
+
+- **Stage 4: AIRouterEngine** (`src/core_engine/stages/s4_reasoning/router_engine.py`)
+  - Adapter bridge: implements `ReasoningEngine` ABC but delegates to `AIRouter`
+  - Supports `engine="router"` option in `Stage4Reasoning._initialize_engine()`
+
+- **AI Routing Tests** (`tests/test_ai/`)
+  - 55 unit tests covering task_types, exceptions, prompts, adapter base, and router fallback logic
+  - All tests use mock adapters, no real API calls required
+
+#### Fixed
+- **LaTeX Compilation** (76 errors -> 0 errors)
+  - Stripped float wrappers from 12 table + 6 TikZ input files (nested float fix)
+  - Added `fontspec` + `babel[vietnamese]` for XeLaTeX in main.tex
+  - Replaced all `\foreignlanguage{vietnamese}{...}` with direct UTF-8 Vietnamese text
+  - Added `align=center` to 3 TikZ node styles requiring it
+  - Removed stray `\end{itemize}` from system_design_and_implementation.tex
+
+#### Changed
+- **Documentation overhaul**: README.md, MASTER_CONTEXT.md, CHANGELOG.md all updated to v4.0.0
+- **Test count**: 232 tests collected (was 177), all passing
+- **Project phases**: Phase 2 (Core Engine) marked COMPLETED, Phase 4 (Thesis) marked COMPLETED
+
+---
+
 ## [Unreleased]
 
 ### Added

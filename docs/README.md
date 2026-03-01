@@ -2,13 +2,14 @@
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 3.0.0 | 2026-03-02 | That Le | Full pipeline implemented, thesis complete, docs refreshed |
 | 2.0.0 | 2026-02-04 | That Le | Complete documentation refresh |
 
 ## Quick Links
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
-| [MASTER_CONTEXT.md](MASTER_CONTEXT.md) | Project overview & status | Everyone |
+| [MASTER_CONTEXT.md](MASTER_CONTEXT.md) | Project overview and status | Everyone |
 | [architecture/SYSTEM_OVERVIEW.md](architecture/SYSTEM_OVERVIEW.md) | System architecture | Developers |
 | [guides/QUICK_START.md](guides/QUICK_START.md) | Getting started | New developers |
 
@@ -16,36 +17,48 @@
 
 ```
 docs/
-├── MASTER_CONTEXT.md          # Main project overview
-├── README.md                  # This file
-├── architecture/              # System design docs
-│   ├── SYSTEM_OVERVIEW.md     # High-level architecture
-│   ├── PIPELINE_FLOW.md       # Pipeline diagrams
-│   ├── STAGE3_EXTRACTION.md   # Stage 3 details
-│   ├── STAGE4_REASONING.md    # Stage 4 details
-│   └── STAGE5_REPORTING.md    # Stage 5 details
-├── guides/                    # How-to guides
-│   ├── QUICK_START.md         # Getting started
-│   ├── DEVELOPMENT.md         # Development workflow
-│   ├── TESTING.md             # Testing guide
-│   └── DATA_COLLECTION.md     # Data collection guide
-├── research/                  # Research documents
-│   └── SLM_FINE_TUNING_PLAN.md # SLM training plan
-└── reports/                   # Progress reports
-    └── WEEKLY_PROGRESS_*.md   # Weekly updates
++-- MASTER_CONTEXT.md          # Main project overview (v4.0.0)
++-- CHANGELOG.md               # Change log
++-- README.md                  # This file
++-- architecture/              # System design docs
+|   +-- SYSTEM_OVERVIEW.md     # High-level architecture
+|   +-- PIPELINE_FLOW.md       # Pipeline diagrams
+|   +-- STAGE3_EXTRACTION.md   # Stage 3 details
+|   +-- STAGE4_REASONING.md    # Stage 4 details
+|   +-- STAGE5_REPORTING.md    # Stage 5 details
++-- guides/                    # How-to guides
+|   +-- QUICK_START.md         # Getting started
+|   +-- DEVELOPMENT.md         # Development workflow
+|   +-- SLM_TRAINING_GUIDE.md  # SLM fine-tuning guide
+|   +-- CHART_QA_GUIDE.md      # QA pair generation
+|   +-- ARXIV_DOWNLOAD_GUIDE.md # PDF download instructions
++-- thesis_capstone/           # Academic thesis (39 pages)
+|   +-- main.tex               # Master document (XeLaTeX)
+|   +-- refs.bib               # Bibliography (21 entries)
+|   +-- contents/              # 7 chapter .tex files
+|   +-- figures/               # 7 PDFs + 12 tables + 6 TikZ
++-- progress/                  # Weekly progress reports
++-- reports/                   # Technical reports
++-- research/                  # Research documents
++-- archive/                   # Historical docs
 ```
 
 ## Project Status Summary
 
 | Component | Status | Details |
 |-----------|--------|---------|
-| **Data Collection** | ✅ Complete | 32,445 charts, 8 types |
-| **Chart Detection** | ✅ Complete | YOLO 93.5% mAP@50 |
-| **Chart Classification** | ✅ Complete | ResNet-18 94.14% accuracy |
-| **Stage 3 Extraction** | ✅ Complete | OCR + Element Detection |
-| **OCR Cache** | ✅ Complete | 46,910 entries |
-| **Stage 4 Reasoning** | 🔄 In Progress | SLM integration |
-| **Stage 5 Reporting** | ⏳ Planned | - |
+| **Data Collection** | Complete | 32,364 charts, 8 types |
+| **Chart Detection** | Complete | YOLOv8m 93.5% mAP@50 |
+| **Chart Classification** | Complete | ResNet-18 94.14% accuracy |
+| **Stage 3 Extraction** | Complete | OCR + Element Detection + Geometric Mapping |
+| **Stage 4 Reasoning** | Complete | AI Router + 4 adapters (SLM/Gemini/OpenAI) |
+| **Stage 5 Reporting** | Complete | Insights, validation, JSON + text output |
+| **AI Routing Layer** | Complete | `src/core_engine/ai/` (8 files, 55 tests) |
+| **Pipeline Wiring** | Complete | All 5 stages live in pipeline.py |
+| **SLM Training Data** | Complete | 268,799 samples (v3, all 8 types) |
+| **SLM Fine-tuning** | In Progress | QLoRA on Qwen-2.5-1.5B |
+| **Academic Thesis** | Complete | 39 pages, 0 LaTeX errors |
+| **Test Suite** | Complete | 232 tests, 21 files, all passing |
 
 ## Key Documents by Role
 
@@ -56,21 +69,24 @@ docs/
 
 ### For Developers
 1. [DEVELOPMENT.md](guides/DEVELOPMENT.md) - Development workflow
-2. [TESTING.md](guides/TESTING.md) - Testing guide
-3. [PIPELINE_FLOW.md](architecture/PIPELINE_FLOW.md) - Pipeline details
+2. [PIPELINE_FLOW.md](architecture/PIPELINE_FLOW.md) - Pipeline details
+3. [STAGE4_REASONING.md](architecture/STAGE4_REASONING.md) - AI reasoning
 
 ### For Researchers
-1. [SLM_FINE_TUNING_PLAN.md](research/SLM_FINE_TUNING_PLAN.md) - SLM training
+1. [SLM_TRAINING_GUIDE.md](guides/SLM_TRAINING_GUIDE.md) - SLM fine-tuning
 2. [STAGE4_REASONING.md](architecture/STAGE4_REASONING.md) - Reasoning design
-3. Weekly reports in `reports/`
+3. Weekly reports in `progress/`
+4. Thesis in `thesis_capstone/`
 
 ## Recent Updates
 
 | Date | Document | Change |
 |------|----------|--------|
+| 2026-03-02 | All docs | Full documentation refresh (v4.0.0) |
+| 2026-03-02 | thesis_capstone/ | Thesis complete: 39 pages, 0 LaTeX errors |
+| 2026-03-01 | MASTER_CONTEXT.md | Data pipeline complete, v3 dataset |
+| 2026-02-28 | Instructions | Production architecture upgrade |
 | 2026-02-04 | All docs | Complete refresh after cleanup |
-| 2026-01-30 | MASTER_CONTEXT.md | Stage 3 completion |
-| 2026-01-29 | WEEKLY_PROGRESS | Progress report |
 
 ## Documentation Standards
 
@@ -91,4 +107,4 @@ docs/
 
 ---
 
-*Last updated: 2026-02-04*
+*Last updated: 2026-03-02*

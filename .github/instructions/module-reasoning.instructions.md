@@ -6,6 +6,7 @@ applyTo: 'src/core_engine/stages/s4_reasoning/**,src/core_engine/ai/**'
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 1.1.0 | 2026-03-02 | That Le | Updated to reflect implemented state (all adapters + router + tests) |
 | 1.0.0 | 2026-02-28 | That Le | AI adapter pattern and multi-provider reasoning |
 
 ---
@@ -15,13 +16,17 @@ applyTo: 'src/core_engine/stages/s4_reasoning/**,src/core_engine/ai/**'
 **AI Reasoning Module** implements multi-provider LLM integration for Stage 4 (Semantic Reasoning). Uses an Adapter pattern to abstract provider differences behind a common interface, with a Router that handles fallback logic and confidence-based routing.
 
 **Key Directories:**
-- `src/core_engine/ai/` - AI abstraction layer (NEW)
-  - `adapters/` - Provider-specific implementations
+- `src/core_engine/ai/` - AI abstraction layer (8 files, IMPLEMENTED)
+  - `adapters/` - Provider-specific implementations (base, gemini, openai, local_slm)
   - `router.py` - Task-based routing with fallback chains
   - `task_types.py` - Enum of AI task types
+  - `prompts.py` - Shared prompt templates (versioned)
+  - `exceptions.py` - AI-specific exception hierarchy
 - `src/core_engine/stages/s4_reasoning/` - Stage 4 pipeline stage
-  - `reasoning_engine.py` - Base ABC (EXISTING)
-  - `gemini_engine.py` - Gemini implementation (EXISTING, refactor to adapter)
+  - `reasoning_engine.py` - Base ABC
+  - `router_engine.py` - AIRouter bridge (implements ReasoningEngine ABC)
+  - `gemini_engine.py` - Legacy Gemini implementation (retained for backward compatibility)
+- `tests/test_ai/` - 55 unit tests (5 files, all mock-based)
 
 ---
 
@@ -82,9 +87,9 @@ class BaseAIAdapter(ABC):
 
 | Adapter | File | Status |
 | --- | --- | --- |
-| `GeminiAdapter` | `ai/adapters/gemini_adapter.py` | TO CREATE (refactor from gemini_engine.py) |
-| `OpenAIAdapter` | `ai/adapters/openai_adapter.py` | TO CREATE |
-| `LocalSLMAdapter` | `ai/adapters/local_slm_adapter.py` | TO CREATE (after training) |
+| `GeminiAdapter` | `ai/adapters/gemini_adapter.py` | IMPLEMENTED (Google Generative AI SDK, vision support) |
+| `OpenAIAdapter` | `ai/adapters/openai_adapter.py` | IMPLEMENTED (Chat Completions, vision support) |
+| `LocalSLMAdapter` | `ai/adapters/local_slm_adapter.py` | IMPLEMENTED (HuggingFace Transformers, 4-bit quant + LoRA; enabled=False until training complete) |
 
 ### 2.3. Adapter Implementation Rules
 
@@ -161,29 +166,28 @@ ai_routing:
 
 ## 4. Stage 4 Integration
 
-### 4.1. Existing Code Refactoring Plan
+### 4.1. Current Architecture (Implemented)
 
-**Current state:** `gemini_engine.py` (626 lines) directly calls Gemini API.
+**Dual-path design:**
+- `router_engine.py` - AIRouter bridge, implements `ReasoningEngine` ABC, delegates to `AIRouter` with fallback chains. This is the **production path**.
+- `gemini_engine.py` - Legacy Gemini implementation, retained for backward compatibility and direct testing.
 
-**Target state:**
-1. Extract Gemini API logic into `GeminiAdapter`
-2. Keep `GeminiReasoningEngine` as a thin wrapper that uses `AIRouter`
-3. Add `LocalSLMReasoningEngine` for local model inference
-4. Stage 4 pipeline step calls `AIRouter.route(TaskType.CHART_REASONING, ...)`
+**Pipeline wiring:** `pipeline.py` initializes Stage 4 with `engine="router"` by default, which uses `AIRouterEngine` -> `AIRouter` -> best available adapter.
 
-### 4.2. Migration Steps (Incremental)
+### 4.2. Completed Migration Steps
 
-| Step | Action | Risk |
+| Step | Action | Status |
 | --- | --- | --- |
-| 1 | Create `src/core_engine/ai/` directory structure | None |
-| 2 | Define `BaseAIAdapter`, `AIResponse`, `TaskType` | None |
-| 3 | Extract `GeminiAdapter` from `gemini_engine.py` | Medium - preserve behavior |
-| 4 | Create `AIRouter` with single-provider mode | Low |
-| 5 | Wire Stage 4 to use Router instead of direct Gemini | Medium |
-| 6 | Add `LocalSLMAdapter` (after model training) | Low |
-| 7 | Add `OpenAIAdapter` (optional) | Low |
+| 1 | Create `src/core_engine/ai/` directory structure | DONE |
+| 2 | Define `BaseAIAdapter`, `AIResponse`, `TaskType` | DONE |
+| 3 | Create `GeminiAdapter` | DONE |
+| 4 | Create `AIRouter` with fallback chains | DONE |
+| 5 | Wire Stage 4 via `router_engine.py` | DONE |
+| 6 | Create `LocalSLMAdapter` | DONE (enabled=False until training) |
+| 7 | Create `OpenAIAdapter` | DONE |
+| 8 | Create AI routing test suite (55 tests) | DONE |
 
-**Rule:** Keep `gemini_engine.py` functional throughout migration. Do NOT break existing tests.
+**Rule:** `gemini_engine.py` remains functional as a fallback. Do NOT delete without updating all tests.
 
 ---
 
@@ -257,18 +261,20 @@ class AIProviderExhaustedError(Exception):
 
 ## 7. Testing Strategy
 
-### 7.1. Test Structure
+### 7.1. Test Structure (Implemented)
 
 ```
 tests/
     test_ai/
-        test_adapters/
-            test_gemini_adapter.py
-            test_local_slm_adapter.py
-            conftest.py              # Mock API responses
-        test_router.py
-        test_task_types.py
+        __init__.py
+        test_adapters_base.py    # BaseAIAdapter + AIResponse tests
+        test_router.py           # Router fallback logic, health checks
+        test_task_types.py       # TaskType enum coverage
+        test_prompts.py          # Prompt templates validation
+        test_exceptions.py       # Exception hierarchy tests
 ```
+
+55 unit tests total, all using mock adapters (no real API calls).
 
 ### 7.2. Mock Strategy
 

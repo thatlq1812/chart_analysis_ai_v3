@@ -6,6 +6,7 @@ applyTo: 'scripts/train_*,scripts/prepare_*,research/**,data/slm_training/**,mod
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 1.2.0 | 2026-03-02 | That Le | Updated file statuses (training.yaml exists, thesis complete) |
 | 1.1.0 | 2026-03-01 | That Le | Dataset v3 complete (268k samples, all 8 types, axis info) |
 | 1.0.0 | 2026-02-28 | That Le | SLM training framework design for chart analysis |
 
@@ -23,7 +24,7 @@ applyTo: 'scripts/train_*,scripts/prepare_*,research/**,data/slm_training/**,mod
 - `scripts/evaluate_slm.py` - Benchmark evaluation [TO CREATE]
 - `scripts/merge_slm_lora.py` - Merge LoRA into base model [TO CREATE]
 - `config/models.yaml` - Model paths, hyperparameters
-- `config/training.yaml` - Training configuration [TO CREATE]
+- `config/training.yaml` - Training configuration [EXISTS]
 - `data/slm_training_v3/` - Primary training dataset (v3, 268k samples) [PRIMARY]
 - `data/slm_training_v2/` - Archived baseline dataset (27k samples)
 - `models/slm/` - Trained LoRA adapters and merged weights
@@ -420,14 +421,16 @@ Compare all candidate models on the same test set:
 
 ---
 
-## 8. Files to Create (NEW)
+## 8. Files Status
 
 | File | Purpose | Status |
 | --- | --- | --- |
-| `config/training.yaml` | Training hyperparams | TO CREATE |
+| `config/training.yaml` | Training hyperparams | EXISTS |
+| `scripts/train_slm_lora.py` | LoRA fine-tuning script | EXISTS (320L) |
+| `scripts/prepare_slm_training_v3.py` | Build v3 dataset | EXISTS (PRIMARY) |
+| `scripts/download_models.py` | Download + verify base models | EXISTS |
 | `scripts/evaluate_slm.py` | Model evaluation benchmark | TO CREATE |
 | `scripts/merge_slm_lora.py` | Merge LoRA into base model | TO CREATE |
-| `scripts/download_models.py` | Download + verify base models | EXISTS (update) |
 | `models/slm/README.md` | SLM model registry | TO CREATE |
 
 ---
