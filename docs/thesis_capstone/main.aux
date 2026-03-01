@@ -1,0 +1,235 @@
+\relax 
+\@writefile{toc}{\contentsline {section}{List of Figures}{iii}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{List of Tables}{iv}{}\protected@file@percent }
+\citation{liu2023deplot}
+\citation{lee2023matcha}
+\citation{savva2011revision}
+\citation{jocher2023yolov8}
+\citation{he2016resnet}
+\citation{fischler1981ransac}
+\citation{douglas1973rdp,ramer1972rdp}
+\citation{lee1994skeleton}
+\citation{bradski2000opencv}
+\citation{yang2024qwen2}
+\citation{dettmers2024qlora}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Background}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}Objective}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.3}Problem Statement}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.4}Scope and Limitations}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Project Management Plan}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Team Structure and Roles}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Communication Plan}{4}{}\protected@file@percent }
+\citation{liu2023deplot}
+\citation{masry2022chartqa}
+\citation{lee2023matcha}
+\citation{methani2020plotqa}
+\citation{chen2022chartreader}
+\citation{savva2011revision}
+\citation{redmon2016yolo,jocher2023yolov8}
+\citation{he2016resnet}
+\citation{du2020paddleocr}
+\citation{jaided2020easyocr}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Literature Review}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}End-to-End Multimodal Approaches}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Classical Geometric Approaches}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Object Detection for Document Analysis}{5}{}\protected@file@percent }
+\citation{yang2024qwen2}
+\citation{hu2022lora}
+\citation{dettmers2024qlora}
+\citation{liu2023deplot}
+\citation{lee2023matcha}
+\citation{chen2022chartreader}
+\citation{savva2011revision}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}OCR and Text Extraction}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}Small Language Models and Parameter-Efficient Fine-Tuning}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.6}Summary and Research Gap}{6}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Comparison of existing chart understanding methods.}}{6}{}\protected@file@percent }
+\newlabel{tab:related_work}{{1}{6}{Summary and Research Gap}{table.1}{}}
+\newlabel{tab:related_work@cref}{{[table][1][]1}{[1][6][]6}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Methodology}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Data}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.1}Data Collection Pipeline}{8}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Data collection pipeline: from arXiv papers to SLM training dataset. Each stage filters and transforms the data, reducing volume while increasing quality.}}{8}{}\protected@file@percent }
+\newlabel{fig:data_pipeline}{{1}{8}{Data Collection Pipeline}{figure.1}{}}
+\newlabel{fig:data_pipeline@cref}{{[figure][1][]1}{[1][8][]8}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Data pipeline scale at each processing stage.}}{8}{}\protected@file@percent }
+\newlabel{tab:data_scale}{{2}{8}{Data Collection Pipeline}{table.2}{}}
+\newlabel{tab:data_scale@cref}{{[table][2][]2}{[1][8][]8}{}{}{}}
+\citation{dettmers2024qlora}
+\citation{yang2024qwen2}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Chart type distribution in the classified dataset (32,364 charts).}}{9}{}\protected@file@percent }
+\newlabel{tab:chart_dist}{{3}{9}{Data Collection Pipeline}{table.3}{}}
+\newlabel{tab:chart_dist@cref}{{[table][3][]3}{[1][8][]9}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.2}SLM Training Dataset}{9}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces SLM training dataset v3 split statistics.}}{9}{}\protected@file@percent }
+\newlabel{tab:splits}{{4}{9}{SLM Training Dataset}{table.4}{}}
+\newlabel{tab:splits@cref}{{[table][4][]4}{[1][9][]9}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.3}SLM Fine-Tuning Configuration}{9}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Data pipeline funnel: volume at each stage from raw PDFs to final dataset.}}{10}{}\protected@file@percent }
+\newlabel{fig:data_funnel}{{2}{10}{SLM Training Dataset}{figure.2}{}}
+\newlabel{fig:data_funnel@cref}{{[figure][2][]2}{[1][9][]10}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces SLM fine-tuning configuration (QLoRA).}}{10}{}\protected@file@percent }
+\newlabel{tab:slm_config}{{5}{10}{SLM Fine-Tuning Configuration}{table.5}{}}
+\newlabel{tab:slm_config@cref}{{[table][5][]5}{[1][9][]10}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Approach}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.1}Hybrid Neuro-Symbolic Design}{11}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Comparison of traditional end-to-end approach (top) vs.\ Geo-SLM hybrid neuro-symbolic approach (bottom). Geo-SLM uses geometric measurement for precision and SLM reasoning for semantic understanding.}}{11}{}\protected@file@percent }
+\newlabel{fig:approach_cmp}{{3}{11}{Hybrid Neuro-Symbolic Design}{figure.3}{}}
+\newlabel{fig:approach_cmp@cref}{{[figure][3][]3}{[1][11][]11}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.2}5-Stage Pipeline Architecture}{11}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Geo-SLM 5-stage pipeline architecture with input/output types and representative technologies at each stage.}}{11}{}\protected@file@percent }
+\newlabel{fig:pipeline_arch}{{4}{11}{5-Stage Pipeline Architecture}{figure.4}{}}
+\newlabel{fig:pipeline_arch@cref}{{[figure][4][]4}{[1][11][]11}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Pipeline stages: input, output, and key technologies.}}{12}{}\protected@file@percent }
+\newlabel{tab:stages}{{6}{12}{5-Stage Pipeline Architecture}{table.6}{}}
+\newlabel{tab:stages@cref}{{[table][6][]6}{[1][11][]12}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.3}AI Routing with Fallback Chains}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.4}Configuration-Driven Design}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Vietnamese Language Integration Strategy}{12}{}\protected@file@percent }
+\newlabel{sec:viet_loc}{{4.3}{12}{Vietnamese Language Integration Strategy}{subsection.4.3}{}}
+\newlabel{sec:viet_loc@cref}{{[subsection][3][4]4.3}{[1][12][]12}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.1}Localization Architecture}{12}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Vietnamese localization touchpoints across the pipeline.}}{13}{}\protected@file@percent }
+\newlabel{tab:viet_touchpoints}{{7}{13}{Localization Architecture}{table.7}{}}
+\newlabel{tab:viet_touchpoints@cref}{{[table][7][]7}{[1][12][]13}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.2}OCR for Vietnamese Diacritical Marks}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.3}Vietnamese Keyword Mapping for Role Classification}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.4}Vietnamese Prompt Templates and QA Generation}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.5}SLM Base Model Selection for Vietnamese}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.6}Deployment Plan for Vietnamese Integration}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}System Design and Implementation}{15}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Layered Architecture}{15}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Geo-SLM 5-layer system architecture. Each layer depends only on layers below it. The Core Engine is independent of the serving layer.}}{15}{}\protected@file@percent }
+\newlabel{fig:layer_arch}{{5}{15}{Layered Architecture}{figure.5}{}}
+\newlabel{fig:layer_arch@cref}{{[figure][5][]5}{[1][15][]15}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Technology stack overview.}}{15}{}\protected@file@percent }
+\newlabel{tab:tech}{{8}{15}{Layered Architecture}{table.8}{}}
+\newlabel{tab:tech@cref}{{[table][8][]8}{[1][15][]15}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Stage 1: Ingestion and Sanitation}{15}{}\protected@file@percent }
+\citation{jocher2023yolov8}
+\citation{lee1994skeleton}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Stage 2: Detection and Localization}{16}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Stage 3: Structural Analysis (Extraction)}{16}{}\protected@file@percent }
+\newlabel{sec:system_s3}{{5.4}{16}{Stage 3: Structural Analysis (Extraction)}{subsection.5.4}{}}
+\newlabel{sec:system_s3@cref}{{[subsection][4][5]5.4}{[1][16][]16}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.1}Preprocessor}{16}{}\protected@file@percent }
+\citation{douglas1973rdp,ramer1972rdp}
+\citation{du2020paddleocr}
+\citation{jaided2020easyocr}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Stage~3 extraction pipeline: 7 submodules process the cropped chart image sequentially. Each submodule has an independent configuration and can be toggled on/off.}}{17}{}\protected@file@percent }
+\newlabel{fig:s3_submodules}{{6}{17}{Stage 3: Structural Analysis (Extraction)}{figure.6}{}}
+\newlabel{fig:s3_submodules@cref}{{[figure][6][]6}{[1][16][]17}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.2}Skeletonizer}{17}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.3}Vectorizer}{17}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.4}OCR Engine}{17}{}\protected@file@percent }
+\citation{fischler1981ransac}
+\citation{he2016resnet}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.5}Element Detector}{18}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.6}Geometric Mapper}{18}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.7}Classifier}{18}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Stage 4: Semantic Reasoning}{18}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Stage 5: Insight and Reporting}{19}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.7}AI Routing Layer}{19}{}\protected@file@percent }
+\newlabel{sec:ai_routing}{{5.7}{19}{AI Routing Layer}{subsection.5.7}{}}
+\newlabel{sec:ai_routing@cref}{{[subsection][7][5]5.7}{[1][19][]19}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces AI Router with Adapter Pattern and per-task fallback chains. Each provider implements the common \texttt  {BaseAIAdapter} interface.}}{19}{}\protected@file@percent }
+\newlabel{fig:ai_router}{{7}{19}{AI Routing Layer}{figure.7}{}}
+\newlabel{fig:ai_router@cref}{{[figure][7][]7}{[1][19][]19}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces AI provider configuration.}}{20}{}\protected@file@percent }
+\newlabel{tab:ai_providers}{{9}{20}{AI Routing Layer}{table.9}{}}
+\newlabel{tab:ai_providers@cref}{{[table][9][]9}{[1][19][]20}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.8}Error Handling and Extensibility}{20}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.9}Vietnamese Language Implementation}{20}{}\protected@file@percent }
+\newlabel{sec:viet_impl}{{5.9}{20}{Vietnamese Language Implementation}{subsection.5.9}{}}
+\newlabel{sec:viet_impl@cref}{{[subsection][9][5]5.9}{[1][20][]20}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.1}Language-Agnostic vs.\ Language-Dependent Components}{20}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Language dependency analysis of pipeline components.}}{21}{}\protected@file@percent }
+\newlabel{tab:lang_analysis}{{10}{21}{Language-Agnostic vs.\ Language-Dependent Components}{table.10}{}}
+\newlabel{tab:lang_analysis@cref}{{[table][10][]10}{[1][20][]21}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.2}OCR Engine: Vietnamese Configuration Path}{22}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.3}Stage 3: Bilingual Role Classification}{22}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.4}Stage 4: Vietnamese Prompt Architecture}{22}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.5}Data Factory: Vietnamese QA Generation}{23}{}\protected@file@percent }
+\citation{selvaraju2017gradcam}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Results and Discussion}{24}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Results and Analysis}{24}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.1}Stage 2: Chart Detection (YOLOv8m)}{24}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces YOLOv8m chart detection results.}}{24}{}\protected@file@percent }
+\newlabel{tab:yolo}{{11}{24}{Stage 2: Chart Detection (YOLOv8m)}{table.11}{}}
+\newlabel{tab:yolo@cref}{{[table][11][]11}{[1][24][]24}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.2}Stage 2b: Chart Classification (ResNet-18)}{24}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces ResNet-18 chart classification results.}}{24}{}\protected@file@percent }
+\newlabel{tab:resnet}{{12}{24}{Stage 2b: Chart Classification (ResNet-18)}{table.12}{}}
+\newlabel{tab:resnet@cref}{{[table][12][]12}{[1][24][]24}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces ResNet-18 per-class classification accuracy across 8 chart types.}}{25}{}\protected@file@percent }
+\newlabel{fig:resnet_class}{{8}{25}{Stage 2b: Chart Classification (ResNet-18)}{figure.8}{}}
+\newlabel{fig:resnet_class@cref}{{[figure][8][]8}{[1][24][]25}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.3}Stage 3: Structural Extraction}{25}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces Stage~3 feature quality by chart type.}}{25}{}\protected@file@percent }
+\newlabel{tab:s3_quality}{{13}{25}{Stage 3: Structural Extraction}{table.13}{}}
+\newlabel{tab:s3_quality@cref}{{[table][13][]13}{[1][25][]25}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Feature extraction quality by chart type: axis information coverage (left axis) and mean OCR confidence (right axis).}}{26}{}\protected@file@percent }
+\newlabel{fig:feature_quality}{{9}{26}{Stage 3: Structural Extraction}{figure.9}{}}
+\newlabel{fig:feature_quality@cref}{{[figure][9][]9}{[1][25][]26}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.4}End-to-End Pipeline Performance}{26}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Estimated processing time per chart by pipeline stage. OCR in Stage~3 accounts for approximately 65\% of total time.}}{26}{}\protected@file@percent }
+\newlabel{fig:processing_time}{{10}{26}{End-to-End Pipeline Performance}{figure.10}{}}
+\newlabel{fig:processing_time@cref}{{[figure][10][]10}{[1][25][]26}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.5}Code Quality}{26}{}\protected@file@percent }
+\citation{liu2023deplot}
+\citation{lee2023matcha}
+\citation{chen2022chartreader}
+\citation{savva2011revision}
+\citation{liu2023deplot}
+\citation{lee2023matcha}
+\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces Test suite results by component.}}{27}{}\protected@file@percent }
+\newlabel{tab:tests}{{14}{27}{Code Quality}{table.14}{}}
+\newlabel{tab:tests@cref}{{[table][14][]14}{[1][26][]27}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Discussion}{27}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.1}Hybrid Architecture Validates Core Hypothesis}{27}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.2}Comparison with Related Work}{27}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {15}{\ignorespaces Comparison with related chart understanding methods.}}{27}{}\protected@file@percent }
+\newlabel{tab:related_cmp}{{15}{27}{Comparison with Related Work}{table.15}{}}
+\newlabel{tab:related_cmp@cref}{{[table][15][]15}{[1][27][]27}{}{}{}}
+\citation{masry2022chartqa}
+\citation{methani2020plotqa}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.3}Modularity Enables Iterative Improvement}{28}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.4}Core-First Strategy Validates Vietnamese Readiness}{28}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.5}Limitations of Current Results}{29}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Recommendations}{29}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion}{30}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Summary of Contributions}{30}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Achievement of Objectives}{30}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {16}{\ignorespaces Achievement of project objectives.}}{30}{}\protected@file@percent }
+\newlabel{tab:objectives}{{16}{30}{Achievement of Objectives}{table.16}{}}
+\newlabel{tab:objectives@cref}{{[table][16][]16}{[1][30][]30}{}{}{}}
+\citation{masry2022chartqa}
+\citation{methani2020plotqa}
+\citation{liu2023deplot}
+\citation{lee2023matcha}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Future Work}{31}{}\protected@file@percent }
+\bibstyle{elsarticle-num-names}
+\bibdata{refs}
+\bibcite{liu2023deplot}{{1}{2023}{{Liu et~al.}}{{Liu, Piccinno, Krichene, Pang, Lee, Joshi, Choi, and Eisenschlos}}}
+\bibcite{lee2023matcha}{{2}{2023}{{Lee et~al.}}{{Lee, Piccinno, Krichene, and Eisenschlos}}}
+\bibcite{savva2011revision}{{3}{2011}{{Savva et~al.}}{{Savva, Kong, Chhajta, Fei-Fei, Agrawala, and Heer}}}
+\bibcite{jocher2023yolov8}{{4}{2023}{{Jocher et~al.}}{{Jocher, Chaurasia, and Qiu}}}
+\bibcite{he2016resnet}{{5}{2016}{{He et~al.}}{{He, Zhang, Ren, and Sun}}}
+\bibcite{fischler1981ransac}{{6}{1981}{{Fischler and Bolles}}{{}}}
+\bibcite{douglas1973rdp}{{7}{1973}{{Douglas and Peucker}}{{}}}
+\bibcite{ramer1972rdp}{{8}{1972}{{Ramer}}{{}}}
+\bibcite{lee1994skeleton}{{9}{1994}{{Lee et~al.}}{{Lee, Kashyap, and Chu}}}
+\@writefile{toc}{\contentsline {section}{References}{32}{}\protected@file@percent }
+\bibcite{bradski2000opencv}{{10}{2000}{{Bradski}}{{}}}
+\bibcite{yang2024qwen2}{{11}{2024}{{Yang et~al.}}{{Yang, Yang et~al.}}}
+\bibcite{dettmers2024qlora}{{12}{2024}{{Dettmers et~al.}}{{Dettmers, Pagnoni, Holtzman, and Zettlemoyer}}}
+\bibcite{masry2022chartqa}{{13}{2022}{{Masry et~al.}}{{Masry, Long, Tan, Joty, and Hoque}}}
+\bibcite{methani2020plotqa}{{14}{2020}{{Methani et~al.}}{{Methani, Ganguly, Khapra, and Kumar}}}
+\bibcite{chen2022chartreader}{{15}{2022}{{Chen et~al.}}{{Chen, Shen, and Ma}}}
+\bibcite{redmon2016yolo}{{16}{2016}{{Redmon et~al.}}{{Redmon, Divvala, Girshick, and Farhadi}}}
+\bibcite{du2020paddleocr}{{17}{2020}{{Du et~al.}}{{Du, Chen, Li et~al.}}}
+\bibcite{jaided2020easyocr}{{18}{2020}{{JaidedAI}}{{}}}
+\bibcite{hu2022lora}{{19}{2022}{{Hu et~al.}}{{Hu, Shen, Wallis, Allen-Zhu, Li, Wang, Wang, and Chen}}}
+\bibcite{selvaraju2017gradcam}{{20}{2020}{{Selvaraju et~al.}}{{Selvaraju, Cogswell, Das, Vedantam, Parikh, and Batra}}}
+\gdef \@abspage@last{39}

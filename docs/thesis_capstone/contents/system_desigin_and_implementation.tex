@@ -1,0 +1,441 @@
+\section{System Design and Implementation}
+
+This section details the layered architecture, the implementation of each pipeline stage,
+the AI routing layer, and the configuration system.
+
+% ============================================================
+\subsection{Layered Architecture}
+% ============================================================
+
+Geo-SLM follows a strict 5-layer separation, as shown in \Cref{fig:layer_arch}. The
+core engine (Layer~3) has \textbf{zero dependency} on any web framework; it runs
+identically as a standalone Python library, a CLI tool, or behind a FastAPI server.
+
+\begin{figure}[htbp]
+\centering
+\input{figures/tikz/tikz_layer_architecture}
+\caption{Geo-SLM 5-layer system architecture. Each layer depends only on layers below it.
+    The Core Engine is independent of the serving layer.}
+\label{fig:layer_arch}
+\end{figure}
+
+\Cref{tab:tech} lists the technology stack for each component.
+
+\begin{table}[htbp]
+\centering
+\caption{Technology stack overview.}
+\label{tab:tech}
+\input{figures/tables/tab_technology_stack}
+\end{table}
+
+% ============================================================
+\subsection{Stage 1: Ingestion and Sanitation}
+% ============================================================
+
+Stage~1 transforms diverse input formats (PDF, PNG, JPG, TIFF, BMP) into normalized
+\texttt{CleanImage} objects. Key operations include:
+
+\begin{itemize}
+    \item \textbf{PDF rendering}: PyMuPDF renders each page using a transformation matrix
+          \texttt{Matrix(DPI/72, DPI/72)} at a configurable DPI (default: 150).
+    \item \textbf{Quality validation}: Blur detection using Laplacian variance
+          ($\sigma^2(\nabla^2 I)$); images below the threshold (100.0) are flagged but
+          not rejected, deferring the decision to downstream stages.
+    \item \textbf{Normalization}: Images exceeding 4,096 pixels are downscaled with
+          \texttt{INTER\_AREA} interpolation; images below 100 pixels are rejected.
+    \item \textbf{Session management}: Each pipeline run generates a unique session ID
+          (\texttt{sess\_YYYYMMDD\_HHMMSS\_\{uuid8\}}) and a config hash for
+          reproducibility.
+\end{itemize}
+
+Stage~1 is marked as \emph{critical} -- the pipeline cannot proceed without valid input.
+If ingestion fails, a \texttt{StageInputError} is raised rather than producing an
+empty output.
+
+% ============================================================
+\subsection{Stage 2: Detection and Localization}
+% ============================================================
+
+Stage~2 detects chart regions in document images using a trained YOLOv8m model
+\cite{jocher2023yolov8}. The detection pipeline operates as follows:
+
+\begin{enumerate}
+    \item Load each \texttt{CleanImage} and run YOLO inference (confidence threshold 0.5,
+          NMS IoU threshold 0.45, input size $640 \times 640$).
+    \item Filter detections by minimum area (100~pixels).
+    \item For each valid detection, crop the chart region with 10-pixel padding to prevent
+          text clipping, assign a unique \texttt{chart\_id}, and save the cropped image.
+\end{enumerate}
+
+The detector uses a \textbf{single-class strategy} (``chart'' vs.\ background) rather
+than multi-class per chart type. This design decision is motivated by the observation
+that YOLO excels at localization, while type classification benefits from a dedicated
+architecture (ResNet-18, see \Cref{sec:system_s3}). The two-model cascade achieves
+higher combined accuracy than a single multi-class detector.
+
+Training uses conservative augmentation (no rotation or flipping, since charts are
+orientation-sensitive) with mosaic, scale, HSV adjustments, and translation.
+
+% ============================================================
+\subsection{Stage 3: Structural Analysis (Extraction)}
+\label{sec:system_s3}
+% ============================================================
+
+Stage~3 is the most complex component ($\sim$5,400 lines across 7 submodules). Its core
+design principle is to treat charts as \textbf{collections of geometric entities} rather
+than pixel patterns. \Cref{fig:s3_submodules} shows the submodule pipeline.
+
+\begin{figure}[htbp]
+\centering
+\input{figures/tikz/tikz_stage3_submodules}
+\caption{Stage~3 extraction pipeline: 7 submodules process the cropped chart image
+    sequentially. Each submodule has an independent configuration and can be toggled on/off.}
+\label{fig:s3_submodules}
+\end{figure}
+
+\subsubsection{Preprocessor}
+
+The preprocessor converts chart images to optimized binary masks. A key technique is the
+\textbf{negative image transform}: $I_{\text{neg}} = 255 - I$. This inversion aligns
+chart strokes (thin, dark lines) with morphological operations that expect bright
+foreground, improving skeleton quality by approximately 30\%. Adaptive Gaussian
+thresholding ($T(x,y) = \mu_G(x,y) - C$, block size 11, $C=2$) handles non-uniform
+lighting in scanned documents.
+
+\subsubsection{Skeletonizer}
+
+The Lee topology-preserving thinning algorithm \cite{lee1994skeleton} reduces thick
+strokes to 1-pixel width while maintaining 8-connectivity and homotopy (no holes or
+junctions are created or destroyed). Gap filling via morphological closing
+(\texttt{kernel=3$\times$3}) precedes skeletonization to repair small breaks in chart
+lines. Junction detection classifies skeleton pixels as endpoints (1~neighbor),
+junctions (3+ neighbors), or intermediate (2~neighbors).
+
+\subsubsection{Vectorizer}
+
+The Ramer-Douglas-Peucker (RDP) algorithm \cite{douglas1973rdp, ramer1972rdp}
+recursively simplifies polylines by removing points within tolerance $\epsilon$.
+Geo-SLM uses an \textbf{adaptive epsilon}:
+\begin{equation}
+    \epsilon = \epsilon_{\text{base}} \cdot \sqrt{\frac{L}{L_{\text{ref}}}}
+\end{equation}
+where $L$ is the polyline length and $L_{\text{ref}}$ is a reference length. This
+prevents over-simplification of long curves and under-simplification of short ones.
+Sub-pixel refinement uses weighted centroids for fractional pixel positions.
+
+\subsubsection{OCR Engine}
+
+PaddleOCR \cite{du2020paddleocr} (with EasyOCR \cite{jaided2020easyocr} as fallback)
+extracts all text, which is then assigned spatial roles based on position: title
+(top 15\%), X-axis label (bottom 15\%), Y-axis label (left 15\%), legend
+(top-right corner), and data values (near elements). Content-aware keyword matching
+supplements positional heuristics.
+
+\subsubsection{Element Detector}
+
+Three detection methods are combined for bar detection: watershed segmentation for
+touching bars, projection profile analysis for alignment, and morphological connected
+components. Scatter plot markers use Hough circle transform. Pie slices use contour
+analysis with arc fitting. Color clustering (K-means, $k=8$) identifies dominant
+colors per element.
+
+\subsubsection{Geometric Mapper}
+
+The geometric mapper calibrates axes and converts pixel coordinates to data values.
+The calibration pipeline:
+
+\begin{enumerate}
+    \item Match OCR tick labels to detected tick positions along axes.
+    \item Build (pixel, value) correspondence pairs.
+    \item Fit a calibration model using RANSAC \cite{fischler1981ransac} (default),
+          which tolerates up to 40\% outlier rejection from OCR errors.
+    \item Compute $R^2$ as calibration confidence.
+\end{enumerate}
+
+The linear mapping function (with Y-axis inversion for image coordinates):
+\begin{equation}
+    v_y = y_{\max} - \frac{p_y - p_{\text{top}}}{p_{\text{bottom}} - p_{\text{top}}}
+          \cdot (y_{\max} - y_{\min})
+\end{equation}
+Logarithmic scale is detected automatically when tick values follow a geometric
+progression.
+
+\subsubsection{Classifier}
+
+A cascade of three classifiers determines chart type:
+
+\begin{enumerate}
+    \item \textbf{ResNet-18} \cite{he2016resnet}: CNN on $256 \times 256$ grayscale input,
+          8 classes, 94.14\% test accuracy, 6.90ms ONNX inference (CPU).
+    \item \textbf{ML Classifier}: Random Forest on structural features ($\sim$70\% accuracy).
+    \item \textbf{Rule-based}: Heuristics (has bars? has slices?) as final fallback
+          ($\sim$50\% accuracy).
+\end{enumerate}
+
+The overall extraction confidence is a weighted average:
+\begin{equation}
+    C_{\text{overall}} = 0.3 \cdot C_{\text{class}} + 0.25 \cdot C_{\text{ocr}}
+                       + 0.25 \cdot C_{\text{axis}} + 0.2 \cdot C_{\text{elem}}
+\end{equation}
+
+% ============================================================
+\subsection{Stage 4: Semantic Reasoning}
+% ============================================================
+
+Stage~4 refines raw extracted metadata using AI reasoning. The processing pipeline
+per chart consists of four steps:
+
+\textbf{Step 1: Geometric Value Mapping.}
+The \texttt{GeometricValueMapper} (764 lines) applies the calibration from Stage~3 to
+convert all pixel coordinates to data values. Confidence filtering ensures mapping is
+applied only when calibration confidence $\geq 0.3$. Value clamping restricts results
+to the detected axis range to prevent extrapolation errors.
+
+\textbf{Step 2: Prompt Construction.}
+The \texttt{GeminiPromptBuilder} (833 lines) constructs structured prompts with explicit
+sections: \textsc{Chart\_Metadata}, \textsc{OCR\_Texts}, \textsc{Elements},
+\textsc{Axis\_Info}, \textsc{Mapped\_Values}, and \textsc{Instructions}. Anti-hallucination
+rules are embedded: ``Only report values that appear in OCR\_TEXTS or MAPPED\_VALUES;
+if uncertain, report null rather than guess.''
+
+\textbf{Step 3: AI Routing.}
+The \texttt{AIRouterEngine} delegates to the AI Router (see \Cref{sec:ai_routing}).
+The router walks the task-specific fallback chain until a provider returns a response
+with confidence above threshold (0.7).
+
+\textbf{Step 4: Post-processing.}
+The AI response is parsed into structured \texttt{RefinedChartData}: title, axis labels,
+named data series with $(x, y)$ points, natural language description, and confidence
+scores.
+
+A pure rule-based fallback is available when all AI providers fail, applying pattern-based
+OCR corrections and direct use of geometric mapping values without LLM refinement.
+
+% ============================================================
+\subsection{Stage 5: Insight and Reporting}
+% ============================================================
+
+Stage~5 generates human-readable insights from structured chart data and produces
+final output files. Four insight types are supported:
+
+\begin{itemize}
+    \item \textbf{Trend detection}: Linear regression slope classification
+          (increasing, decreasing, stable, volatile), with $R^2$ as confidence.
+    \item \textbf{Comparison}: Cross-series analysis (dominant series, largest gap,
+          crossover points) for charts with $\geq 2$ data series.
+    \item \textbf{Anomaly detection}: Z-score method ($|z| > 2.0$) applied per-series.
+    \item \textbf{Summary}: Template-based text combining chart type, axis labels,
+          data range, and trend information.
+\end{itemize}
+
+Output is produced in two formats: (1) a structured JSON file containing the full
+\texttt{PipelineResult} with session metadata, all chart results, insights, and
+source traceability; and (2) a Markdown report with per-chart sections. Failed charts
+are included with error insights rather than dropped, preserving pipeline completeness.
+
+% ============================================================
+\subsection{AI Routing Layer}
+\label{sec:ai_routing}
+% ============================================================
+
+\Cref{fig:ai_router} illustrates the AI routing architecture.
+
+\begin{figure}[htbp]
+\centering
+\input{figures/tikz/tikz_ai_router}
+\caption{AI Router with Adapter Pattern and per-task fallback chains.
+    Each provider implements the common \texttt{BaseAIAdapter} interface.}
+\label{fig:ai_router}
+\end{figure}
+
+All AI providers implement \texttt{BaseAIAdapter}, an abstract base class defining
+\texttt{reason()}, \texttt{correct\_ocr()}, and \texttt{health\_check()} methods.
+Concrete adapters (\texttt{GeminiAdapter}, \texttt{OpenAIAdapter},
+\texttt{LocalSLMAdapter}) handle provider-specific API calls, authentication, and
+error wrapping.
+
+\Cref{tab:ai_providers} shows the configured providers and their roles.
+
+\begin{table}[htbp]
+\centering
+\caption{AI provider configuration.}
+\label{tab:ai_providers}
+\input{figures/tables/tab_ai_providers}
+\end{table}
+
+The \texttt{AIRouter} resolves a (adapter, model\_id) pair for each task type by:
+(1)~checking configuration overrides, (2)~walking the fallback chain for the task type,
+(3)~verifying API key availability and provider health, and (4)~returning the first
+healthy provider. A \textbf{local-only mode} restricts routing to the local SLM for
+privacy-sensitive or offline deployments.
+
+% ============================================================
+\subsection{Error Handling and Extensibility}
+% ============================================================
+
+The system uses a hierarchical exception system rooted at \texttt{ChartAnalysisError}.
+Each exception carries \texttt{stage}, \texttt{recoverable}, and
+\texttt{fallback\_available} flags, enabling the orchestrator to decide whether to
+continue, retry, or abort.
+
+The modular architecture provides five extension points:
+\begin{itemize}
+    \item \textbf{New chart type}: Add an enum value to \texttt{ChartType} and element
+          detection rules.
+    \item \textbf{New AI provider}: Implement \texttt{BaseAIAdapter} and register in the
+          router configuration.
+    \item \textbf{New pipeline stage}: Implement \texttt{BaseStage[In, Out]} and register
+          in the orchestrator.
+    \item \textbf{New output format}: Add to \texttt{OutputFormat} enum and write a
+          formatter in Stage~5.
+    \item \textbf{New language}: Change OCR config, add keyword dictionaries, create
+          prompt template variants, and fine-tune SLM with target-language data --
+          all without modifying core pipeline logic.
+    \item \textbf{Configuration override}: Add a YAML key; OmegaConf handles hierarchical
+          merging.
+\end{itemize}
+
+% ============================================================
+\subsection{Vietnamese Language Implementation}
+\label{sec:viet_impl}
+% ============================================================
+
+This subsection details the concrete implementation path for Vietnamese chart
+understanding, demonstrating how the extension module architecture supports language
+localization at each pipeline stage.
+
+\subsubsection{Language-Agnostic vs.\ Language-Dependent Components}
+
+\Cref{tab:lang_analysis} classifies each pipeline component by its language dependency.
+The classification reveals that the majority of the system -- the entire geometric
+analysis core -- is inherently language-agnostic.
+
+\begin{table}[htbp]
+\centering
+\caption{Language dependency analysis of pipeline components.}
+\label{tab:lang_analysis}
+\begin{tabular}{@{}lllp{5.5cm}@{}}
+\toprule
+\textbf{Component} & \textbf{Stage} & \textbf{Language Dep.} & \textbf{Rationale} \\
+\midrule
+PDF Renderer           & S1 & Agnostic  & Pixel-level rendering, no text parsing \\
+Blur Detector          & S1 & Agnostic  & Laplacian variance is language-free \\
+YOLO Detector          & S2 & Agnostic  & Visual bounding box detection \\
+Preprocessor           & S3 & Agnostic  & Negative transform, thresholding \\
+Skeletonizer           & S3 & Agnostic  & Topology-preserving thinning \\
+Vectorizer (RDP)       & S3 & Agnostic  & Polyline simplification \\
+Element Detector       & S3 & Agnostic  & Watershed, Hough, contour analysis \\
+Geometric Mapper       & S3 & Agnostic  & Pixel-to-value calibration (numeric) \\
+ResNet-18 Classifier   & S3 & Agnostic  & Visual feature classification \\
+\midrule
+OCR Engine             & S3 & \textbf{Config}    & Language set via \texttt{config/models.yaml} \\
+OCR Role Classifier    & S3 & \textbf{Keywords}  & English keyword lists, needs Vietnamese extension \\
+Prompt Builder         & S4 & \textbf{Templates} & English prompts, needs Vietnamese variants \\
+AI Adapters            & S4 & Agnostic  & Pass-through interface, language in prompts \\
+AI Router              & S4 & Agnostic  & Provider selection, language-transparent \\
+Insight Generator      & S5 & \textbf{Templates} & English summary templates \\
+QA Generator           & Data & \textbf{Prompts}   & English generation instructions \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Out of 17 major components, only 4 require modification (OCR role classifier, prompt
+builder, insight generator, QA generator) and 1 requires configuration change (OCR
+engine). The remaining 12 components, including all geometric analysis modules, are
+fully language-agnostic.
+
+\subsubsection{OCR Engine: Vietnamese Configuration Path}
+
+The \texttt{OCRConfig} class defines a \texttt{languages} parameter (default:
+\texttt{["en"]}). Vietnamese support is activated through configuration without code
+changes:
+
+\begin{verbatim}
+# config/models.yaml -- Vietnamese configuration
+ocr:
+  paddleocr:
+    lang: "vi"          # Vietnamese recognition weights
+  easyocr:
+    languages: ["vi"]   # Multi-language support
+  tesseract:
+    lang: "vie"         # Tesseract Vietnamese tessdata
+\end{verbatim}
+
+The OCR engine initialization code (\texttt{ocr\_engine.py}) already supports this:
+PaddleOCR passes \texttt{lang=self.config.languages[0]}, and EasyOCR passes the full
+language list to \texttt{easyocr.Reader()}. For bilingual charts (mixed English and
+Vietnamese), the configuration \texttt{["en", "vi"]} enables simultaneous recognition.
+
+\subsubsection{Stage 3: Bilingual Role Classification}
+
+The \texttt{\_classify\_role()} method in the OCR engine uses keyword dictionaries for
+semantic role assignment. The Vietnamese extension adds parallel dictionaries:
+
+\begin{verbatim}
+# Vietnamese axis label keywords (additive extension)
+axis_label_keywords_vi = [
+    'so luong', 'ty le', 'gia tri', 'doanh thu',
+    'thoi gian', 'nam', 'thang', 'ngay',
+    'gia', 'chi phi', 'loi nhuan', 'diem so',
+    'do chinh xac', 'sai so', 'mat mat',
+]
+
+# Vietnamese legend keywords
+legend_keywords_vi = [
+    'nhom', 'loai', 'phan loai', 'chuoi',
+    'huan luyen', 'kiem tra', 'du doan',
+    'mo hinh', 'phuong phap', 'thuat toan',
+]
+\end{verbatim}
+
+The position-based fallback logic (assigning roles based on text position within the
+chart image -- top 15\% for titles, bottom 15\% for X-axis, etc.) remains effective
+regardless of language, providing a robust baseline when keyword matching fails.
+
+\subsubsection{Stage 4: Vietnamese Prompt Architecture}
+
+The AI adapter interface (\texttt{BaseAIAdapter.reason()}) accepts
+\texttt{system\_prompt} and \texttt{user\_prompt} as string parameters, making it
+inherently language-transparent. Vietnamese support is implemented entirely at the
+prompt layer:
+
+\begin{enumerate}
+    \item \textbf{Vietnamese prompt template files}: New files
+          \texttt{prompts/reasoning\_vi.txt}, \texttt{description\_vi.txt}, and
+          \texttt{ocr\_correction\_vi.txt} contain Vietnamese system instructions with
+          Vietnamese chart analysis terminology.
+    \item \textbf{Language routing}: The \texttt{PromptConfig.output\_language} field
+          (already defined as \texttt{"english"} by default) is wired into the prompt
+          selection logic to choose between English and Vietnamese template sets.
+    \item \textbf{SLM compatibility}: The Qwen-2.5 model family supports Vietnamese
+          natively in its tokenizer, ensuring efficient token usage for Vietnamese text
+          generation without excessive subword splitting.
+\end{enumerate}
+
+The anti-hallucination constraints (``only report values from OCR\_TEXTS or
+MAPPED\_VALUES'') are preserved in Vietnamese prompts, translated to equivalent
+Vietnamese instructions to maintain output grounding.
+
+\subsubsection{Data Factory: Vietnamese QA Generation}
+
+The QA generation pipeline in \texttt{tools/data\_factory/} produces training data by
+sending chart features to Gemini API with generation instructions. Vietnamese QA
+generation requires:
+
+\begin{enumerate}
+    \item Rewriting the system prompt in \texttt{qa\_generator.py} to enforce Vietnamese
+          output: all questions, answers, and explanations must be in Vietnamese.
+    \item Expanding the question taxonomy with Vietnamese-specific terminology covering
+          chart analysis concepts (e.g.,
+          ``xu hướng tăng/giảm'',
+          ``giá trị lớn nhất'',
+          ``so sánh giữa các nhóm'').
+    \item Targeting 5,000--10,000 Vietnamese QA samples to supplement the existing
+          268,799 English samples.
+    \item Validating generated data through the existing verification pipeline with
+          Vietnamese-aware quality checks.
+\end{enumerate}
+
+The combined English + Vietnamese training data enables the SLM to handle both languages,
+with the English foundation providing geometric reasoning knowledge and the Vietnamese
+data providing language-specific output capability.

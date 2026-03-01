@@ -1,0 +1,65 @@
+\documentclass[11pt,fleqn]{article}
+\usepackage{aip491}
+\usepackage{graphicx} % Required for inserting images
+
+\usepackage{booktabs}
+\usepackage{amsfonts,amsmath,amssymb}
+\usepackage{siunitx}
+\usepackage{multirow}
+\usepackage{cleveref}
+
+\usepackage{titlesec}
+\usepackage{appendix}
+
+% TikZ for architecture diagrams
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
+
+\newcommand{\sectionbreak}{\clearpage}
+
+\advisor{Huynh Van Thong}  % Advisor
+\coadvisor{Not applicable for this Course}  % Co-advisor
+\gpname{Geo-SLM}
+\cpcode{AIP491-SP26}
+\gmemf{noname} %student name 1
+\gmemsc{noname} %student name 2
+\gmemth{Le Quang That - SE183256} %student name 3
+\gmemnS{3}  % Number of students in group, should be 3 or 4
+
+\title{Geo-SLM: Hybrid Neuro-Symbolic Chart Analysis with Geometric Calibration and Small Language Models}  % Project title
+\graduateDate{HCMC, April 2026}
+
+\begin{document}
+
+\maketitle
+
+\pagenumbering{roman}
+\setstretch{1.08} %\doublespacing  % 
+\tableofcontents
+
+\cleardoublepage
+\addcontentsline{toc}{section}{\listfigurename}
+\listoffigures
+\cleardoublepage
+\addcontentsline{toc}{section}{\listtablename}
+\listoftables
+\cleardoublepage
+\pagenumbering{arabic}
+
+\input{contents/introduction}
+\input{contents/project_management}
+\input{contents/literature_review}
+\input{contents/methodology}
+\input{contents/system_desigin_and_implementation}
+\input{contents/results_discussion}
+\input{contents/conclusion}
+
+\clearpage
+\addcontentsline{toc}{section}{References}
+\setstretch{2} %\doublespacing  % 
+\bibliographystyle{elsarticle-num-names}
+\bibliography{refs}
+
+\appendix
+% Appendix content can be added here if needed
+\end{document}

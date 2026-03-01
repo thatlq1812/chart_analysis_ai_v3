@@ -1,0 +1,60 @@
+% TikZ: System Layer Architecture
+% Usage: \input{figures/tikz/tikz_layer_architecture.tex}
+% Requires: \usepackage{tikz} \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
+
+\begin{tikzpicture}[
+    node distance=0.5cm,
+    layer/.style={
+        rectangle, rounded corners=2pt, draw=#1!60!black, thick,
+        minimum width=13cm, minimum height=1.4cm,
+        fill=#1!8, font=\small\bfseries, align=center
+    },
+    component/.style={
+        rectangle, rounded corners=2pt, draw=black!40,
+        minimum width=2.8cm, minimum height=0.7cm,
+        fill=white, font=\footnotesize, align=center
+    },
+    arrow/.style={-{Stealth[length=3mm]}, thick, draw=black!50},
+    layerlabel/.style={font=\footnotesize\bfseries, text=#1!70!black}
+]
+
+% Layer 1: Interface
+\node[layer=blue] (l1) {Interface Layer};
+\node[component, above=0.15cm of l1.south west, anchor=south west, xshift=0.5cm] (cli) {CLI (Typer)};
+\node[component, right=0.3cm of cli] (demo) {Streamlit Demo};
+\node[component, right=0.3cm of demo] (api) {FastAPI Server};
+\node[component, right=0.3cm of api] (notebook) {Jupyter Notebook};
+
+% Layer 2: Task Queue
+\node[layer=teal, below=0.6cm of l1] (l2) {Task Queue Layer};
+\node[component, above=0.15cm of l2.south west, anchor=south west, xshift=2.0cm] (celery) {Celery Workers};
+\node[component, right=0.4cm of celery] (redis) {Redis Broker};
+\node[component, right=0.4cm of redis] (pg) {PostgreSQL State};
+
+% Layer 3: Core Engine
+\node[layer=orange, below=0.6cm of l2] (l3) {Core Engine (Pure Python)};
+\node[component, above=0.15cm of l3.south west, anchor=south west, xshift=0.3cm] (pipeline) {Pipeline\\Orchestrator};
+\node[component, right=0.2cm of pipeline] (stages) {Stages\\S1--S5};
+\node[component, right=0.2cm of stages] (schemas) {Pydantic\\Schemas};
+\node[component, right=0.2cm of schemas] (router) {AI Router};
+\node[component, right=0.2cm of router] (validators) {Validators};
+
+% Layer 4: Data
+\node[layer=purple, below=0.6cm of l3] (l4) {Data \& Model Layer};
+\node[component, above=0.15cm of l4.south west, anchor=south west, xshift=0.5cm] (files) {File Storage};
+\node[component, right=0.3cm of files] (cache) {OCR Cache};
+\node[component, right=0.3cm of cache] (weights) {Model Weights};
+\node[component, right=0.3cm of weights] (config) {YAML Config};
+
+% Arrows
+\draw[arrow] (l1) -- (l2);
+\draw[arrow] (l2) -- (l3);
+\draw[arrow] (l3) -- (l4);
+
+% Side labels
+\node[layerlabel=blue, rotate=90, anchor=south] at ($(l1.west) + (-0.5, 0)$) {Users};
+\node[layerlabel=teal, rotate=90, anchor=south] at ($(l2.west) + (-0.5, 0)$) {Async};
+\node[layerlabel=orange, rotate=90, anchor=south] at ($(l3.west) + (-0.5, 0)$) {Logic};
+\node[layerlabel=purple, rotate=90, anchor=south] at ($(l4.west) + (-0.5, 0)$) {Storage};
+
+\end{tikzpicture}

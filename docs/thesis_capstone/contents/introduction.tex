@@ -1,0 +1,128 @@
+\section{Introduction}
+
+\subsection{Background}
+
+Charts and graphs are among the most common methods for presenting quantitative information
+in scientific publications, business reports, and data dashboards. A typical research paper
+contains between two and ten chart images, each encoding numerical relationships that are
+critical for understanding experimental results. Despite advances in machine learning and
+natural language processing, the task of automatically extracting structured numerical data
+from chart images remains a significant challenge.
+
+Current approaches to automatic chart understanding fall into two categories. The first
+category uses \textbf{end-to-end multimodal models} such as DePlot \cite{liu2023deplot} and
+MatCha \cite{lee2023matcha}, which feed chart images directly into large vision-language
+models that predict data tables or answer questions. While these approaches benefit from the
+generalization capabilities of large models, they suffer from a fundamental limitation:
+the model \emph{estimates} numerical values from pixel patterns rather than \emph{measuring}
+them from geometric structures. This leads to hallucination errors where the model fabricates
+plausible but incorrect data points.
+
+The second category relies on \textbf{rule-based geometric analysis}, such as ReVision
+\cite{savva2011revision}, which uses Hough transforms and template matching to extract
+values from specific chart types. These methods are precise when applicable but lack
+generalizability across chart types and fail on noisy or complex layouts.
+
+Neither paradigm alone is sufficient. End-to-end models lack geometric precision, while
+rule-based systems lack the perceptual flexibility of neural networks and the semantic
+understanding of language models. This gap motivates a \textbf{hybrid neuro-symbolic
+approach} that combines the strengths of both paradigms.
+
+Furthermore, existing chart understanding systems are designed almost exclusively for
+English-language charts. In the Vietnamese context, academic publications, government
+reports, and business dashboards increasingly use charts with Vietnamese labels, axis
+titles, and legends -- including diacritical marks (e.g., ``Doanh thu'',
+``Tỷ lệ phần trăm'',
+``Biểu đồ cột''). No published
+system addresses Vietnamese chart understanding with structured data extraction and
+Vietnamese-language question answering. This project targets this gap by designing the
+pipeline as a \textbf{language-extensible} system: the core geometric and neural
+components are language-agnostic, while OCR configuration, prompt templates, and SLM
+fine-tuning data serve as localization layers that can be switched to Vietnamese without
+modifying core logic.
+
+\subsection{Objective}
+
+This project aims to design and implement \textbf{Geo-SLM}, a hybrid AI system for
+extracting structured numerical data from chart images. The system combines three
+complementary paradigms:
+
+\begin{enumerate}
+    \item \textbf{Deep Learning for perception}: YOLOv8 \cite{jocher2023yolov8} for chart
+          detection and ResNet-18 \cite{he2016resnet} for chart type classification.
+    \item \textbf{Classical geometry for precision}: RANSAC-based axis calibration
+          \cite{fischler1981ransac}, Ramer-Douglas-Peucker polyline simplification
+          \cite{douglas1973rdp, ramer1972rdp}, and skeleton-based structural analysis
+          \cite{lee1994skeleton} using OpenCV \cite{bradski2000opencv}.
+    \item \textbf{Small Language Model (SLM) for reasoning}: A fine-tuned Qwen-2.5-1.5B
+          \cite{yang2024qwen2} using QLoRA \cite{dettmers2024qlora} for OCR correction,
+          value validation, and natural language description generation.
+\end{enumerate}
+
+The specific objectives are:
+\begin{itemize}
+    \item Achieve chart detection mAP@0.5 $> 85\%$ and classification accuracy $> 90\%$.
+    \item Extract structured data (axis values, data series, labels) from 8 chart types
+          with extraction confidence $> 90\%$.
+    \item Build a large-scale training dataset ($> 200{,}000$ samples) from academic papers
+          for SLM fine-tuning.
+    \item Demonstrate that the hybrid geometric-plus-AI approach outperforms pure end-to-end
+          methods in numerical accuracy while running locally on consumer hardware
+          (NVIDIA RTX 3060, 6~GB VRAM).
+    \item Enable \textbf{Vietnamese-language chart question answering}: the system must
+          process charts containing Vietnamese text and support interactive Q\&A in
+          Vietnamese, leveraging the extensible pipeline architecture.
+\end{itemize}
+
+\subsection{Problem Statement}
+
+Given a document (PDF or image) containing one or more chart images, the system must:
+
+\begin{itemize}
+    \item \textbf{Input}: A PDF document or image file (PNG, JPG) containing charts.
+    \item \textbf{Output}: For each detected chart, a structured JSON object containing:
+          chart type, title, axis labels, data series (named lists of $(x, y)$ points),
+          natural language description, and confidence scores with full traceability
+          to source coordinates. The system must also support Vietnamese-language
+          question answering over extracted chart data.
+    \item \textbf{Chart types}: 8 categories -- line, bar, scatter, pie, histogram, box,
+          heatmap, and area.
+    \item \textbf{Performance targets}: Detection mAP@0.5 $> 85\%$; Classification accuracy
+          $> 90\%$; End-to-end extraction confidence $> 80\%$.
+    \item \textbf{Deployment constraint}: Must run on a single consumer GPU (RTX 3060,
+          6~GB VRAM) without requiring cloud API access for core inference.
+\end{itemize}
+
+\subsection{Scope and Limitations}
+
+\textbf{In scope:}
+\begin{itemize}
+    \item Charts from academic papers (arXiv cs.CV, cs.LG, cs.AI) and Vietnamese-language
+          documents.
+    \item 8 chart types: line, bar, scatter, pie, histogram, box, heatmap, area.
+    \item PDF and raster image inputs (PNG, JPG, TIFF, BMP).
+    \item Structured data extraction with JSON output.
+    \item Local inference using fine-tuned SLM (1.5B parameters).
+    \item Vietnamese-language OCR, chart Q\&A, and description generation.
+\end{itemize}
+
+\textbf{Out of scope:}
+\begin{itemize}
+    \item Business dashboards, presentation slides, and infographics.
+    \item 3D charts, Sankey diagrams, and multi-panel composite figures.
+    \item Real-time streaming or interactive chart manipulation.
+    \item DOCX and HTML input formats (planned for future work).
+\end{itemize}
+
+\textbf{Known limitations:}
+\begin{itemize}
+    \item The core training data is sourced from English academic publications; Vietnamese
+          chart data is generated through the localization pipeline (see \Cref{sec:viet_loc}).
+    \item Axis calibration requires at least two readable numeric tick labels; charts
+          without visible axis numbers produce no calibrated values.
+    \item The SLM fine-tuning is ongoing at the time of writing; final SLM evaluation
+          results (both English and Vietnamese) will be supplemented upon completion.
+    \item Vietnamese OCR accuracy depends on diacritical mark recognition quality,
+          which varies across OCR engines and font styles.
+\end{itemize}
+

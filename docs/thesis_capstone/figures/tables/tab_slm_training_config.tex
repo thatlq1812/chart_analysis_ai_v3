@@ -1,0 +1,14 @@
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Base model       & Qwen2.5-1.5B-Instruct \\
+Method           & QLoRA (4-bit NF4 + LoRA rank 16) \\
+Trainable params & 11.27M (0.9\% of total) \\
+VRAM requirement & $\sim$4 GB (RTX 3060 6GB) \\
+Epochs           & 3 (3 sessions $\times$ 1 epoch $\times$ $\sim$14h) \\
+Batch size       & 4 (effective 16 with gradient accumulation) \\
+Learning rate    & $2 \times 10^{-4}$, cosine schedule \\
+Max seq. length  & 512 tokens \\
+\bottomrule
+\end{tabular}

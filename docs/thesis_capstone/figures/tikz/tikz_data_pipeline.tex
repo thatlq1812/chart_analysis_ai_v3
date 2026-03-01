@@ -1,0 +1,55 @@
+% TikZ: Data Collection Pipeline Flow
+% Usage: \input{figures/tikz/tikz_data_pipeline.tex}
+% Requires: \usepackage{tikz} \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds}
+
+\begin{tikzpicture}[
+    node distance=0.5cm and 0.4cm,
+    step/.style={
+        rectangle, rounded corners=3pt, draw=#1!60!black, thick,
+        minimum width=2.4cm, minimum height=1.0cm,
+        fill=#1!12, font=\scriptsize\bfseries, align=center
+    },
+    count/.style={
+        font=\tiny\bfseries, text=#1!70!black, align=center
+    },
+    arrow/.style={-{Stealth[length=2.5mm]}, thick, draw=black!50},
+    filter/.style={font=\tiny\itshape, text=red!60, align=center}
+]
+
+% Row 1
+\node[step=blue] (arxiv) {arXiv API\\Collection};
+\node[step=teal, right=of arxiv] (pdf) {PDF Page\\Extraction};
+\node[step=orange, right=of pdf] (yolo) {YOLO\\Detection};
+
+% Row 2
+\node[step=purple, right=of yolo] (filter) {Quality\\Filtering};
+\node[step=red, below=0.8cm of filter] (classify) {ResNet-18\\Classification};
+\node[step=teal, left=of classify] (s3) {Stage 3\\Extraction};
+
+% Row 3
+\node[step=blue, left=of s3] (qa) {Gemini QA\\Generation};
+\node[step=orange, left=of qa] (dataset) {v3 Dataset\\Assembly};
+
+% Counts
+\node[count=blue, below=0.08cm of arxiv] {$\sim$4,000 PDFs};
+\node[count=teal, below=0.08cm of pdf] {$\sim$150K pages};
+\node[count=orange, below=0.08cm of yolo] {$\sim$70K crops};
+\node[count=purple, below=0.08cm of filter] {46,910};
+\node[count=red, above=0.08cm of classify] {32,364 charts};
+\node[count=teal, above=0.08cm of s3] {32,364 features};
+\node[count=blue, above=0.08cm of qa] {291K QA pairs};
+\node[count=orange, above=0.08cm of dataset] {268,799 samples};
+
+% Arrows
+\draw[arrow] (arxiv) -- (pdf);
+\draw[arrow] (pdf) -- (yolo);
+\draw[arrow] (yolo) -- (filter);
+\draw[arrow] (filter) -- (classify);
+\draw[arrow] (classify) -- (s3);
+\draw[arrow] (s3) -- (qa);
+\draw[arrow] (qa) -- (dataset);
+
+% Filter annotations
+\node[filter, above=0.2cm of filter.north west, anchor=south west] {min res, dedup,\\non-chart removal};
+
+\end{tikzpicture}

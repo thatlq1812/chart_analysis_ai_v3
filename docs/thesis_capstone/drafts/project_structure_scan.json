@@ -1,0 +1,751 @@
+{
+  "scan_time": "2026-03-01T20:42:46.323359",
+  "project_root": "D:\\elix\\chart_analysis_ai_v3",
+  "size_threshold_mb": 50,
+  "skip_dirs": [
+    "__pycache__",
+    ".ruff_cache",
+    ".mypy_cache",
+    "node_modules",
+    ".git",
+    ".venv"
+  ],
+  "large_data_dirs_config": [
+    "data",
+    "runs",
+    "models/slm",
+    "models/weights",
+    "models/onnx"
+  ],
+  "directories": [
+    {
+      "path": ".github",
+      "size_bytes": 164486,
+      "size_human": "160.6 KB",
+      "file_count": 14,
+      "depth": 0,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": ".github/instructions",
+      "size_bytes": 164486,
+      "size_human": "160.6 KB",
+      "file_count": 14,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": ".github/instructions/references",
+      "size_bytes": 6897,
+      "size_human": "6.7 KB",
+      "file_count": 1,
+      "depth": 2,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": ".pytest_cache",
+      "size_bytes": 31954,
+      "size_human": "31.2 KB",
+      "file_count": 5,
+      "depth": 0,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": ".pytest_cache/v",
+      "size_bytes": 31414,
+      "size_human": "30.7 KB",
+      "file_count": 2,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": ".pytest_cache/v/cache",
+      "size_bytes": 31414,
+      "size_human": "30.7 KB",
+      "file_count": 2,
+      "depth": 2,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "config",
+      "size_bytes": 18749,
+      "size_human": "18.3 KB",
+      "file_count": 7,
+      "depth": 0,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "config/secrets",
+      "size_bytes": 0,
+      "size_human": "0 B",
+      "file_count": 1,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "data",
+      "size_bytes": 129710712125,
+      "size_human": "120.80 GB",
+      "file_count": 468320,
+      "depth": 0,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "data/academic_dataset",
+      "size_bytes": 79512886860,
+      "size_human": "74.05 GB",
+      "file_count": 393897,
+      "depth": 1,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "data/academic_dataset/chart_qa_v2",
+      "size_bytes": 275112092,
+      "size_human": "262.4 MB",
+      "file_count": 32450,
+      "depth": 2,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "data/academic_dataset/classified_charts",
+      "size_bytes": 12057098565,
+      "size_human": "11.23 GB",
+      "file_count": 46911,
+      "depth": 2,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "data/academic_dataset/detected_charts",
+      "size_bytes": 12541611563,
+      "size_human": "11.68 GB",
+      "file_count": 50865,
+      "depth": 2,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "data/academic_dataset/images",
+      "size_bytes": 53648521639,
+      "size_human": "49.96 GB",
+      "file_count": 218887,
+      "depth": 2,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "data/academic_dataset/manifests",
+      "size_bytes": 2961656,
+      "size_human": "2.8 MB",
+      "file_count": 5,
+      "depth": 2,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "data/academic_dataset/metadata",
+      "size_bytes": 14673541,
+      "size_human": "14.0 MB",
+      "file_count": 12413,
+      "depth": 2,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "data/academic_dataset/stage3_features",
+      "size_bytes": 972898584,
+      "size_human": "927.8 MB",
+      "file_count": 32364,
+      "depth": 2,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "data/cache",
+      "size_bytes": 617434352,
+      "size_human": "588.8 MB",
+      "file_count": 2,
+      "depth": 1,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "data/output",
+      "size_bytes": 399146,
+      "size_human": "389.8 KB",
+      "file_count": 2,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "data/raw_pdfs",
+      "size_bytes": 42161507697,
+      "size_human": "39.27 GB",
+      "file_count": 9508,
+      "depth": 1,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "data/samples",
+      "size_bytes": 160951,
+      "size_human": "157.2 KB",
+      "file_count": 3,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "data/search_cache",
+      "size_bytes": 8381952,
+      "size_human": "8.0 MB",
+      "file_count": 3,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "data/slm_training_v2",
+      "size_bytes": 55853894,
+      "size_human": "53.3 MB",
+      "file_count": 7,
+      "depth": 1,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "data/slm_training_v3",
+      "size_bytes": 346676691,
+      "size_human": "330.6 MB",
+      "file_count": 4,
+      "depth": 1,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "data/yolo_chart_detection",
+      "size_bytes": 7007409680,
+      "size_human": "6.53 GB",
+      "file_count": 64893,
+      "depth": 1,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "data/yolo_chart_detection/test",
+      "size_bytes": 1005340371,
+      "size_human": "958.8 MB",
+      "file_count": 9738,
+      "depth": 2,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "data/yolo_chart_detection/train",
+      "size_bytes": 4954244071,
+      "size_human": "4.61 GB",
+      "file_count": 45421,
+      "depth": 2,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "data/yolo_chart_detection/val",
+      "size_bytes": 1047825095,
+      "size_human": "999.3 MB",
+      "file_count": 9733,
+      "depth": 2,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "docs",
+      "size_bytes": 491153,
+      "size_human": "479.6 KB",
+      "file_count": 37,
+      "depth": 0,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "docs/architecture",
+      "size_bytes": 58546,
+      "size_human": "57.2 KB",
+      "file_count": 5,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "docs/archive",
+      "size_bytes": 200842,
+      "size_human": "196.1 KB",
+      "file_count": 4,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "docs/guides",
+      "size_bytes": 46882,
+      "size_human": "45.8 KB",
+      "file_count": 5,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "docs/images",
+      "size_bytes": 0,
+      "size_human": "0 B",
+      "file_count": 0,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "docs/progress",
+      "size_bytes": 21207,
+      "size_human": "20.7 KB",
+      "file_count": 3,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "docs/reports",
+      "size_bytes": 38459,
+      "size_human": "37.6 KB",
+      "file_count": 2,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "docs/research",
+      "size_bytes": 14348,
+      "size_human": "14.0 KB",
+      "file_count": 3,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "docs/thesis_capstone",
+      "size_bytes": 62880,
+      "size_human": "61.4 KB",
+      "file_count": 12,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "docs/thesis_capstone/contents",
+      "size_bytes": 4054,
+      "size_human": "4.0 KB",
+      "file_count": 7,
+      "depth": 2,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "docs/thesis_capstone/drafts",
+      "size_bytes": 0,
+      "size_human": "0 B",
+      "file_count": 0,
+      "depth": 2,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "interface",
+      "size_bytes": 0,
+      "size_human": "0 B",
+      "file_count": 1,
+      "depth": 0,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "logs",
+      "size_bytes": 1061346,
+      "size_human": "1.0 MB",
+      "file_count": 6,
+      "depth": 0,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "models",
+      "size_bytes": 7083418865,
+      "size_human": "6.60 GB",
+      "file_count": 168,
+      "depth": 0,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "models/evaluation",
+      "size_bytes": 0,
+      "size_human": "0 B",
+      "file_count": 0,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "models/explainability",
+      "size_bytes": 22205095,
+      "size_human": "21.2 MB",
+      "file_count": 9,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "models/onnx",
+      "size_bytes": 0,
+      "size_human": "0 B",
+      "file_count": 0,
+      "depth": 1,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "models/slm",
+      "size_bytes": 6998079734,
+      "size_human": "6.52 GB",
+      "file_count": 152,
+      "depth": 1,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "models/slm/llama-3.2-1b-chart-lora-v3",
+      "size_bytes": 126637606,
+      "size_human": "120.8 MB",
+      "file_count": 23,
+      "depth": 2,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "models/slm/llama-3.2-1b-instruct",
+      "size_bytes": 2480845214,
+      "size_human": "2.31 GB",
+      "file_count": 31,
+      "depth": 2,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "models/slm/llama-3.2-1b-instruct-chart-lora",
+      "size_bytes": 62979971,
+      "size_human": "60.1 MB",
+      "file_count": 12,
+      "depth": 2,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "models/slm/qwen2.5-0.5b-instruct",
+      "size_bytes": 999605190,
+      "size_human": "953.3 MB",
+      "file_count": 21,
+      "depth": 2,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "models/slm/qwen2.5-0.5b-instruct-chart-lora",
+      "size_bytes": 142628952,
+      "size_human": "136.0 MB",
+      "file_count": 31,
+      "depth": 2,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "models/slm/qwen2.5-1.5b-instruct",
+      "size_bytes": 3098974510,
+      "size_human": "2.89 GB",
+      "file_count": 21,
+      "depth": 2,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "models/slm/qwen2.5-1.5b-instruct-chart-lora",
+      "size_bytes": 86406541,
+      "size_human": "82.4 MB",
+      "file_count": 12,
+      "depth": 2,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "models/weights",
+      "size_bytes": 63131614,
+      "size_human": "60.2 MB",
+      "file_count": 6,
+      "depth": 1,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "notebooks",
+      "size_bytes": 5436524,
+      "size_human": "5.2 MB",
+      "file_count": 14,
+      "depth": 0,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "output",
+      "size_bytes": 0,
+      "size_human": "0 B",
+      "file_count": 1,
+      "depth": 0,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "research",
+      "size_bytes": 38141,
+      "size_human": "37.2 KB",
+      "file_count": 6,
+      "depth": 0,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "research/experiments",
+      "size_bytes": 37458,
+      "size_human": "36.6 KB",
+      "file_count": 2,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "research/papers",
+      "size_bytes": 0,
+      "size_human": "0 B",
+      "file_count": 1,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "research/prototypes",
+      "size_bytes": 0,
+      "size_human": "0 B",
+      "file_count": 1,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "runs",
+      "size_bytes": 1520373,
+      "size_human": "1.4 MB",
+      "file_count": 5,
+      "depth": 0,
+      "is_large_data": true,
+      "skip_content_read": true
+    },
+    {
+      "path": "runs/detect",
+      "size_bytes": 1520373,
+      "size_human": "1.4 MB",
+      "file_count": 5,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "runs/detect/chart_detector_20260130_021528",
+      "size_bytes": 1520373,
+      "size_human": "1.4 MB",
+      "file_count": 5,
+      "depth": 2,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "scripts",
+      "size_bytes": 310627,
+      "size_human": "303.3 KB",
+      "file_count": 27,
+      "depth": 0,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "scripts/_archive",
+      "size_bytes": 74142,
+      "size_human": "72.4 KB",
+      "file_count": 9,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "src",
+      "size_bytes": 1463970,
+      "size_human": "1.4 MB",
+      "file_count": 107,
+      "depth": 0,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "src/core_engine",
+      "size_bytes": 1453510,
+      "size_human": "1.4 MB",
+      "file_count": 101,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "src/core_engine/ai",
+      "size_bytes": 123168,
+      "size_human": "120.3 KB",
+      "file_count": 20,
+      "depth": 2,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "src/core_engine/data_factory",
+      "size_bytes": 74482,
+      "size_human": "72.7 KB",
+      "file_count": 4,
+      "depth": 2,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "src/core_engine/schemas",
+      "size_bytes": 125620,
+      "size_human": "122.7 KB",
+      "file_count": 12,
+      "depth": 2,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "src/core_engine/stages",
+      "size_bytes": 1073648,
+      "size_human": "1.0 MB",
+      "file_count": 55,
+      "depth": 2,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "src/core_engine/validators",
+      "size_bytes": 18868,
+      "size_human": "18.4 KB",
+      "file_count": 4,
+      "depth": 2,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "src/geo_slm_chart_analysis.egg-info",
+      "size_bytes": 10460,
+      "size_human": "10.2 KB",
+      "file_count": 6,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "tests",
+      "size_bytes": 629560,
+      "size_human": "614.8 KB",
+      "file_count": 43,
+      "depth": 0,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "tests/fixtures",
+      "size_bytes": 0,
+      "size_human": "0 B",
+      "file_count": 1,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "tests/test_ai",
+      "size_bytes": 93799,
+      "size_human": "91.6 KB",
+      "file_count": 12,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "tests/test_s3_extraction",
+      "size_bytes": 396393,
+      "size_human": "387.1 KB",
+      "file_count": 20,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "tests/test_s4_reasoning",
+      "size_bytes": 104057,
+      "size_human": "101.6 KB",
+      "file_count": 6,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "tools",
+      "size_bytes": 639683,
+      "size_human": "624.7 KB",
+      "file_count": 42,
+      "depth": 0,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "tools/data_factory",
+      "size_bytes": 639683,
+      "size_human": "624.7 KB",
+      "file_count": 42,
+      "depth": 1,
+      "is_large_data": false,
+      "skip_content_read": false
+    },
+    {
+      "path": "tools/data_factory/services",
+      "size_bytes": 490044,
+      "size_human": "478.6 KB",
+      "file_count": 30,
+      "depth": 2,
+      "is_large_data": false,
+      "skip_content_read": false
+    }
+  ]
+}

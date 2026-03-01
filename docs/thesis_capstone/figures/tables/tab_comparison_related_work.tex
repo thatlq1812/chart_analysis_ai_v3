@@ -1,0 +1,12 @@
+\begin{tabular}{@{}lp{2.5cm}rrlc@{}}
+\toprule
+\textbf{Method} & \textbf{Approach} & \textbf{Value Acc.} & \textbf{Types} & \textbf{Model Size} & \textbf{Explainable} \\
+\midrule
+DePlot \cite{liu2023deplot}     & Pix2Struct + LLM       & $\sim$85\% & 5+ & 282M+ & No \\
+MatCha \cite{lee2023matcha}     & Chart pretraining      & $\sim$80\% & 5+ & 282M+ & No \\
+ChartReader \cite{chen2022chartreader} & Detection + rules & $\sim$75\% & 3  & N/A   & Partial \\
+ReVision \cite{savva2011revision}      & Hough transform   & $\sim$70\% & 1  & N/A   & Yes \\
+\midrule
+\textbf{Geo-SLM (Ours)} & \textbf{Hybrid neuro-symbolic} & \textbf{Target $>$95\%} & \textbf{8} & \textbf{1.5B} & \textbf{Yes} \\
+\bottomrule
+\end{tabular}

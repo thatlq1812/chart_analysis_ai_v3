@@ -1,0 +1,53 @@
+% TikZ: 5-Stage Pipeline Architecture
+% Usage: \input{figures/tikz/tikz_pipeline_architecture.tex}
+% Requires: \usepackage{tikz} \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds}
+
+\begin{tikzpicture}[
+    node distance=0.8cm and 0.5cm,
+    stage/.style={
+        rectangle, rounded corners=3pt, draw=black!70, thick,
+        minimum width=2.8cm, minimum height=1.1cm,
+        font=\small\bfseries, text=white, align=center
+    },
+    io/.style={
+        rectangle, rounded corners=2pt, draw=black!40,
+        minimum width=2.2cm, minimum height=0.7cm,
+        font=\footnotesize, fill=black!5, align=center
+    },
+    arrow/.style={-{Stealth[length=3mm]}, thick, draw=black!60},
+    label/.style={font=\scriptsize\itshape, text=black!60, align=center}
+]
+
+% Stages
+\node[stage, fill=blue!60!black] (s1) {Stage 1\\Ingestion};
+\node[stage, fill=teal!70!black, right=of s1] (s2) {Stage 2\\Detection};
+\node[stage, fill=orange!70!black, right=of s2] (s3) {Stage 3\\Extraction};
+\node[stage, fill=purple!60!black, right=of s3] (s4) {Stage 4\\Reasoning};
+\node[stage, fill=red!60!black, right=of s4] (s5) {Stage 5\\Reporting};
+
+% Arrows between stages
+\draw[arrow] (s1) -- (s2);
+\draw[arrow] (s2) -- (s3);
+\draw[arrow] (s3) -- (s4);
+\draw[arrow] (s4) -- (s5);
+
+% Input/Output
+\node[io, left=0.6cm of s1] (input) {PDF / Image\\Input};
+\node[io, right=0.6cm of s5] (output) {JSON + Report\\Output};
+\draw[arrow] (input) -- (s1);
+\draw[arrow] (s5) -- (output);
+
+% Labels below stages
+\node[label, below=0.15cm of s1] {PyMuPDF\\Pillow};
+\node[label, below=0.15cm of s2] {YOLO\\ResNet-18};
+\node[label, below=0.15cm of s3] {OCR\\Geometry};
+\node[label, below=0.15cm of s4] {AI Router\\SLM/Gemini};
+\node[label, below=0.15cm of s5] {Pydantic\\Jinja2};
+
+% Data labels above arrows
+\node[label, above=0.1cm of s1.east, anchor=south west, xshift=-0.3cm] {Images};
+\node[label, above=0.1cm of s2.east, anchor=south west, xshift=-0.3cm] {Crops};
+\node[label, above=0.1cm of s3.east, anchor=south west, xshift=-0.5cm] {Metadata};
+\node[label, above=0.1cm of s4.east, anchor=south west, xshift=-0.5cm] {Refined};
+
+\end{tikzpicture}

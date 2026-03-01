@@ -1,0 +1,70 @@
+% TikZ: AI Router with Fallback Chains
+% Usage: \input{figures/tikz/tikz_ai_router.tex}
+% Requires: \usepackage{tikz} \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
+
+\begin{tikzpicture}[
+    node distance=0.6cm and 0.8cm,
+    block/.style={
+        rectangle, rounded corners=3pt, draw=black!60, thick,
+        minimum width=2.4cm, minimum height=0.9cm,
+        font=\footnotesize\bfseries, align=center
+    },
+    adapter/.style={
+        rectangle, rounded corners=3pt, draw=#1!60!black, thick,
+        minimum width=2.2cm, minimum height=0.8cm,
+        fill=#1!15, font=\footnotesize, align=center
+    },
+    task/.style={
+        rectangle, rounded corners=2pt, draw=black!40,
+        minimum width=2.0cm, minimum height=0.6cm,
+        fill=yellow!10, font=\scriptsize, align=center
+    },
+    arrow/.style={-{Stealth[length=2.5mm]}, thick, draw=black!50},
+    dasharrow/.style={-{Stealth[length=2.5mm]}, dashed, draw=red!50, thick},
+    label/.style={font=\scriptsize\itshape, text=black!50}
+]
+
+% Stage 4 caller
+\node[block, fill=purple!15] (caller) {Stage 4\\Reasoning};
+
+% Router
+\node[block, fill=orange!20, right=1.5cm of caller] (router) {AI Router\\resolve()};
+
+% Adapters
+\node[adapter=teal, right=1.5cm of router, yshift=1.0cm] (slm) {Local SLM\\Adapter};
+\node[adapter=blue, right=1.5cm of router] (gemini) {Gemini\\Adapter};
+\node[adapter=red, right=1.5cm of router, yshift=-1.0cm] (openai) {OpenAI\\Adapter};
+
+% Standardized output
+\node[block, fill=green!15, right=1.2cm of gemini] (result) {Reasoning\\Result};
+
+% Arrows: caller -> router
+\draw[arrow] (caller) -- node[above, label] {TaskType} (router);
+
+% Router -> adapters
+\draw[arrow] (router) -- (slm);
+\draw[arrow] (router) -- (gemini);
+\draw[arrow] (router) -- (openai);
+
+% Adapters -> result
+\draw[arrow] (slm) -- (result);
+\draw[arrow] (gemini) -- (result);
+\draw[arrow] (openai) -- (result);
+
+% Fallback arrows
+\draw[dasharrow] (slm.south) -- node[right, label, text=red!60] {fallback} (gemini.north);
+\draw[dasharrow] (gemini.south) -- node[right, label, text=red!60] {fallback} (openai.north);
+
+% Task type examples below router
+\node[task, below=0.8cm of router, xshift=-1.2cm] (t1) {OCR Correction};
+\node[task, right=0.2cm of t1] (t2) {Value Mapping};
+\node[task, below=0.3cm of t1, xshift=0.6cm] (t3) {Chart Reasoning};
+
+\node[label, above=0.05cm of t1.north west, anchor=south west] {Task Types:};
+
+% Priority labels
+\node[label, left=0.1cm of slm, text=teal!70] {Priority 1};
+\node[label, left=0.1cm of gemini, text=blue!70] {Priority 2};
+\node[label, left=0.1cm of openai, text=red!70] {Priority 3};
+
+\end{tikzpicture}

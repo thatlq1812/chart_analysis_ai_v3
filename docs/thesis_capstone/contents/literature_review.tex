@@ -1,0 +1,110 @@
+\section{Literature Review}
+
+This section reviews existing methods for automatic chart understanding, organized by
+approach paradigm. We analyze the strengths and limitations of each category to motivate
+the hybrid design of Geo-SLM.
+
+\subsection{End-to-End Multimodal Approaches}
+
+Recent advances in vision-language models have enabled end-to-end chart understanding
+systems that process chart images directly without explicit geometric decomposition.
+
+\textbf{DePlot} \cite{liu2023deplot} employs a two-stage approach: a Pix2Struct model
+translates the chart image into a linearized data table, which is then processed by a
+large language model (LLM) for question answering. DePlot achieves competitive results
+on the ChartQA benchmark \cite{masry2022chartqa} with one-shot prompting. However,
+because the Pix2Struct model estimates tabular values from visual patterns, it is prone
+to hallucination -- producing plausible but numerically incorrect entries, especially
+for charts with dense data points or overlapping series.
+
+\textbf{MatCha} \cite{lee2023matcha} extends the Pix2Struct architecture with two
+pretraining objectives: math reasoning and chart derendering. The derendering task trains
+the model to generate the underlying data table from a chart image, improving numerical
+grounding. MatCha achieves strong results on both ChartQA and PlotQA \cite{methani2020plotqa}
+benchmarks. Despite these improvements, the model remains a large (282M+ parameters)
+encoder-decoder that requires significant compute resources and does not provide
+interpretable intermediate outputs.
+
+\textbf{ChartReader} \cite{chen2022chartreader} proposes a unified framework that
+detects chart components (bars, lines, legend entries) using Faster R-CNN, then applies
+heuristic rules to reconstruct the data table. This approach provides more interpretable
+outputs than DePlot or MatCha, but its component detection relies heavily on annotated
+training data and struggles with unconventional chart layouts.
+
+\subsection{Classical Geometric Approaches}
+
+Before deep learning, chart understanding relied on classical image processing and
+geometric analysis.
+
+\textbf{ReVision} \cite{savva2011revision} classifies charts using visual features and
+extracts data from bar charts using Hough line detection. While fully deterministic and
+interpretable, ReVision supports only a single chart type (bar) and requires strict
+assumptions about chart layout (aligned bars, visible grid lines). The method fails
+on scatter plots, line charts, and charts with non-standard aesthetics.
+
+Other traditional approaches use contour detection, template matching, and projection
+profiles to identify chart elements. These methods offer high precision for well-formatted
+charts but lack robustness against the visual diversity found in real-world academic
+publications.
+
+\subsection{Object Detection for Document Analysis}
+
+The YOLO family \cite{redmon2016yolo, jocher2023yolov8} has been widely adopted for
+object detection tasks in document analysis. YOLOv8 provides real-time detection with
+competitive accuracy, making it suitable for chart region localization within full-page
+document images. For chart detection specifically, the single-class detection strategy
+(detecting ``chart'' as one class) with a separate classification stage has been shown
+to outperform multi-class detection, since YOLO excels at localization while dedicated
+classifiers (e.g., ResNet-18 \cite{he2016resnet}) provide higher type-classification
+accuracy.
+
+\subsection{OCR and Text Extraction}
+
+Optical character recognition is fundamental to extracting textual information from charts,
+including axis labels, titles, legend entries, and tick mark values. PaddleOCR
+\cite{du2020paddleocr} and EasyOCR \cite{jaided2020easyocr} are two widely-used
+open-source frameworks supporting multi-language text detection and recognition.
+In the context of chart analysis, OCR faces unique challenges: text may be rotated
+(Y-axis labels), overlapping (dense tick marks), or embedded as vector graphics
+(invisible to pixel-based OCR). Post-processing heuristics -- such as spatial role
+classification (assigning text to title, axis, legend, or value roles based on position)
+and common-error correction (e.g., ``O'' to ``0'', ``l'' to ``1'') -- are essential
+for reliable chart text extraction.
+
+\subsection{Small Language Models and Parameter-Efficient Fine-Tuning}
+
+Large language models have demonstrated strong reasoning capabilities for chart
+understanding, but their deployment on consumer hardware is impractical. Small language
+models (SLMs) with 1--3 billion parameters offer a practical alternative. Qwen-2.5
+\cite{yang2024qwen2} provides instruction-tuned models starting at 0.5B parameters,
+with the 1.5B variant balancing capability and efficiency.
+
+Parameter-efficient fine-tuning methods allow adapting these models to domain-specific
+tasks without full retraining. LoRA \cite{hu2022lora} introduces low-rank decomposition
+of weight update matrices, training only 0.1--1\% of model parameters. QLoRA
+\cite{dettmers2024qlora} extends LoRA with 4-bit quantization (NF4 format), reducing
+memory requirements to as low as 4~GB VRAM for a 1.5B-parameter model. This enables
+fine-tuning and inference on consumer GPUs such as the NVIDIA RTX 3060 (6~GB VRAM).
+
+\subsection{Summary and Research Gap}
+
+\Cref{tab:related_work} summarizes the comparison of existing approaches.
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of existing chart understanding methods.}
+\label{tab:related_work}
+\input{figures/tables/tab_comparison_related_work}
+\end{table}
+
+The key research gap is the absence of a system that combines:
+\begin{enumerate}
+    \item \textbf{Neural perception} for robust detection and classification across chart types,
+    \item \textbf{Geometric measurement} for deterministic, traceable value extraction, and
+    \item \textbf{Local SLM reasoning} for semantic understanding without cloud dependency.
+\end{enumerate}
+
+Geo-SLM addresses this gap by integrating all three paradigms in a modular, 5-stage
+pipeline where each component operates on well-defined schema contracts, enabling
+independent development, testing, and replacement of any component.
+

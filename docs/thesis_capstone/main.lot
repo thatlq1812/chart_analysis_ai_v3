@@ -1,0 +1,16 @@
+\contentsline {table}{\numberline {1}{\ignorespaces Comparison of existing chart understanding methods.}}{6}{}%
+\contentsline {table}{\numberline {2}{\ignorespaces Data pipeline scale at each processing stage.}}{8}{}%
+\contentsline {table}{\numberline {3}{\ignorespaces Chart type distribution in the classified dataset (32,364 charts).}}{9}{}%
+\contentsline {table}{\numberline {4}{\ignorespaces SLM training dataset v3 split statistics.}}{9}{}%
+\contentsline {table}{\numberline {5}{\ignorespaces SLM fine-tuning configuration (QLoRA).}}{10}{}%
+\contentsline {table}{\numberline {6}{\ignorespaces Pipeline stages: input, output, and key technologies.}}{12}{}%
+\contentsline {table}{\numberline {7}{\ignorespaces Vietnamese localization touchpoints across the pipeline.}}{13}{}%
+\contentsline {table}{\numberline {8}{\ignorespaces Technology stack overview.}}{15}{}%
+\contentsline {table}{\numberline {9}{\ignorespaces AI provider configuration.}}{20}{}%
+\contentsline {table}{\numberline {10}{\ignorespaces Language dependency analysis of pipeline components.}}{21}{}%
+\contentsline {table}{\numberline {11}{\ignorespaces YOLOv8m chart detection results.}}{24}{}%
+\contentsline {table}{\numberline {12}{\ignorespaces ResNet-18 chart classification results.}}{24}{}%
+\contentsline {table}{\numberline {13}{\ignorespaces Stage~3 feature quality by chart type.}}{25}{}%
+\contentsline {table}{\numberline {14}{\ignorespaces Test suite results by component.}}{27}{}%
+\contentsline {table}{\numberline {15}{\ignorespaces Comparison with related chart understanding methods.}}{27}{}%
+\contentsline {table}{\numberline {16}{\ignorespaces Achievement of project objectives.}}{30}{}%

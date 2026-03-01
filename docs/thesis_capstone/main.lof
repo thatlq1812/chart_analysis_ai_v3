@@ -1,0 +1,10 @@
+\contentsline {figure}{\numberline {1}{\ignorespaces Data collection pipeline: from arXiv papers to SLM training dataset. Each stage filters and transforms the data, reducing volume while increasing quality.}}{8}{}%
+\contentsline {figure}{\numberline {2}{\ignorespaces Data pipeline funnel: volume at each stage from raw PDFs to final dataset.}}{10}{}%
+\contentsline {figure}{\numberline {3}{\ignorespaces Comparison of traditional end-to-end approach (top) vs.\ Geo-SLM hybrid neuro-symbolic approach (bottom). Geo-SLM uses geometric measurement for precision and SLM reasoning for semantic understanding.}}{11}{}%
+\contentsline {figure}{\numberline {4}{\ignorespaces Geo-SLM 5-stage pipeline architecture with input/output types and representative technologies at each stage.}}{11}{}%
+\contentsline {figure}{\numberline {5}{\ignorespaces Geo-SLM 5-layer system architecture. Each layer depends only on layers below it. The Core Engine is independent of the serving layer.}}{15}{}%
+\contentsline {figure}{\numberline {6}{\ignorespaces Stage~3 extraction pipeline: 7 submodules process the cropped chart image sequentially. Each submodule has an independent configuration and can be toggled on/off.}}{17}{}%
+\contentsline {figure}{\numberline {7}{\ignorespaces AI Router with Adapter Pattern and per-task fallback chains. Each provider implements the common \texttt {BaseAIAdapter} interface.}}{19}{}%
+\contentsline {figure}{\numberline {8}{\ignorespaces ResNet-18 per-class classification accuracy across 8 chart types.}}{25}{}%
+\contentsline {figure}{\numberline {9}{\ignorespaces Feature extraction quality by chart type: axis information coverage (left axis) and mean OCR confidence (right axis).}}{26}{}%
+\contentsline {figure}{\numberline {10}{\ignorespaces Estimated processing time per chart by pipeline stage. OCR in Stage~3 accounts for approximately 65\% of total time.}}{26}{}%

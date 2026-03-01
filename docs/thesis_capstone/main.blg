@@ -1,0 +1,53 @@
+This is BibTeX, Version 0.99e
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: main.aux
+Reallocating 'name_of_file' (item size: 1) to 21 items.
+The style file: elsarticle-num-names.bst
+Reallocating 'name_of_file' (item size: 1) to 5 items.
+Database file #1: refs.bib
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Warning--empty pages in lee2023matcha
+Warning--empty pages in bradski2000opencv
+Warning--empty pages in du2020paddleocr
+You've used 20 entries,
+            2918 wiz_defined-function locations,
+            731 strings with 9133 characters,
+and the built_in function-call counts, 14331 in all, are:
+= -- 1019
+> -- 663
+< -- 10
++ -- 252
+- -- 228
+* -- 1627
+:= -- 2037
+add.period$ -- 22
+call.type$ -- 20
+change.case$ -- 176
+chr.to.int$ -- 20
+cite$ -- 23
+duplicate$ -- 1064
+empty$ -- 1022
+format.name$ -- 286
+if$ -- 2668
+int.to.chr$ -- 1
+int.to.str$ -- 1
+missing$ -- 203
+newline$ -- 115
+num.names$ -- 80
+pop$ -- 413
+preamble$ -- 1
+purify$ -- 174
+quote$ -- 0
+skip$ -- 309
+stack$ -- 0
+substring$ -- 588
+swap$ -- 753
+text.length$ -- 5
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 180
+warning$ -- 3
+while$ -- 87
+width$ -- 0
+write$ -- 281
+(There were 3 warnings)

@@ -1,0 +1,75 @@
+\contentsline {section}{List of Figures}{iii}{}%
+\contentsline {section}{List of Tables}{iv}{}%
+\contentsline {section}{\numberline {1}Introduction}{1}{}%
+\contentsline {subsection}{\numberline {1.1}Background}{1}{}%
+\contentsline {subsection}{\numberline {1.2}Objective}{1}{}%
+\contentsline {subsection}{\numberline {1.3}Problem Statement}{2}{}%
+\contentsline {subsection}{\numberline {1.4}Scope and Limitations}{2}{}%
+\contentsline {section}{\numberline {2}Project Management Plan}{4}{}%
+\contentsline {subsection}{\numberline {2.1}Team Structure and Roles}{4}{}%
+\contentsline {subsection}{\numberline {2.2}Communication Plan}{4}{}%
+\contentsline {section}{\numberline {3}Literature Review}{5}{}%
+\contentsline {subsection}{\numberline {3.1}End-to-End Multimodal Approaches}{5}{}%
+\contentsline {subsection}{\numberline {3.2}Classical Geometric Approaches}{5}{}%
+\contentsline {subsection}{\numberline {3.3}Object Detection for Document Analysis}{5}{}%
+\contentsline {subsection}{\numberline {3.4}OCR and Text Extraction}{6}{}%
+\contentsline {subsection}{\numberline {3.5}Small Language Models and Parameter-Efficient Fine-Tuning}{6}{}%
+\contentsline {subsection}{\numberline {3.6}Summary and Research Gap}{6}{}%
+\contentsline {section}{\numberline {4}Methodology}{8}{}%
+\contentsline {subsection}{\numberline {4.1}Data}{8}{}%
+\contentsline {subsubsection}{\numberline {4.1.1}Data Collection Pipeline}{8}{}%
+\contentsline {subsubsection}{\numberline {4.1.2}SLM Training Dataset}{9}{}%
+\contentsline {subsubsection}{\numberline {4.1.3}SLM Fine-Tuning Configuration}{9}{}%
+\contentsline {subsection}{\numberline {4.2}Approach}{11}{}%
+\contentsline {subsubsection}{\numberline {4.2.1}Hybrid Neuro-Symbolic Design}{11}{}%
+\contentsline {subsubsection}{\numberline {4.2.2}5-Stage Pipeline Architecture}{11}{}%
+\contentsline {subsubsection}{\numberline {4.2.3}AI Routing with Fallback Chains}{12}{}%
+\contentsline {subsubsection}{\numberline {4.2.4}Configuration-Driven Design}{12}{}%
+\contentsline {subsection}{\numberline {4.3}Vietnamese Language Integration Strategy}{12}{}%
+\contentsline {subsubsection}{\numberline {4.3.1}Localization Architecture}{12}{}%
+\contentsline {subsubsection}{\numberline {4.3.2}OCR for Vietnamese Diacritical Marks}{13}{}%
+\contentsline {subsubsection}{\numberline {4.3.3}Vietnamese Keyword Mapping for Role Classification}{13}{}%
+\contentsline {subsubsection}{\numberline {4.3.4}Vietnamese Prompt Templates and QA Generation}{14}{}%
+\contentsline {subsubsection}{\numberline {4.3.5}SLM Base Model Selection for Vietnamese}{14}{}%
+\contentsline {subsubsection}{\numberline {4.3.6}Deployment Plan for Vietnamese Integration}{14}{}%
+\contentsline {section}{\numberline {5}System Design and Implementation}{15}{}%
+\contentsline {subsection}{\numberline {5.1}Layered Architecture}{15}{}%
+\contentsline {subsection}{\numberline {5.2}Stage 1: Ingestion and Sanitation}{15}{}%
+\contentsline {subsection}{\numberline {5.3}Stage 2: Detection and Localization}{16}{}%
+\contentsline {subsection}{\numberline {5.4}Stage 3: Structural Analysis (Extraction)}{16}{}%
+\contentsline {subsubsection}{\numberline {5.4.1}Preprocessor}{16}{}%
+\contentsline {subsubsection}{\numberline {5.4.2}Skeletonizer}{17}{}%
+\contentsline {subsubsection}{\numberline {5.4.3}Vectorizer}{17}{}%
+\contentsline {subsubsection}{\numberline {5.4.4}OCR Engine}{17}{}%
+\contentsline {subsubsection}{\numberline {5.4.5}Element Detector}{18}{}%
+\contentsline {subsubsection}{\numberline {5.4.6}Geometric Mapper}{18}{}%
+\contentsline {subsubsection}{\numberline {5.4.7}Classifier}{18}{}%
+\contentsline {subsection}{\numberline {5.5}Stage 4: Semantic Reasoning}{18}{}%
+\contentsline {subsection}{\numberline {5.6}Stage 5: Insight and Reporting}{19}{}%
+\contentsline {subsection}{\numberline {5.7}AI Routing Layer}{19}{}%
+\contentsline {subsection}{\numberline {5.8}Error Handling and Extensibility}{20}{}%
+\contentsline {subsection}{\numberline {5.9}Vietnamese Language Implementation}{20}{}%
+\contentsline {subsubsection}{\numberline {5.9.1}Language-Agnostic vs.\ Language-Dependent Components}{20}{}%
+\contentsline {subsubsection}{\numberline {5.9.2}OCR Engine: Vietnamese Configuration Path}{22}{}%
+\contentsline {subsubsection}{\numberline {5.9.3}Stage 3: Bilingual Role Classification}{22}{}%
+\contentsline {subsubsection}{\numberline {5.9.4}Stage 4: Vietnamese Prompt Architecture}{22}{}%
+\contentsline {subsubsection}{\numberline {5.9.5}Data Factory: Vietnamese QA Generation}{23}{}%
+\contentsline {section}{\numberline {6}Results and Discussion}{24}{}%
+\contentsline {subsection}{\numberline {6.1}Results and Analysis}{24}{}%
+\contentsline {subsubsection}{\numberline {6.1.1}Stage 2: Chart Detection (YOLOv8m)}{24}{}%
+\contentsline {subsubsection}{\numberline {6.1.2}Stage 2b: Chart Classification (ResNet-18)}{24}{}%
+\contentsline {subsubsection}{\numberline {6.1.3}Stage 3: Structural Extraction}{25}{}%
+\contentsline {subsubsection}{\numberline {6.1.4}End-to-End Pipeline Performance}{26}{}%
+\contentsline {subsubsection}{\numberline {6.1.5}Code Quality}{26}{}%
+\contentsline {subsection}{\numberline {6.2}Discussion}{27}{}%
+\contentsline {subsubsection}{\numberline {6.2.1}Hybrid Architecture Validates Core Hypothesis}{27}{}%
+\contentsline {subsubsection}{\numberline {6.2.2}Comparison with Related Work}{27}{}%
+\contentsline {subsubsection}{\numberline {6.2.3}Modularity Enables Iterative Improvement}{28}{}%
+\contentsline {subsubsection}{\numberline {6.2.4}Core-First Strategy Validates Vietnamese Readiness}{28}{}%
+\contentsline {subsubsection}{\numberline {6.2.5}Limitations of Current Results}{29}{}%
+\contentsline {subsection}{\numberline {6.3}Recommendations}{29}{}%
+\contentsline {section}{\numberline {7}Conclusion}{30}{}%
+\contentsline {subsection}{\numberline {7.1}Summary of Contributions}{30}{}%
+\contentsline {subsection}{\numberline {7.2}Achievement of Objectives}{30}{}%
+\contentsline {subsection}{\numberline {7.3}Future Work}{31}{}%
+\contentsline {section}{References}{32}{}%

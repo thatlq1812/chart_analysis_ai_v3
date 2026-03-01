@@ -1,0 +1,11 @@
+\begin{tabular}{@{}clp{3cm}p{3cm}l@{}}
+\toprule
+\textbf{Stage} & \textbf{Name} & \textbf{Input} & \textbf{Output} & \textbf{Key Library} \\
+\midrule
+1 & Ingestion   & PDF, DOCX, PNG, JPG     & Clean page images        & PyMuPDF, Pillow \\
+2 & Detection   & Page images             & Cropped charts + BBoxes  & Ultralytics YOLO \\
+3 & Extraction  & Cropped chart           & Raw metadata (OCR, geometry) & EasyOCR, OpenCV \\
+4 & Reasoning   & Metadata + chart image  & Refined structured data  & AI Router (SLM/Gemini) \\
+5 & Reporting   & Refined data            & JSON + Markdown report   & Pydantic, Jinja2 \\
+\bottomrule
+\end{tabular}

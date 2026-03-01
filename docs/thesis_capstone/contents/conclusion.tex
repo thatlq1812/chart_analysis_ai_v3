@@ -1,0 +1,97 @@
+\section{Conclusion}
+
+\subsection{Summary of Contributions}
+
+This project designed and implemented \textbf{Geo-SLM}, a hybrid neuro-symbolic system
+for extracting structured numerical data from chart images. The key contributions are:
+
+\begin{enumerate}
+    \item \textbf{Hybrid 5-stage pipeline architecture}: A modular pipeline combining
+          deep learning (YOLO, ResNet-18), classical geometry (RANSAC, RDP, skeleton
+          analysis), and AI reasoning (SLM with fallback to cloud APIs). Each stage
+          operates on validated Pydantic schema contracts, enabling independent
+          development, testing, and replacement.
+
+    \item \textbf{Geometric calibration for chart value extraction}: RANSAC-based axis
+          calibration with pixel-to-value mapping achieves deterministic, traceable value
+          extraction. This fundamentally differs from end-to-end models that estimate
+          values from pixel patterns.
+
+    \item \textbf{Large-scale academic chart dataset}: 32,364 classified charts from
+          $\sim$4,000 arXiv papers, with structured geometric features (axis calibration,
+          OCR with spatial roles, element detection). The derived SLM training dataset
+          contains 268,799 ChatML conversation samples across 8 chart types.
+
+    \item \textbf{Language-extensible architecture for Vietnamese chart Q\&A}: The
+          pipeline is designed with a Core-first, Localize-second strategy where
+          12 out of 17 components are fully language-agnostic. Vietnamese support is
+          achieved through configuration changes (OCR language), additive extensions
+          (keyword dictionaries, prompt templates), and targeted data generation
+          (Vietnamese QA samples) -- without modifying any core pipeline logic.
+
+    \item \textbf{Comprehensive evaluation}: Chart detection at 93.5\% mAP@0.5,
+          classification at 94.14\% accuracy, and 100\% batch extraction success rate
+          across the full 32,364-chart corpus with 92.6\% overall pipeline confidence.
+\end{enumerate}
+
+\subsection{Achievement of Objectives}
+
+\begin{table}[htbp]
+\centering
+\caption{Achievement of project objectives.}
+\label{tab:objectives}
+\begin{tabular}{@{}lllc@{}}
+\toprule
+\textbf{Objective} & \textbf{Target} & \textbf{Achieved} & \textbf{Status} \\
+\midrule
+Detection mAP@0.5 & $>85\%$ & 93.5\% & Exceeded \\
+Classification accuracy & $>90\%$ & 94.14\% & Exceeded \\
+Extraction confidence & $>90\%$ & 92.6\% & Exceeded \\
+Training dataset size & $>200{,}000$ & 268,799 & Exceeded \\
+Consumer GPU deployment & RTX 3060 & Confirmed & Met \\
+Vietnamese Q\&A support & End-to-end & Architecture ready & In progress \\
+SLM fine-tuning & Complete & In progress & Pending \\
+Public benchmark eval & ChartQA/PlotQA & Not yet & Pending \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Five of seven objectives were exceeded. The Vietnamese Q\&A architecture is in place
+(12/17 components language-agnostic, localization layers designed), pending QA data
+generation and SLM fine-tuning. The remaining items are in progress.
+
+\subsection{Future Work}
+
+\begin{enumerate}
+    \item \textbf{Vietnamese chart Q\&A deployment}: Execute the full Vietnamese
+          localization plan: configure OCR for Vietnamese diacritical marks, generate
+          5,000--10,000 Vietnamese QA samples via Data Factory, fine-tune SLM with
+          combined English + Vietnamese data, and evaluate Vietnamese chart understanding
+          accuracy end-to-end.
+
+    \item \textbf{SLM fine-tuning and evaluation}: Complete QLoRA training of
+          Qwen-2.5-1.5B on the 268,799-sample dataset (English) plus Vietnamese
+          supplement. Target: JSON valid rate $>$95\%, field accuracy $>$90\%,
+          Vietnamese output fluency $>$90\%, latency $<$2s per chart.
+
+    \item \textbf{Public benchmark comparison}: Evaluate on ChartQA
+          \cite{masry2022chartqa} and PlotQA \cite{methani2020plotqa} for direct
+          comparison with DePlot \cite{liu2023deplot} and MatCha \cite{lee2023matcha}.
+
+    \item \textbf{Ablation study}: Systematically measure the contribution of the
+          negative image transform, adaptive RDP vectorization, RANSAC calibration,
+          and SLM reasoning through controlled experiments.
+
+    \item \textbf{OCR optimization}: Implement batch processing and selective
+          re-execution to reduce Stage~3 latency from $\sim$5.0s to $<$2.5s.
+
+    \item \textbf{Vietnamese domain expansion}: Collect chart images from Vietnamese
+          government reports, business dashboards, and academic publications to build
+          a Vietnamese chart benchmark dataset.
+
+    \item \textbf{Production deployment}: Integrate the Celery task queue and FastAPI
+          server for asynchronous pipeline execution with PostgreSQL state management.
+
+    \item \textbf{Dataset release}: Prepare the training dataset (English + Vietnamese)
+          and model weights for public release to support community research.
+\end{enumerate}

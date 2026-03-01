@@ -1,0 +1,54 @@
+% TikZ: Hybrid Approach Comparison (Traditional vs Geo-SLM)
+% Usage: \input{figures/tikz/tikz_approach_comparison.tex}
+% Requires: \usepackage{tikz} \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
+
+\begin{tikzpicture}[
+    node distance=0.4cm and 0.6cm,
+    block/.style={
+        rectangle, rounded corners=2pt, draw=black!60, thick,
+        minimum width=2.0cm, minimum height=0.8cm,
+        font=\scriptsize\bfseries, align=center
+    },
+    arrow/.style={-{Stealth[length=2.5mm]}, thick, draw=black!50},
+    grouplabel/.style={font=\small\bfseries, text=black!70},
+    prob/.style={font=\tiny\itshape, text=red!60},
+    good/.style={font=\tiny\itshape, text=teal!70}
+]
+
+% Traditional approach (top)
+\node[grouplabel] (trad_label) at (0, 2.5) {(a) Traditional End-to-End};
+
+\node[block, fill=blue!15] (t_img) at (0, 1.6) {Chart\\Image};
+\node[block, fill=red!15, right=of t_img] (t_llm) {Multimodal\\LLM};
+\node[block, fill=yellow!15, right=of t_llm] (t_text) {Text\\Description};
+\node[block, fill=gray!15, right=of t_text] (t_parse) {Parse\\to Data};
+
+\draw[arrow] (t_img) -- (t_llm);
+\draw[arrow] (t_llm) -- (t_text);
+\draw[arrow] (t_text) -- (t_parse);
+
+\node[prob, below=0.05cm of t_llm] {Hallucination risk};
+\node[prob, below=0.05cm of t_text] {Approximate values};
+
+% Geo-SLM approach (bottom)
+\node[grouplabel] at (0, 0.3) {(b) Geo-SLM Hybrid};
+
+\node[block, fill=blue!15] (g_img) at (0, -0.6) {Chart\\Image};
+\node[block, fill=teal!15, right=of g_img] (g_yolo) {YOLO\\Detection};
+\node[block, fill=green!15, right=of g_yolo] (g_geo) {Geometric\\Analysis};
+\node[block, fill=orange!15, right=of g_geo] (g_coord) {Measured\\Coordinates};
+\node[block, fill=purple!15, right=of g_coord] (g_slm) {SLM\\Refinement};
+
+\draw[arrow] (g_img) -- (g_yolo);
+\draw[arrow] (g_yolo) -- (g_geo);
+\draw[arrow] (g_geo) -- (g_coord);
+\draw[arrow] (g_coord) -- (g_slm);
+
+\node[good, below=0.05cm of g_geo] {Deterministic};
+\node[good, below=0.05cm of g_coord] {Traceable};
+\node[good, below=0.05cm of g_slm] {1.5B params};
+
+% Divider
+\draw[dashed, black!30] (-1.2, 0.9) -- (12, 0.9);
+
+\end{tikzpicture}
