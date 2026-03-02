@@ -66,6 +66,8 @@ class ReportingConfig(BaseModel):
     # Output options
     save_json: bool = Field(default=True, description="Save output JSON to disk")
     save_report: bool = Field(default=True, description="Save text report to disk")
+    save_markdown: bool = Field(default=True, description="Save Markdown report to disk")
+    save_csv: bool = Field(default=False, description="Save data as CSV files")
     output_dir: str = Field(
         default="data/output",
         description="Directory for output files",
@@ -132,8 +134,15 @@ class Stage5Reporting(BaseStage):
         )
 
         final_charts: List[FinalChartResult] = []
+        all_warnings: List[str] = []
 
         for chart in input_data.charts:
+            # Validate chart data
+            chart_warnings = self._validate_chart(chart, session.session_id)
+            all_warnings.extend(chart_warnings)
+            for w in chart_warnings:
+                logger.warning(w)
+
             try:
                 final = self._process_single_chart(chart, session)
                 final_charts.append(final)
@@ -169,10 +178,11 @@ class Stage5Reporting(BaseStage):
             summary=summary,
             processing_time_seconds=round(elapsed, 3),
             model_versions=self._collect_model_versions(),
+            warnings=all_warnings,
         )
 
         # Write output files
-        if self.config.save_json or self.config.save_report:
+        if self.config.save_json or self.config.save_report or self.config.save_markdown or self.config.save_csv:
             self._write_outputs(result)
 
         logger.info(
@@ -185,6 +195,88 @@ class Stage5Reporting(BaseStage):
     def validate_input(self, input_data: Any) -> bool:
         """Validate that input is Stage4Output."""
         return isinstance(input_data, Stage4Output)
+
+    # -------------------------------------------------------------------------
+    # Data validation
+    # -------------------------------------------------------------------------
+
+    def _validate_chart(
+        self,
+        chart: RefinedChartData,
+        session_id: str,
+    ) -> List[str]:
+        """
+        Validate a single chart's data integrity.
+
+        Checks:
+        - Required fields (chart_id, chart_type)
+        - Description present (if required by config)
+        - Series consistency: all series should have > 0 points
+        - Value sanity: no NaN or infinity in data points
+
+        Args:
+            chart: Refined chart data from Stage 4
+            session_id: Session identifier for log context
+
+        Returns:
+            List of warning messages (empty if no issues)
+        """
+        warnings: List[str] = []
+
+        # Required field: chart_id must be non-empty
+        if not chart.chart_id or not chart.chart_id.strip():
+            warnings.append(
+                f"Chart has empty chart_id | session={session_id}"
+            )
+
+        # Description required check
+        if self.config.require_description and not chart.description:
+            warnings.append(
+                f"Chart missing description | chart_id={chart.chart_id} | "
+                f"session={session_id}"
+            )
+
+        if not chart.series:
+            warnings.append(
+                f"Chart has no data series | chart_id={chart.chart_id} | "
+                f"session={session_id}"
+            )
+            return warnings
+
+        for series in chart.series:
+            # Empty series
+            if not series.points:
+                warnings.append(
+                    f"Empty series | chart_id={chart.chart_id} | "
+                    f"series={series.name} | session={session_id}"
+                )
+                continue
+
+            # Check for non-finite values
+            import math
+
+            for point in series.points:
+                if math.isnan(point.value) or math.isinf(point.value):
+                    warnings.append(
+                        f"Non-finite value detected | chart_id={chart.chart_id} | "
+                        f"series={series.name} | label={point.label} | "
+                        f"value={point.value} | session={session_id}"
+                    )
+                    break  # One warning per series is enough
+
+            # Check confidence ranges
+            low_conf = [
+                p for p in series.points if p.confidence < 0.5
+            ]
+            if low_conf:
+                warnings.append(
+                    f"Low confidence points | chart_id={chart.chart_id} | "
+                    f"series={series.name} | "
+                    f"count={len(low_conf)}/{len(series.points)} | "
+                    f"session={session_id}"
+                )
+
+        return warnings
 
     # -------------------------------------------------------------------------
     # Single-chart processing
@@ -553,6 +645,23 @@ class Stage5Reporting(BaseStage):
             except Exception as exc:
                 logger.warning(f"Failed to write text report | error={exc}")
 
+        if self.config.save_markdown:
+            md_path = output_dir / f"{base_name}_report.md"
+            try:
+                with open(md_path, "w", encoding="utf-8") as f:
+                    f.write(self._format_markdown_report(result))
+                logger.info(f"Markdown report written | path={md_path}")
+            except Exception as exc:
+                logger.warning(f"Failed to write Markdown report | error={exc}")
+
+        if self.config.save_csv:
+            csv_path = output_dir / f"{base_name}_data.csv"
+            try:
+                self._write_csv(result, csv_path)
+                logger.info(f"CSV data written | path={csv_path}")
+            except Exception as exc:
+                logger.warning(f"Failed to write CSV | error={exc}")
+
     def _format_text_report(self, result: PipelineResult) -> str:
         """
         Format a readable text report.
@@ -609,6 +718,201 @@ class Stage5Reporting(BaseStage):
         ]
 
         return "\n".join(lines)
+
+    def _format_markdown_report(self, result: PipelineResult) -> str:
+        """
+        Generate a Markdown-formatted report suitable for documentation or thesis.
+
+        Args:
+            result: Pipeline result
+
+        Returns:
+            Markdown string with tables, headings, and structured data
+        """
+        lines: List[str] = [
+            "# Chart Analysis Report",
+            "",
+            f"**Session:** {result.session.session_id}  ",
+            f"**Source:** {result.session.source_file}  ",
+            f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  ",
+            f"**Processing Time:** {result.processing_time_seconds:.2f}s  ",
+            "",
+            "---",
+            "",
+            "## Summary",
+            "",
+        ]
+
+        # Summary table
+        total_points = sum(
+            sum(len(s.points) for s in c.data.series) for c in result.charts
+        )
+        total_insights = sum(len(c.insights) for c in result.charts)
+
+        lines += [
+            "| Property | Value |",
+            "| --- | --- |",
+            f"| Charts Extracted | {len(result.charts)} |",
+            f"| Total Data Points | {total_points} |",
+            f"| Insights Generated | {total_insights} |",
+            f"| Processing Time | {result.processing_time_seconds:.2f}s |",
+        ]
+
+        # Chart type distribution
+        type_counts: Dict[str, int] = {}
+        for c in result.charts:
+            t = c.chart_type.value
+            type_counts[t] = type_counts.get(t, 0) + 1
+
+        if type_counts:
+            lines += [
+                "",
+                "### Chart Types",
+                "",
+                "| Type | Count |",
+                "| --- | --- |",
+            ]
+            for ctype, count in sorted(type_counts.items()):
+                lines.append(f"| {ctype} | {count} |")
+
+        lines += ["", "---", ""]
+
+        # Per-chart details
+        for i, chart in enumerate(result.charts, 1):
+            lines += [
+                f"## Chart {i}: {chart.title or '(untitled)'}",
+                "",
+                f"**ID:** {chart.chart_id}  ",
+                f"**Type:** {chart.chart_type.value}  ",
+            ]
+
+            if chart.data.x_axis_label:
+                lines.append(f"**X-Axis:** {chart.data.x_axis_label}  ")
+            if chart.data.y_axis_label:
+                lines.append(f"**Y-Axis:** {chart.data.y_axis_label}  ")
+            lines.append("")
+
+            # Data table
+            if chart.data.series:
+                lines.append("### Data")
+                lines.append("")
+
+                for series in chart.data.series:
+                    if not series.points:
+                        continue
+
+                    lines.append(f"**Series: {series.name}** ({len(series.points)} points)")
+                    lines.append("")
+                    lines += [
+                        "| Label | Value | Confidence |",
+                        "| --- | --- | --- |",
+                    ]
+                    for p in series.points[:20]:
+                        lines.append(
+                            f"| {p.label} | {p.value:.4g} | {p.confidence:.2f} |"
+                        )
+                    if len(series.points) > 20:
+                        lines.append(f"| ... | *{len(series.points) - 20} more* | |")
+                    lines.append("")
+
+            # Insights
+            if chart.insights:
+                lines.append("### Insights")
+                lines.append("")
+                for insight in chart.insights:
+                    icon = {
+                        "trend": "**[TREND]**",
+                        "comparison": "**[COMPARE]**",
+                        "anomaly": "**[ANOMALY]**",
+                        "summary": "**[SUMMARY]**",
+                    }.get(insight.insight_type, f"**[{insight.insight_type.upper()}]**")
+                    lines.append(
+                        f"- {icon} {insight.text} *(confidence: {insight.confidence:.2f})*"
+                    )
+                lines.append("")
+
+            # Source info
+            if chart.source_info:
+                lines.append("### Traceability")
+                lines.append("")
+                lines += [
+                    "| Field | Value |",
+                    "| --- | --- |",
+                ]
+                for k, v in chart.source_info.items():
+                    if k == "correction_log":
+                        lines.append(f"| {k} | {len(v)} corrections |")
+                    else:
+                        lines.append(f"| {k} | {v} |")
+                lines.append("")
+
+            lines += ["---", ""]
+
+        # Warnings section
+        if result.warnings:
+            lines += [
+                "## Warnings",
+                "",
+            ]
+            for w in result.warnings:
+                lines.append(f"- {w}")
+            lines += ["", "---", ""]
+
+        # Footer
+        lines += [
+            f"*Report generated by Geo-SLM Chart Analysis Pipeline*",
+        ]
+
+        return "\n".join(lines)
+
+    def _write_csv(self, result: PipelineResult, csv_path: Path) -> None:
+        """
+        Write extracted chart data as a flat CSV file.
+
+        Each row represents a single data point with full context.
+
+        Args:
+            result: Pipeline result
+            csv_path: Output CSV file path
+        """
+        import csv
+
+        fieldnames = [
+            "session_id",
+            "chart_id",
+            "chart_type",
+            "chart_title",
+            "series_name",
+            "label",
+            "value",
+            "unit",
+            "confidence",
+            "x_axis_label",
+            "y_axis_label",
+        ]
+
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+
+            for chart in result.charts:
+                for series in chart.data.series:
+                    for point in series.points:
+                        writer.writerow(
+                            {
+                                "session_id": result.session.session_id,
+                                "chart_id": chart.chart_id,
+                                "chart_type": chart.chart_type.value,
+                                "chart_title": chart.title or "",
+                                "series_name": series.name,
+                                "label": point.label,
+                                "value": point.value,
+                                "unit": point.unit or "",
+                                "confidence": point.confidence,
+                                "x_axis_label": chart.data.x_axis_label or "",
+                                "y_axis_label": chart.data.y_axis_label or "",
+                            }
+                        )
 
     @staticmethod
     def _collect_model_versions() -> Dict[str, str]:

@@ -311,6 +311,10 @@ class PipelineResult(BaseModel):
         default_factory=dict,
         description="Versions of models used",
     )
+    warnings: List[str] = Field(
+        default_factory=list,
+        description="Validation warnings from data checks",
+    )
     
     @computed_field
     @property

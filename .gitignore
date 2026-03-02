@@ -184,3 +184,4 @@ celerybeat.pid
 dump.rdb
 chatlog2.md
 chatlog.md
+/Chart_QA
