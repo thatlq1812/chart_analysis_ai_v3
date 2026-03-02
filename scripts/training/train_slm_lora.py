@@ -7,8 +7,13 @@ Supports:
 - Llama-3.2-1B / 3B-Instruct
 
 Usage:
-    # Full training on default model (Qwen2.5-1.5B):
-    python scripts/training/train_slm_lora.py
+    # Full training using YAML config (RECOMMENDED):
+    python scripts/training/train_slm_lora.py --config config/training.yaml
+
+    # Config + dynamic override (ablation study):
+    python scripts/training/train_slm_lora.py --config config/training.yaml \
+        --override slm_training.training.learning_rate=1e-5 \
+        --override slm_training.lora.rank=32
 
     # Choose model:
     python scripts/training/train_slm_lora.py --model qwen-1.5b
@@ -34,11 +39,15 @@ Usage:
     # Resume from explicit checkpoint path:
     python scripts/training/train_slm_lora.py --epochs 2 --resume-from-checkpoint models/slm/llama-3.2-1b-instruct-chart-lora/checkpoint-28500
 
+    # Experiment tracking with WandB:
+    python scripts/training/train_slm_lora.py --config config/training.yaml \
+        --tracker wandb
+
 Requirements:
     pip install transformers peft trl datasets accelerate bitsandbytes
 
 Output:
-    models/slm/<model_name>-chart-lora/
+    runs/<model>_<timestamp>/  (isolated run directory with frozen config)
 """
 
 import argparse
@@ -48,12 +57,15 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import torch
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.training.run_manager import RunManager
+from src.training.experiment_tracker import ExperimentTracker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -472,6 +484,8 @@ def train(
     save_steps: int = 100,
     smoke_test: bool = False,
     resume_from_checkpoint: Optional[str] = None,
+    run_manager: Optional[RunManager] = None,
+    tracker: Optional[ExperimentTracker] = None,
 ) -> None:
     """
     Run LoRA fine-tuning with trl 0.29 SFTTrainer + SFTConfig API.
@@ -498,11 +512,17 @@ def train(
         smoke_test: If True, train for 2 steps only and exit
         resume_from_checkpoint: Path to checkpoint dir, or None for fresh start.
                                  Use find_latest_checkpoint() to auto-detect.
+        run_manager: Optional RunManager for isolated run directories
+        tracker: Optional ExperimentTracker for metrics logging
     """
     from trl import SFTConfig, SFTTrainer
 
     entry = MODEL_REGISTRY[model_key]
-    if output_dir is None:
+
+    # Determine output directory: RunManager > explicit > default
+    if run_manager:
+        output_dir = run_manager.checkpoints_dir
+    elif output_dir is None:
         output_dir = MODELS_DIR / f"{entry['local_name']}-chart-lora"
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -554,7 +574,8 @@ def train(
         save_steps=save_steps,
         save_total_limit=2,
         load_best_model_at_end=True,
-        report_to=[],  # disable external logging (no wandb/tensorboard required)
+        report_to=tracker.get_report_to() if tracker else [],
+        logging_dir=str(run_manager.logs_dir) if run_manager else None,
         fp16=False,
         bf16=True,  # Qwen2.5 / Llama-3.2 are natively BFloat16
         optim="paged_adamw_8bit" if use_4bit else "adamw_torch",
@@ -589,18 +610,23 @@ def train(
     trainer.train(resume_from_checkpoint=resume_from_checkpoint)
 
     if smoke_test:
-        logger.info("Smoke test passed — pipeline is functional")
+        logger.info("Smoke test passed -- pipeline is functional")
+        if run_manager:
+            run_manager.finalize(metrics={"status": "smoke_test_passed"}, status="completed")
+        if tracker:
+            tracker.finish()
         return
 
     # Save final adapter
-    final_dir = output_dir / "final"
+    final_dir = run_manager.final_model_dir if run_manager else (output_dir / "final")
     logger.info(f"Saving adapter to {final_dir}")
+    final_dir.mkdir(parents=True, exist_ok=True)
     trainer.save_model(str(final_dir))
     tokenizer.save_pretrained(str(final_dir))
 
-    # Load existing info if resuming, then update
-    info_path = output_dir / "training_info.json"
-    existing_info: Dict = {}
+    # Build training info
+    info_path = (run_manager.run_dir if run_manager else output_dir) / "training_info.json"
+    existing_info: Dict[str, Any] = {}
     if info_path.exists():
         try:
             with open(info_path) as f:
@@ -615,7 +641,7 @@ def train(
         "completed_at": datetime.now().isoformat(),
     })
 
-    info = {
+    info: Dict[str, Any] = {
         "model_key": model_key,
         "base_model": entry["repo_id"],
         "lora_rank": lora_rank,
@@ -635,8 +661,29 @@ def train(
     with open(info_path, "w") as f:
         json.dump(info, f, indent=2)
 
+    # Finalize run and tracker
+    final_metrics = {
+        "model_key": model_key,
+        "train_samples": len(train_dataset),
+        "val_samples": len(val_dataset),
+        "epochs": epochs,
+        "lora_rank": lora_rank,
+        "learning_rate": learning_rate,
+    }
+
+    if tracker:
+        tracker.log_summary(final_metrics)
+        tracker.log_artifact(str(final_dir), name=f"{model_key}-lora-adapter", artifact_type="model")
+        tracker.finish()
+
+    if run_manager:
+        run_manager.save_artifact(info, "training_info.json")
+        run_manager.finalize(metrics=final_metrics, status="completed")
+
     logger.info(f"Training complete. Adapter saved to {final_dir}")
     logger.info(f"Sessions logged: {len(sessions)} total")
+    if run_manager:
+        logger.info(f"Run directory: {run_manager.run_dir}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -647,6 +694,33 @@ def main() -> None:
         description="Fine-tune Chart Analysis SLM with LoRA (trl 0.29 compatible)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+
+    # --- Run Management (NEW) ---
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="YAML config file to load (e.g. config/training.yaml). "
+             "When provided, creates an isolated run directory under runs/",
+    )
+    parser.add_argument(
+        "--override",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Dynamic config overrides in OmegaConf dot-notation. "
+             "Can be specified multiple times. "
+             "Example: --override slm_training.training.learning_rate=1e-5",
+    )
+    parser.add_argument(
+        "--tracker",
+        choices=["wandb", "tensorboard", "json", "none"],
+        default=None,
+        help="Experiment tracking backend. Overrides config/training.yaml setting. "
+             "Default: from config or 'json'",
+    )
+
+    # --- Model Selection ---
     parser.add_argument(
         "--model",
         choices=list(MODEL_REGISTRY.keys()),
@@ -663,7 +737,7 @@ def main() -> None:
         "--output-dir",
         type=Path,
         default=None,
-        help="Output directory (default: models/slm/<model>-chart-lora/)",
+        help="Output directory (default: managed by RunManager or models/slm/<model>-chart-lora/)",
     )
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch-size", type=int, default=2)
@@ -710,12 +784,93 @@ def main() -> None:
         gpu = torch.cuda.get_device_properties(0)
         logger.info(f"GPU: {gpu.name} | VRAM: {gpu.total_memory / 1024**3:.1f} GB")
     else:
-        logger.warning("CUDA not available — training will be very slow")
+        logger.warning("CUDA not available -- training will be very slow")
 
     if not args.data_dir.exists():
         logger.error(f"Data directory not found: {args.data_dir}")
         logger.error("Run: python scripts/training/prepare_slm_training_v3.py --output-dir data/slm_training_v3")
         sys.exit(1)
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Initialize RunManager + ExperimentTracker (if --config provided)
+    # ─────────────────────────────────────────────────────────────────────
+    run_manager: Optional[RunManager] = None
+    tracker: Optional[ExperimentTracker] = None
+
+    if args.config:
+        # Create isolated run with frozen config
+        run_prefix = f"slm_lora_{args.model}"
+        run_manager = RunManager(
+            config_path=args.config,
+            cli_overrides=args.override,
+            run_prefix=run_prefix,
+        )
+
+        # Extract hyperparams from resolved config (CLI args override config values)
+        cfg = run_manager.config
+        slm_cfg = cfg.get("slm_training", {})
+        training_cfg = slm_cfg.get("training", {}) if slm_cfg else {}
+        lora_cfg = slm_cfg.get("lora", {}) if slm_cfg else {}
+        data_cfg = slm_cfg.get("data", {}) if slm_cfg else {}
+        run_mgmt_cfg = cfg.get("run_management", {})
+
+        # Config values serve as defaults; CLI args override them
+        # (argparse defaults are used only if neither config nor CLI provides a value)
+        if training_cfg:
+            if args.epochs == 3:  # argparse default
+                args.epochs = training_cfg.get("num_train_epochs", args.epochs)
+            if args.batch_size == 2:
+                args.batch_size = training_cfg.get("per_device_train_batch_size", args.batch_size)
+            if args.learning_rate == 2e-4:
+                args.learning_rate = training_cfg.get("learning_rate", args.learning_rate)
+            if args.max_length == 4096:
+                args.max_length = training_cfg.get("max_seq_length", args.max_length)
+            if args.gradient_accumulation_steps == 8:
+                args.gradient_accumulation_steps = training_cfg.get(
+                    "gradient_accumulation_steps", args.gradient_accumulation_steps
+                )
+            if args.eval_steps == 50:
+                args.eval_steps = training_cfg.get("eval_steps", args.eval_steps)
+            if args.save_steps == 100:
+                args.save_steps = training_cfg.get("save_steps", args.save_steps)
+        if lora_cfg:
+            if args.lora_rank == 16:
+                args.lora_rank = lora_cfg.get("rank", args.lora_rank)
+            if args.lora_alpha is None:
+                args.lora_alpha = lora_cfg.get("alpha", None)
+        if data_cfg:
+            if args.data_dir == DATA_PATH:
+                data_train = data_cfg.get("train_file", "")
+                if data_train:
+                    args.data_dir = Path(data_train).parent
+
+        # Initialize experiment tracker
+        tracker_backend = args.tracker or run_mgmt_cfg.get("tracking_backend", "json")
+        wandb_cfg = run_mgmt_cfg.get("wandb", {})
+
+        tracker = ExperimentTracker(
+            backend=tracker_backend,
+            project=wandb_cfg.get("project", "chart_analysis_ai_v3") if wandb_cfg else "chart_analysis_ai_v3",
+            run_name=run_manager.run_name,
+            config={
+                "model_key": args.model,
+                "epochs": args.epochs,
+                "batch_size": args.batch_size,
+                "learning_rate": args.learning_rate,
+                "lora_rank": args.lora_rank,
+                "lora_alpha": args.lora_alpha,
+                "max_length": args.max_length,
+                "gradient_accumulation_steps": args.gradient_accumulation_steps,
+                "use_4bit": not args.no_4bit,
+            },
+            log_dir=run_manager.logs_dir,
+            tags=wandb_cfg.get("tags", []) if wandb_cfg else [],
+        )
+
+        logger.info(
+            f"Run management active | run={run_manager.run_name} | "
+            f"tracker={tracker.backend} | config_hash={run_manager.config_hash[:12]}"
+        )
 
     # Resolve checkpoint path for resume
     checkpoint_path: Optional[str] = None
@@ -723,10 +878,13 @@ def main() -> None:
         checkpoint_path = args.resume_from_checkpoint
     elif args.resume:
         # Determine output_dir the same way train() does, to find checkpoints
-        effective_output_dir = args.output_dir
-        if effective_output_dir is None:
-            entry = MODEL_REGISTRY[args.model]
-            effective_output_dir = MODELS_DIR / f"{entry['local_name']}-chart-lora"
+        if run_manager:
+            effective_output_dir = run_manager.checkpoints_dir
+        else:
+            effective_output_dir = args.output_dir
+            if effective_output_dir is None:
+                entry = MODEL_REGISTRY[args.model]
+                effective_output_dir = MODELS_DIR / f"{entry['local_name']}-chart-lora"
         checkpoint_path = find_latest_checkpoint(effective_output_dir)
         if checkpoint_path is None:
             logger.error(
@@ -735,23 +893,33 @@ def main() -> None:
             )
             sys.exit(1)
 
-    train(
-        model_key=args.model,
-        data_path=args.data_dir,
-        output_dir=args.output_dir,
-        epochs=args.epochs,
-        batch_size=args.batch_size,
-        learning_rate=args.learning_rate,
-        max_length=args.max_length,
-        lora_rank=args.lora_rank,
-        lora_alpha=args.lora_alpha,
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        use_4bit=not args.no_4bit,
-        eval_steps=args.eval_steps,
-        save_steps=args.save_steps,
-        smoke_test=args.smoke_test,
-        resume_from_checkpoint=checkpoint_path,
-    )
+    try:
+        train(
+            model_key=args.model,
+            data_path=args.data_dir,
+            output_dir=args.output_dir,
+            epochs=args.epochs,
+            batch_size=args.batch_size,
+            learning_rate=args.learning_rate,
+            max_length=args.max_length,
+            lora_rank=args.lora_rank,
+            lora_alpha=args.lora_alpha,
+            gradient_accumulation_steps=args.gradient_accumulation_steps,
+            use_4bit=not args.no_4bit,
+            eval_steps=args.eval_steps,
+            save_steps=args.save_steps,
+            smoke_test=args.smoke_test,
+            resume_from_checkpoint=checkpoint_path,
+            run_manager=run_manager,
+            tracker=tracker,
+        )
+    except Exception as exc:
+        logger.error(f"Training failed | error={exc}")
+        if run_manager:
+            run_manager.finalize(metrics={"error": str(exc)}, status="failed")
+        if tracker:
+            tracker.finish()
+        raise
 
 
 if __name__ == "__main__":

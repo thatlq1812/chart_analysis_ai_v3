@@ -189,7 +189,7 @@ chart_analysis_ai_v3/
 | [MASTER_CONTEXT.md](docs/MASTER_CONTEXT.md) | Project overview and status |
 | [Quick Start Guide](docs/guides/QUICK_START.md) | Getting started |
 | [Development Guide](docs/guides/DEVELOPMENT.md) | Dev environment setup |
-| [SLM Training Guide](docs/guides/SLM_TRAINING_GUIDE.md) | Fine-tuning SLM models |
+| [Training Guide](docs/guides/TRAINING.md) | Model training (SLM, ResNet, YOLO) |
 | [Pipeline Flow](docs/architecture/PIPELINE_FLOW.md) | Data flow diagrams |
 | [Stage 3 Details](docs/architecture/STAGE3_EXTRACTION.md) | Extraction module deep dive |
 | [Stage 4 Details](docs/architecture/STAGE4_REASONING.md) | AI reasoning module |

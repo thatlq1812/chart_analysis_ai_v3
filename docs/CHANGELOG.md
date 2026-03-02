@@ -48,7 +48,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Pre-training checklist, cloud GPU recommendation
 
 #### Changed
-- **SLM Training Guide** (`docs/guides/SLM_TRAINING_GUIDE.md`) v2.0.0
+- **SLM Training Guide** (`docs/guides/SLM_TRAINING_GUIDE.md`) v2.0.0 -> superseded by `docs/guides/TRAINING.md`
   - Revised for cloud GPU training (RunPod/Vast.ai)
   - Corrected all training commands (max_length=4096, auto lora_alpha)
   - Added cloud setup guide (upload, install, download results)

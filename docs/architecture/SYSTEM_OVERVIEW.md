@@ -2,7 +2,10 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 3.0.0 | 2026-03-02 | That Le | Full rewrite: AI Router, training infra, actual code structure |
 | 2.0.0 | 2026-02-04 | That Le | Updated with current architecture |
+
+---
 
 ## 1. Architecture Philosophy
 
@@ -13,7 +16,7 @@ The system follows a **Core-First Architecture** where the AI engine is complete
 ```
 +------------------------------------------------------------------+
 |                        INTERFACE LAYER                            |
-|                   (CLI, API, Demo - OPTIONAL)                     |
+|                   (CLI, Demo - currently active)                  |
 +------------------------------------------------------------------+
                               |
                               | (Simple function calls)
@@ -23,14 +26,14 @@ The system follows a **Core-First Architecture** where the AI engine is complete
 |                   (Pure Python, No web deps)                      |
 |                                                                   |
 |   from core_engine import ChartAnalysisPipeline                  |
-|   pipeline = ChartAnalysisPipeline(config)                       |
+|   pipeline = ChartAnalysisPipeline.from_config()                 |
 |   result = pipeline.run("chart.pdf")                             |
 +------------------------------------------------------------------+
                               |
                               v
 +------------------------------------------------------------------+
-|                        DATA LAYER                                 |
-|              (Files, Cache, Models - Configurable)                |
+|                        DATA & MODEL LAYER                         |
+|     (Files, Cache, Model Weights, Training Data - Configurable)  |
 +------------------------------------------------------------------+
 ```
 
@@ -39,33 +42,35 @@ The system follows a **Core-First Architecture** where the AI engine is complete
 | Principle | Description | Implementation |
 | --- | --- | --- |
 | **Decoupling** | Layers don't know about each other | Interface imports Core, not vice versa |
-| **Testability** | Each component testable in isolation | Dependency injection, no global state |
-| **Configurability** | Behavior controlled by config | YAML files, environment variables |
-| **Reproducibility** | Same input = same output | Seeded random, versioned models |
+| **Testability** | Each component testable in isolation | DI, no global state; 295 test functions |
+| **Configurability** | Behavior controlled by config | YAML files (OmegaConf), environment variables |
+| **Reproducibility** | Same input = same output | Seeded random, versioned models, session IDs |
+| **Multi-Provider AI** | No single-vendor lock-in | AIRouter with fallback chains |
+| **Graceful Degradation** | Always produce partial results | Recoverable errors, fallback providers |
+
+---
 
 ## 2. Layer Descriptions
 
 ### 2.1. Interface Layer
 
-The interface layer provides different ways to interact with the core engine:
-
-| Interface | Purpose | Dependencies |
-| --- | --- | --- |
-| **CLI** | Developer testing, scripting | Typer |
-| **API** | Production integration | FastAPI |
-| **Demo** | Visual demonstration | Streamlit |
+| Interface | Purpose | Dependencies | Status |
+| --- | --- | --- | --- |
+| **CLI** | Developer testing, scripting | Typer | Active |
+| **Demo** | Visual demonstration | Streamlit | Active |
+| **API** | Production integration | FastAPI + Celery | Planned (Phase 3) |
 
 **Key Rule:** Interface layer ONLY imports from core_engine. It never contains business logic.
 
 ```python
-# interface/cli.py - Correct
+# interface/cli.py - CORRECT
 from core_engine import ChartAnalysisPipeline
 
 def analyze(input_path: str):
     pipeline = ChartAnalysisPipeline.from_config()
     return pipeline.run(input_path)
 
-# interface/cli.py - WRONG (business logic in interface)
+# WRONG (business logic in interface)
 def analyze(input_path: str):
     image = load_image(input_path)  # NO!
     boxes = yolo_detect(image)       # NO!
@@ -73,42 +78,90 @@ def analyze(input_path: str):
 
 ### 2.2. Core Engine Layer
 
-The heart of the system. Contains all AI logic, organized into stages:
+The heart of the system. Contains all AI logic organized into stages and an AI routing layer:
 
 ```
-core_engine/
-|
-+-- __init__.py             # Public API
-+-- pipeline.py             # Orchestrator
-+-- exceptions.py           # Custom errors
-|
-+-- schemas/                # Data structures
-|   +-- common.py           # Shared types
-|   +-- stage_outputs.py    # Stage I/O schemas
-|
-+-- stages/                 # Processing stages
-|   +-- base.py             # Base class
-|   +-- s1_ingestion.py
-|   +-- s2_detection.py
-|   +-- s3_extraction/      # Complex stage (sub-modules)
-|   +-- s4_reasoning.py
-|   +-- s5_reporting.py
-|
-+-- utils/                  # Helpers
-    +-- image.py
-    +-- logging.py
+src/core_engine/
+    __init__.py                     # Public API
+    pipeline.py                     # ChartAnalysisPipeline orchestrator (313 lines)
+    exceptions.py                   # Exception hierarchy (192 lines)
+
+    schemas/                        # Pydantic v2 data structures
+        common.py                   # BoundingBox, Point, Color, SessionInfo
+        enums.py                    # All enums (single source of truth, 12+ enums)
+        stage_outputs.py            # Stage I/O schemas (Stage1Output -> PipelineResult)
+        extraction.py               # Extraction-specific schemas
+        qa_schemas.py               # QA dataset schemas
+
+    stages/                         # 5 processing stages
+        base.py                     # BaseStage[InputT, OutputT] ABC
+        s1_ingestion.py             # PDF/DOCX/Image -> CleanImage
+        s2_detection.py             # YOLO detection -> DetectedChart
+        s3_extraction/              # 11 submodules (OCR + Geometry + Classification)
+            s3_extraction.py
+            classifier.py
+            simple_classifier.py
+            ml_classifier.py
+            resnet_classifier.py    # ResNet-18 (94.14% accuracy)
+            element_detector.py
+            geometric_mapper.py
+            ocr_engine.py           # PaddleOCR
+            preprocessor.py
+            skeletonizer.py
+            vectorizer.py
+        s4_reasoning/               # 6 submodules (AI reasoning)
+            s4_reasoning.py         # Stage orchestrator (479 lines)
+            value_mapper.py         # GeometricValueMapper (764 lines)
+            prompt_builder.py       # GeminiPromptBuilder (833 lines)
+            reasoning_engine.py     # ReasoningEngine ABC (185 lines)
+            gemini_engine.py        # Direct Gemini API engine (626 lines)
+            router_engine.py        # AIRouterEngine - multi-provider (410 lines)
+            prompts/                # 5 template files (.txt, .md)
+        s5_reporting.py             # Insights + validation + reports (939 lines)
+
+    ai/                             # AI provider routing system
+        router.py                   # AIRouter - fallback chains (425 lines)
+        task_types.py               # TaskType enum (4 types)
+        prompts.py                  # System prompt templates (181 lines)
+        exceptions.py               # AI exception hierarchy (116 lines)
+        adapters/                   # Provider implementations
+            base.py                 # BaseAIAdapter ABC + AIResponse
+            gemini_adapter.py       # GeminiAdapter
+            openai_adapter.py       # OpenAIAdapter
+            local_slm_adapter.py    # LocalSLMAdapter (Qwen/Llama)
+
+    validators/
+        gemini_validator.py         # Response validation
+
+    data_factory/
+        qa_generator.py             # QA pair generation
 ```
 
-### 2.3. Data Layer
+### 2.3. Training Infrastructure
 
-Configurable storage locations:
+```
+src/training/
+    __init__.py
+    run_manager.py              # RunManager: isolated runs, config freezing (478 lines)
+    experiment_tracker.py       # ExperimentTracker: wandb/tb/json/none (385 lines)
+```
+
+### 2.4. Data Layer
 
 | Directory | Content | Lifecycle |
 | --- | --- | --- |
-| `data/raw/` | Input files | Read-only after ingestion |
+| `data/raw_pdfs/` | Input files | Read-only after ingestion |
 | `data/processed/` | Pipeline outputs | Per-session directories |
-| `data/cache/` | Intermediate results | Can be cleared |
-| `models/weights/` | Model files | Versioned, read-only |
+| `data/cache/` | OCR cache (589MB), intermediate results | Can be cleared |
+| `data/samples/` | Demo/test samples | Read-only |
+| `data/output/` | Final results | Per-run |
+| `data/slm_training_v3/` | SLM training data (268k samples) | Versioned |
+| `data/academic_dataset/` | Source charts + QA + features | Read-only |
+| `models/weights/` | YOLO, ResNet-18 weights | Versioned, read-only |
+| `models/slm/` | LoRA adapters | Per-training-run |
+| `runs/` | Isolated training run directories | Gitignored |
+
+---
 
 ## 3. Component Diagram
 
@@ -116,60 +169,76 @@ Configurable storage locations:
 flowchart TB
     subgraph Interface["Interface Layer"]
         CLI[CLI\nTyper]
-        API[API Server\nFastAPI]
         Demo[Demo UI\nStreamlit]
     end
-    
+
     subgraph Core["Core Engine"]
-        Pipeline[Pipeline Orchestrator]
-        
-        subgraph Stages["Stages"]
-            S1[S1: Ingestion]
-            S2[S2: Detection]
-            S3[S3: Extraction]
-            S4[S4: Reasoning]
-            S5[S5: Reporting]
+        Pipeline[Pipeline Orchestrator\npipeline.py]
+
+        subgraph Stages["5 Processing Stages"]
+            S1[S1: Ingestion\nPyMuPDF + Pillow]
+            S2[S2: Detection\nYOLO]
+            S3[S3: Extraction\n11 submodules]
+            S4[S4: Reasoning\n6 submodules]
+            S5[S5: Reporting\n939 lines]
         end
-        
-        subgraph Models["Model Wrappers"]
-            YOLO[YOLO Detector]
-            OCR[OCR Engine]
-            SLM[SLM Reasoner]
+
+        subgraph AI["AI Routing Layer"]
+            Router[AIRouter\n4 task types]
+            subgraph Adapters["3 Adapters"]
+                SLM[LocalSLMAdapter\nQwen/Llama]
+                Gemini[GeminiAdapter\ngemini-2.0-flash]
+                OpenAI[OpenAIAdapter\ngpt-4o-mini]
+            end
         end
-        
-        Schemas[(Schemas)]
-        Exceptions[Exceptions]
+
+        Schemas[(Pydantic Schemas\n5 files)]
+        Exceptions[Exceptions\n2 hierarchies]
     end
-    
-    subgraph Data["Data Layer"]
-        Raw[(raw/)]
+
+    subgraph Training["Training Infrastructure"]
+        RunMgr[RunManager\nConfig freezing + registry]
+        Tracker[ExperimentTracker\nwandb/tb/json]
+    end
+
+    subgraph Data["Data & Model Layer"]
+        Raw[(raw_pdfs/)]
         Processed[(processed/)]
         Cache[(cache/)]
-        Weights[(weights/)]
+        Weights[(model weights/)]
+        TrainData[(slm_training_v3/)]
+        Runs[(runs/)]
     end
-    
+
     CLI --> Pipeline
-    API --> Pipeline
     Demo --> Pipeline
-    
+
     Pipeline --> S1
     S1 --> S2
     S2 --> S3
     S3 --> S4
     S4 --> S5
-    
-    S2 -.-> YOLO
-    S3 -.-> OCR
-    S4 -.-> SLM
-    
+
+    S2 -.-> |YOLO| Weights
+    S3 -.-> |PaddleOCR + ResNet-18| Weights
+    S4 --> Router
+    Router --> SLM
+    Router --> Gemini
+    Router --> OpenAI
+
     Schemas -.-> Stages
     Exceptions -.-> Stages
-    
+
     S1 --> Raw
     S5 --> Processed
-    Stages --> Cache
-    Models --> Weights
+    S3 --> Cache
+
+    RunMgr --> Runs
+    Tracker --> Runs
+    TrainData -.-> RunMgr
 ```
+
+---
 
 ## 4. Data Flow
 
@@ -178,43 +247,48 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     participant User
-    participant CLI
     participant Pipeline
     participant S1 as Stage 1
     participant S2 as Stage 2
     participant S3 as Stage 3
     participant S4 as Stage 4
     participant S5 as Stage 5
+    participant Router as AI Router
     participant FS as File System
-    
-    User->>CLI: analyze("report.pdf")
-    CLI->>Pipeline: run(Path)
-    
+
+    User->>Pipeline: run("report.pdf")
+    Pipeline->>Pipeline: Create SessionInfo (unique ID + config hash)
+
     Pipeline->>S1: process(Path)
-    S1->>FS: Load PDF
+    S1->>FS: Load PDF (PyMuPDF)
     FS-->>S1: bytes
-    S1->>S1: Convert to images
+    S1->>S1: Convert to images + validate
     S1-->>Pipeline: Stage1Output
-    
+
     Pipeline->>S2: process(Stage1Output)
-    S2->>S2: YOLO inference
+    S2->>S2: YOLO inference (mAP=93.5%)
     S2->>FS: Save cropped charts
     S2-->>Pipeline: Stage2Output
-    
+
     Pipeline->>S3: process(Stage2Output)
-    S3->>S3: OCR + Geometric
+    S3->>S3: ResNet-18 classify (94.14%)
+    S3->>S3: PaddleOCR + role assignment
+    S3->>S3: Element detection + geometric mapping
     S3-->>Pipeline: Stage3Output
-    
+
     Pipeline->>S4: process(Stage3Output)
-    S4->>S4: SLM reasoning
+    S4->>S4: GeometricValueMapper
+    S4->>S4: GeminiPromptBuilder
+    S4->>Router: resolve(CHART_REASONING)
+    Router-->>S4: AIResponse (corrections + description)
     S4-->>Pipeline: Stage4Output
-    
+
     Pipeline->>S5: process(Stage4Output)
-    S5->>FS: Save JSON report
+    S5->>S5: Validate + generate insights
+    S5->>FS: Save JSON + report
     S5-->>Pipeline: PipelineResult
-    
-    Pipeline-->>CLI: PipelineResult
-    CLI-->>User: JSON output
+
+    Pipeline-->>User: PipelineResult
 ```
 
 ### 4.2. Error Handling Path
@@ -223,125 +297,252 @@ sequenceDiagram
 sequenceDiagram
     participant Pipeline
     participant Stage
-    participant ErrorHandler
-    
+    participant Router as AI Router
+
     Pipeline->>Stage: process(input)
-    
+
     alt Success
         Stage-->>Pipeline: output
-    else Recoverable Error
-        Stage->>ErrorHandler: StageError(recoverable=True)
-        ErrorHandler->>Stage: get_fallback_output()
-        Stage-->>Pipeline: fallback_output + warning
+    else Recoverable Error (AI provider fails)
+        Stage->>Router: resolve(task_type)
+        Router->>Router: Provider 1 fails
+        Router->>Router: Try Provider 2 (fallback)
+        Router-->>Stage: AIResponse (from fallback)
+        Stage-->>Pipeline: output + warning
+    else All Providers Exhausted
+        Router-->>Stage: AIProviderExhaustedError
+        Stage->>Stage: Rule-based fallback
+        Stage-->>Pipeline: partial output + warning
     else Critical Error
-        Stage->>ErrorHandler: StageError(recoverable=False)
-        ErrorHandler-->>Pipeline: raise PipelineError
+        Stage-->>Pipeline: raise PipelineError(recoverable=False)
     end
 ```
 
-## 5. Configuration Architecture
+---
 
-### 5.1. Configuration Hierarchy
+## 5. AI Routing Architecture
+
+### 5.1. Overview
+
+The AI routing system enables multi-provider reasoning with automatic fallback. It lives in `src/core_engine/ai/` (8 files, 55 tests).
+
+### 5.2. Task Types and Chains
+
+| Task Type | Default Chain | Local-Only Chain |
+| --- | --- | --- |
+| `CHART_REASONING` | local_slm -> gemini -> openai | local_slm |
+| `OCR_CORRECTION` | local_slm -> gemini | local_slm |
+| `DESCRIPTION_GEN` | local_slm -> gemini -> openai | local_slm |
+| `DATA_VALIDATION` | gemini -> openai | local_slm |
+
+### 5.3. Routing Algorithm
+
+```mermaid
+flowchart TD
+    A[Router.resolve task_type] --> B{Config override\nfor task?}
+    B -->|Yes| C[Use forced provider]
+    B -->|No| D[Walk fallback chain]
+
+    D --> E{Provider\navailable?}
+    E -->|No API key| D
+
+    E -->|Yes| F[Health check\ncached per session]
+    F -->|Fail| D
+
+    F -->|Pass| G[Call adapter.reason]
+    G --> H{Response\nconfidence >= 0.7?}
+
+    H -->|Yes| I[Return AIResponse]
+    H -->|No| D
+
+    D -->|Chain exhausted| J[AIProviderExhaustedError]
+```
+
+### 5.4. Adapter Interface
+
+```python
+class BaseAIAdapter(ABC):
+    """Base for all AI provider adapters."""
+
+    @abstractmethod
+    async def reason(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        model_id: Optional[str] = None,
+        image_path: Optional[Path] = None,
+        **kwargs,
+    ) -> AIResponse: ...
+
+    @abstractmethod
+    async def health_check(self) -> bool: ...
+
+    @abstractmethod
+    def get_default_model(self) -> str: ...
+
+@dataclass
+class AIResponse:
+    content: str
+    model_used: str
+    provider: str
+    confidence: float
+    usage: Optional[Dict]
+    raw_response: Optional[Any]
+    success: bool
+    error_message: Optional[str]
+```
+
+---
+
+## 6. Configuration Architecture
+
+### 6.1. Configuration Hierarchy
 
 ```yaml
-# config/base.yaml (defaults)
+# config/base.yaml - Shared defaults
 logging:
   level: INFO
   format: "%(asctime)s | %(levelname)s | %(message)s"
-
 data:
-  raw_dir: "data/raw"
+  raw_dir: "data/raw_pdfs"
   processed_dir: "data/processed"
   cache_dir: "data/cache"
 
-# config/models.yaml (model-specific)
+# config/models.yaml - Model paths and thresholds
 yolo:
   path: "models/weights/chart_detector.pt"
   device: "auto"
   confidence: 0.5
+ai_routing:
+  local_only: false
+  confidence_threshold: 0.7
 
-# config/pipeline.yaml (stage-specific)
+# config/pipeline.yaml - Stage parameters
 stages:
   ingestion:
     max_image_size: 4096
     dpi: 150
   detection:
     confidence_threshold: 0.5
+
+# config/training.yaml - Training hyperparameters + run management
+slm_training:
+  base_model: "meta-llama/Llama-3.2-1B-Instruct"
+  lora:
+    rank: 16
+    alpha: 32
+  training:
+    num_train_epochs: 3
+    learning_rate: 2e-4
+run_management:
+  tracking_backend: "json"
 ```
 
-### 5.2. Configuration Loading
+### 6.2. Configuration Loading
 
 ```python
 from omegaconf import OmegaConf
 
-def load_config(config_dir: Path = Path("config")) -> DictConfig:
-    """Load and merge configuration files."""
+# Pipeline config (in pipeline.py)
+def from_config(config_dir: Path = Path("config")) -> "ChartAnalysisPipeline":
     base = OmegaConf.load(config_dir / "base.yaml")
     models = OmegaConf.load(config_dir / "models.yaml")
     pipeline = OmegaConf.load(config_dir / "pipeline.yaml")
-    
-    # Merge with environment overrides
     config = OmegaConf.merge(base, models, pipeline)
-    
-    # Apply environment variables (e.g., CHART_YOLO_PATH)
     OmegaConf.resolve(config)
-    
-    return config
+    return ChartAnalysisPipeline(config)
+
+# Training config (in RunManager)
+# base.yaml + training.yaml + --override CLI args -> resolved_config.yaml
 ```
 
-## 6. Extensibility Points
+---
 
-### 6.1. Adding New Chart Types
+## 7. Testing Architecture
 
-1. Add to `ChartType` enum in `schemas/common.py`
-2. Add classifier logic in `stages/s3_extraction/classifier.py`
-3. Add element detector in `stages/s3_extraction/element_detector.py`
-4. Add tests in `tests/test_stages/test_s3_extraction.py`
+| Directory | Tests | Coverage |
+| --- | --- | --- |
+| `tests/test_ai/` | 55 functions (5 files) | AIRouter, adapters, task_types, prompts, exceptions |
+| `tests/test_s3_extraction/` | ~170 functions (8 files) | All S3 submodules |
+| `tests/test_s4_reasoning/` | ~40 functions (2 files) | PromptBuilder, ValueMapper |
+| `tests/test_s5_reporting/` | ~20 functions (1 file) | Stage5Reporting |
+| `tests/test_schemas.py` | ~10 functions | Schema validation |
+| **Total** | **~295 test functions** | **17 test files** |
 
-### 6.2. Adding New Output Formats
+---
 
-1. Create formatter class in `stages/s5_reporting/formatters/`
-2. Register in `stages/s5_reporting/__init__.py`
+## 8. Extensibility Points
+
+### 8.1. Adding a New AI Provider
+
+1. Create `src/core_engine/ai/adapters/new_provider_adapter.py` implementing `BaseAIAdapter`
+2. Register in `AIRouter.from_config()` with new provider key
+3. Add to fallback chains in `config/models.yaml`
+4. Add tests in `tests/test_ai/`
+
+### 8.2. Adding New Chart Types
+
+1. Add to `ChartType` enum in `src/core_engine/schemas/enums.py`
+2. Add classifier logic in `stages/s3_extraction/resnet_classifier.py`
+3. Add element detection rules in `stages/s3_extraction/element_detector.py`
+4. Add prompt template adjustments in `stages/s4_reasoning/prompts/`
+5. Add tests
+
+### 8.3. Adding New Output Formats
+
+1. Add formatter method in `stages/s5_reporting.py`
+2. Register output format in `ReportingConfig`
 3. Add config option in `config/pipeline.yaml`
 
-### 6.3. Swapping Models
+### 8.4. Adding New Insight Types
 
-Models are loaded via factory pattern:
+1. Add to `InsightType` enum in `src/core_engine/schemas/enums.py`
+2. Add detection method in `stages/s5_reporting.py`
+3. Add tests in `tests/test_s5_reporting/`
 
-```python
-# core_engine/models/factory.py
-def create_detector(config: DetectorConfig) -> BaseDetector:
-    if config.type == "yolo":
-        return YOLODetector(config)
-    elif config.type == "faster_rcnn":
-        return FasterRCNNDetector(config)
-    else:
-        raise ValueError(f"Unknown detector: {config.type}")
-```
+---
 
-## 7. Performance Considerations
+## 9. Performance Considerations
 
-### 7.1. Memory Management
+### 9.1. Memory Management
 
 | Component | Strategy |
 | --- | --- |
 | Large images | Process in chunks, stream to disk |
 | Model loading | Singleton pattern, lazy loading |
-| Batch processing | Generator-based, configurable batch size |
+| YOLO inference | GPU with fallback to CPU |
+| OCR cache | 589MB JSON cache (`data/cache/ocr_cache.json`) |
+| SLM inference | 4-bit quantization (NF4), ~2GB VRAM |
 
-### 7.2. Caching Strategy
+### 9.2. Caching Strategy
 
 | Cache Level | Content | TTL |
 | --- | --- | --- |
-| L1: Memory | Loaded models | Session lifetime |
-| L2: Disk | OCR results, detections | Configurable (24h default) |
-| L3: Database | Historical results | Permanent |
+| L1: Memory | Loaded models (YOLO, ResNet-18, OCR) | Session lifetime |
+| L2: Disk | OCR results (46,910 entries cached) | Permanent (manual clear) |
+| L3: File | Pipeline session outputs | Permanent |
 
-## 8. Security Considerations
+---
+
+## 10. Security Considerations
 
 | Concern | Mitigation |
 | --- | --- |
 | Malicious PDFs | PyMuPDF sandboxing, size limits |
 | Path traversal | Validate all paths against allowed directories |
 | Model injection | Verify model checksums |
-| Secrets exposure | Never log API keys, use .env files |
+| Secrets exposure | Never log API keys; use `.env` + `config/secrets/` (gitignored) |
+| AI provider keys | Loaded via `python-dotenv`, never in config YAML |
+
+---
+
+## 11. Planned Additions (Phase 3)
+
+| Component | Technology | Status |
+| --- | --- | --- |
+| API Server | FastAPI | Planned |
+| Task Queue | Celery + Redis | Planned |
+| Database | PostgreSQL + SQLAlchemy | Planned |
+| State Management | Repository pattern (`JobRepository`) | Planned |
+| Migrations | Alembic | Planned |
+| Containerization | Docker + docker-compose | Planned |

@@ -4,6 +4,27 @@
 # Configuration for fine-tuning Small Language Models on chart analysis tasks.
 # See: .github/instructions/module-training.instructions.md
 
+# =============================================================================
+# Run Management (shared across all training scripts)
+# =============================================================================
+run_management:
+  # Base directory for isolated training runs
+  runs_dir: "runs"
+  
+  # Experiment tracking backend: "wandb", "tensorboard", "json", "none"
+  # Fallback chain: wandb -> tensorboard -> json -> none
+  tracking_backend: "json"
+  
+  # WandB settings (only used if tracking_backend = "wandb")
+  wandb:
+    project: "chart_analysis_ai_v3"
+    entity: null                  # WandB team/user (null = personal)
+    tags: []
+  
+  # TensorBoard settings (only used if tracking_backend = "tensorboard")
+  tensorboard:
+    flush_secs: 30
+
 slm_training:
   # ---------------------------------------------------------------------------
   # Base Model Selection

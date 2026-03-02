@@ -101,7 +101,7 @@ Template provides: A4, 25.4mm margins, Fourier font, natbib numbered references.
 | SLM training dataset (v3) | 268,799 samples | MASTER_CONTEXT v3.0.0 |
 | Test suite | 176/177 passing (99.4%) | MASTER_CONTEXT v3.0.0 |
 | Chart types supported | 8 (area, bar, box, heatmap, histogram, line, pie, scatter) | models.yaml |
-| Hardware | RTX 3060 6GB VRAM | SLM_TRAINING_GUIDE |
+| Hardware | RTX 3060 6GB VRAM | TRAINING.md Section 12 |
 
 ---
 

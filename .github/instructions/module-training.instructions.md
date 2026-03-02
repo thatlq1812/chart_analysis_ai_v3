@@ -28,6 +28,72 @@ applyTo: 'scripts/training/**,research/**,data/slm_training/**,models/slm/**'
 - `data/slm_training_v3/` - Primary training dataset (v3, 268k samples) [PRIMARY]
 - `data/slm_training_v2/` - Archived baseline dataset (27k samples)
 - `models/slm/` - Trained LoRA adapters and merged weights
+- `src/training/run_manager.py` - Run isolation + config freezing [NEW]
+- `src/training/experiment_tracker.py` - WandB/TensorBoard/JSON tracking [NEW]
+- `runs/` - Isolated training run directories (gitignored) [NEW]
+
+---
+
+## 1b. Run Management System (NEW)
+
+### 1b.1. Architecture
+
+Every training run is **isolated** in its own directory under `runs/`:
+```
+runs/
+    slm_lora_llama-1b_20260302_153022/
+        resolved_config.yaml    # Frozen config (YAML base + CLI overrides)
+        run_metadata.json       # Run ID, git commit, timestamps
+        training_info.json      # Model params, dataset stats
+        checkpoints/            # HuggingFace checkpoints
+        logs/                   # TensorBoard / JSON metrics
+        artifacts/              # Evaluation results, custom outputs
+        final/                  # Final model weights
+```
+
+### 1b.2. Usage Patterns
+
+```bash
+# Config-driven training with run isolation:
+.venv/Scripts/python.exe scripts/training/train_slm_lora.py \
+    --config config/training.yaml
+
+# Ablation study (override single parameter):
+.venv/Scripts/python.exe scripts/training/train_slm_lora.py \
+    --config config/training.yaml \
+    --override slm_training.training.learning_rate=1e-5
+
+# With WandB tracking:
+.venv/Scripts/python.exe scripts/training/train_slm_lora.py \
+    --config config/training.yaml \
+    --tracker wandb
+
+# Legacy mode (no run isolation, backward-compatible):
+.venv/Scripts/python.exe scripts/training/train_slm_lora.py \
+    --model llama-1b --epochs 3
+```
+
+### 1b.3. Config Resolution Priority
+
+1. `config/base.yaml` (project-wide defaults)
+2. `config/training.yaml` (training-specific config)
+3. `--override KEY=VALUE` (CLI overrides, highest priority)
+
+### 1b.4. Experiment Tracking Backends
+
+| Backend | Pros | When to Use |
+| --- | --- | --- |
+| `json` (default) | No setup needed, always works | Development, quick tests |
+| `tensorboard` | Built-in visualization | Local analysis |
+| `wandb` | Dashboard, comparison, export to LaTeX | Thesis figures, ablation |
+
+### 1b.5. Run Registry
+
+All runs are indexed in `runs/run_registry.json` for easy comparison:
+```python
+from src.training.run_manager import RunManager
+runs = RunManager.list_runs(status="completed")
+```
 
 ---
 
@@ -425,13 +491,17 @@ Compare all candidate models on the same test set:
 
 | File | Purpose | Status |
 | --- | --- | --- |
-| `config/training.yaml` | Training hyperparams | EXISTS |
-| `scripts/train_slm_lora.py` | LoRA fine-tuning script | EXISTS (320L) |
+| `config/training.yaml` | Training hyperparams + run management | EXISTS |
+| `src/training/run_manager.py` | Run isolation, config freezing, registry | EXISTS (NEW) |
+| `src/training/experiment_tracker.py` | WandB/TensorBoard/JSON tracking | EXISTS (NEW) |
+| `scripts/train_slm_lora.py` | LoRA fine-tuning script | EXISTS (refactored with RunManager) |
+| `scripts/train_resnet18_v2.py` | ResNet-18 classifier training | EXISTS (refactored with RunManager) |
 | `scripts/prepare_slm_training_v3.py` | Build v3 dataset | EXISTS (PRIMARY) |
 | `scripts/download_models.py` | Download + verify base models | EXISTS |
-| `scripts/evaluate_slm.py` | Model evaluation benchmark | TO CREATE |
+| `scripts/evaluate_slm.py` | Model evaluation benchmark | EXISTS |
 | `scripts/merge_slm_lora.py` | Merge LoRA into base model | TO CREATE |
 | `models/slm/README.md` | SLM model registry | TO CREATE |
+| `runs/` | Isolated run directories (gitignored) | EXISTS (NEW) |
 
 ---
 
@@ -446,3 +516,6 @@ Compare all candidate models on the same test set:
 7. **USE** curriculum learning -- do not skip stages
 8. Training scripts MUST exit cleanly with error code on failure
 9. All evaluation results MUST be saved as JSON (not just printed to console)
+10. **ALWAYS** use `--config` flag for production training runs (creates isolated run)
+11. **NEVER** delete run directories until explicitly archived
+12. **ALWAYS** freeze config before training starts (RunManager handles this automatically)

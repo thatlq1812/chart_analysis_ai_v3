@@ -271,7 +271,7 @@ chart_analysis_ai_v3/
 |   +-- guides/                 # How-to guides
 |   |   +-- QUICK_START.md
 |   |   +-- DEVELOPMENT.md
-|   |   +-- SLM_TRAINING_GUIDE.md
+|   |   +-- TRAINING.md
 |   |   +-- CHART_QA_GUIDE.md
 |   |   +-- ARXIV_DOWNLOAD_GUIDE.md
 |   +-- progress/               # Weekly progress reports
@@ -665,7 +665,7 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 | Expected Output | LoRA adapter (~60MB) saved to `llama-3.2-1b-chart-lora-v4/final/` |
 | Evaluation | EM >40%, Contains >60%, Numeric >50%, latency <2s |
 | Postmortem | See `docs/reports/SLM_TRAINING_POSTMORTEM_V1.md` |
-| Training Guide | See `docs/guides/SLM_TRAINING_GUIDE.md` v2.0.0 |
+| Training Guide | See `docs/guides/TRAINING.md` v1.0.0 |
 
 ### 5.6. OCR Cache Status (2026-02-04)
 

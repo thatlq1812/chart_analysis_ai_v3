@@ -90,6 +90,12 @@ slm = [
     "google-generativeai>=0.3.0",
 ]
 
+tracking = [
+    # Experiment Tracking (optional)
+    "wandb>=0.16",
+    "tensorboard>=2.15",
+]
+
 api = [
     # API Server
     "fastapi>=0.104",
@@ -104,7 +110,7 @@ demo = [
 ]
 
 all = [
-    "geo-slm-chart-analysis[dev,slm,api,demo]",
+    "geo-slm-chart-analysis[dev,slm,api,demo,tracking]",
 ]
 
 [project.scripts]

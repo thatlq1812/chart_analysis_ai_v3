@@ -8,6 +8,18 @@ Improvements over v1:
 - 60 epochs with cosine annealing
 - Mixed precision training (faster on GPU)
 - Fast loading: resize large images immediately, grayscale conversion
+- Run isolation with RunManager + ExperimentTracker
+
+Usage:
+    # With config (RECOMMENDED -- creates isolated run):
+    python scripts/training/train_resnet18_v2.py --config config/training.yaml
+
+    # With config + ablation override:
+    python scripts/training/train_resnet18_v2.py --config config/training.yaml \
+        --override resnet.lr=5e-4 --override resnet.epochs=80
+
+    # Legacy mode (no run isolation):
+    python scripts/training/train_resnet18_v2.py --epochs 50 --batch-size 128
 """
 
 import torch
@@ -24,12 +36,19 @@ PIL.Image.MAX_IMAGE_PIXELS = 200_000_000
 
 import json
 import random
-from typing import Dict, List, Tuple, Optional
+import sys
+from typing import Any, Dict, List, Tuple, Optional
 from collections import Counter
 import logging
 from datetime import datetime
 from tqdm import tqdm
 import numpy as np
+
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.training.run_manager import RunManager
+from src.training.experiment_tracker import ExperimentTracker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -404,10 +423,33 @@ def validate(
 
 
 def main():
-    """Main training script."""
+    """Main training script with optional RunManager + ExperimentTracker."""
     import argparse
     
     parser = argparse.ArgumentParser(description="Train ResNet-18 Chart Classifier v2")
+
+    # --- Run Management (NEW) ---
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="YAML config file for run management (e.g. config/training.yaml)",
+    )
+    parser.add_argument(
+        "--override",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Dynamic config overrides in OmegaConf dot-notation",
+    )
+    parser.add_argument(
+        "--tracker",
+        choices=["wandb", "tensorboard", "json", "none"],
+        default=None,
+        help="Experiment tracking backend",
+    )
+
+    # --- Training args ---
     parser.add_argument(
         "--data-dir",
         type=str,
@@ -437,6 +479,57 @@ def main():
     )
     parser.add_argument("--no-amp", action="store_true", help="Disable mixed precision")
     args = parser.parse_args()
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Initialize RunManager + ExperimentTracker (if --config provided)
+    # ─────────────────────────────────────────────────────────────────────
+    run_manager: Optional[RunManager] = None
+    tracker: Optional[ExperimentTracker] = None
+
+    if args.config:
+        run_manager = RunManager(
+            config_path=args.config,
+            cli_overrides=args.override,
+            run_prefix="resnet18_classifier",
+        )
+
+        # Extract config values as defaults (CLI args override)
+        cfg = run_manager.config
+        resnet_cfg = cfg.get("resnet", {})
+        run_mgmt_cfg = cfg.get("run_management", {})
+
+        if resnet_cfg:
+            if args.epochs == 50:
+                args.epochs = resnet_cfg.get("epochs", args.epochs)
+            if args.batch_size == 128:
+                args.batch_size = resnet_cfg.get("batch_size", args.batch_size)
+            if args.lr == 1e-3:
+                args.lr = resnet_cfg.get("lr", args.lr)
+
+        # Initialize tracker
+        tracker_backend = args.tracker or run_mgmt_cfg.get("tracking_backend", "json")
+        wandb_cfg = run_mgmt_cfg.get("wandb", {})
+
+        tracker = ExperimentTracker(
+            backend=tracker_backend,
+            project=wandb_cfg.get("project", "chart_analysis_ai_v3") if wandb_cfg else "chart_analysis_ai_v3",
+            run_name=run_manager.run_name,
+            config={
+                "model": "resnet18",
+                "epochs": args.epochs,
+                "batch_size": args.batch_size,
+                "learning_rate": args.lr,
+                "patience": args.patience,
+                "max_samples_per_class": args.max_samples,
+            },
+            log_dir=run_manager.logs_dir,
+            tags=wandb_cfg.get("tags", []) if wandb_cfg else [],
+        )
+
+        logger.info(
+            f"Run management active | run={run_manager.run_name} | "
+            f"tracker={tracker.backend}"
+        )
     
     # Setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -477,12 +570,15 @@ def main():
     # Mixed precision scaler
     scaler = GradScaler() if use_amp else None
     
-    # Output directory
-    output_dir = Path(args.output_dir)
+    # Output directory: RunManager > explicit
+    if run_manager:
+        output_dir = run_manager.checkpoints_dir
+    else:
+        output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Training history
-    history = {
+    history: Dict[str, List[Any]] = {
         "train_loss": [], "train_acc": [],
         "val_loss": [], "val_acc": [],
         "per_class_acc": [], "lr": []
@@ -492,124 +588,170 @@ def main():
     start_time = datetime.now()
     patience_counter = 0
     
-    # ============================================================
-    # PHASE 1: Warm-up (frozen backbone) - 5 epochs
-    # ============================================================
-    logger.info("\n" + "=" * 60)
-    logger.info("PHASE 1: Warm-up (frozen backbone) - 5 epochs")
-    logger.info("=" * 60)
-    
-    model.freeze_backbone()
-    warmup_optimizer = optim.Adam(
-        filter(lambda p: p.requires_grad, model.parameters()),
-        lr=1e-3
-    )
-    
-    for epoch in range(5):
-        train_loss, train_acc = train_epoch(
-            model, train_loader, criterion, warmup_optimizer, device, scaler, use_amp
-        )
-        val_loss, val_acc, per_class = validate(model, val_loader, criterion, device)
+    try:
+        # ============================================================
+        # PHASE 1: Warm-up (frozen backbone) - 5 epochs
+        # ============================================================
+        logger.info("\n" + "=" * 60)
+        logger.info("PHASE 1: Warm-up (frozen backbone) - 5 epochs")
+        logger.info("=" * 60)
         
-        logger.info(
-            f"Epoch {epoch+1}/5 | "
-            f"Train: {train_loss:.4f} / {train_acc:.1f}% | "
-            f"Val: {val_loss:.4f} / {val_acc:.1f}%"
-        )
-    
-    # ============================================================
-    # PHASE 2: Full training - N epochs
-    # ============================================================
-    logger.info("\n" + "=" * 60)
-    logger.info(f"PHASE 2: Full training - {args.epochs} epochs")
-    logger.info("=" * 60)
-    
-    model.unfreeze_backbone()
-    
-    for epoch in range(args.epochs):
-        current_lr = optimizer.param_groups[0]["lr"]
-        
-        train_loss, train_acc = train_epoch(
-            model, train_loader, criterion, optimizer, device, scaler, use_amp
-        )
-        val_loss, val_acc, per_class = validate(model, val_loader, criterion, device)
-        
-        scheduler.step()
-        
-        # Log
-        history["train_loss"].append(train_loss)
-        history["train_acc"].append(train_acc)
-        history["val_loss"].append(val_loss)
-        history["val_acc"].append(val_acc)
-        history["per_class_acc"].append(per_class)
-        history["lr"].append(current_lr)
-        
-        logger.info(
-            f"Epoch {epoch+1}/{args.epochs} | LR: {current_lr:.6f} | "
-            f"Train: {train_loss:.4f} / {train_acc:.1f}% | "
-            f"Val: {val_loss:.4f} / {val_acc:.1f}%"
+        model.freeze_backbone()
+        warmup_optimizer = optim.Adam(
+            filter(lambda p: p.requires_grad, model.parameters()),
+            lr=1e-3
         )
         
-        # Per-class accuracy (every 10 epochs)
-        if (epoch + 1) % 10 == 0:
-            logger.info("  Per-class accuracy:")
-            for chart_type, acc in sorted(per_class.items()):
-                logger.info(f"    {chart_type:12}: {acc:.1f}%")
+        for epoch in range(5):
+            train_loss, train_acc = train_epoch(
+                model, train_loader, criterion, warmup_optimizer, device, scaler, use_amp
+            )
+            val_loss, val_acc, per_class = validate(model, val_loader, criterion, device)
+            
+            logger.info(
+                f"Epoch {epoch+1}/5 | "
+                f"Train: {train_loss:.4f} / {train_acc:.1f}% | "
+                f"Val: {val_loss:.4f} / {val_acc:.1f}%"
+            )
+            if tracker:
+                tracker.log_metrics({
+                    "warmup/train_loss": train_loss,
+                    "warmup/train_acc": train_acc,
+                    "warmup/val_loss": val_loss,
+                    "warmup/val_acc": val_acc,
+                }, step=epoch)
         
-        # Save best model
-        if val_acc > best_val_acc:
-            best_val_acc = val_acc
-            patience_counter = 0
-            checkpoint = {
-                "model_state_dict": model.state_dict(),
-                "class_mapping": class_mapping,
-                "val_acc": val_acc,
-                "epoch": epoch,
-                "history": history,
-            }
-            save_path = output_dir / "resnet18_chart_classifier_v2_best.pt"
-            torch.save(checkpoint, save_path)
-            logger.info(f"  [SAVED] Best model: {val_acc:.2f}%")
-        else:
-            patience_counter += 1
-            if patience_counter >= args.patience:
-                logger.info(f"  [EARLY STOP] No improvement for {args.patience} epochs")
-                break
-    
-    # ============================================================
-    # FINAL TEST
-    # ============================================================
-    logger.info("\n" + "=" * 60)
-    logger.info("FINAL TEST")
-    logger.info("=" * 60)
-    
-    # Load best model
-    checkpoint = torch.load(output_dir / "resnet18_chart_classifier_v2_best.pt")
-    model.load_state_dict(checkpoint["model_state_dict"])
-    
-    test_loss, test_acc, test_per_class = validate(model, test_loader, criterion, device)
-    
-    logger.info(f"Test Accuracy: {test_acc:.2f}%")
-    logger.info("Per-class accuracy:")
-    for chart_type, acc in sorted(test_per_class.items()):
-        logger.info(f"  {chart_type:12}: {acc:.1f}%")
-    
-    # Save final results
-    elapsed = datetime.now() - start_time
-    results = {
-        "test_acc": test_acc,
-        "test_per_class": test_per_class,
-        "best_val_acc": best_val_acc,
-        "epochs": args.epochs,
-        "training_time": str(elapsed),
-        "class_mapping": class_mapping,
-    }
-    
-    with open(output_dir / "resnet18_v2_results.json", "w") as f:
-        json.dump(results, f, indent=2)
-    
-    logger.info(f"\nTraining completed in {elapsed}")
-    logger.info(f"Best model saved to: {output_dir / 'resnet18_chart_classifier_v2_best.pt'}")
+        # ============================================================
+        # PHASE 2: Full training - N epochs
+        # ============================================================
+        logger.info("\n" + "=" * 60)
+        logger.info(f"PHASE 2: Full training - {args.epochs} epochs")
+        logger.info("=" * 60)
+        
+        model.unfreeze_backbone()
+        
+        for epoch in range(args.epochs):
+            current_lr = optimizer.param_groups[0]["lr"]
+            
+            train_loss, train_acc = train_epoch(
+                model, train_loader, criterion, optimizer, device, scaler, use_amp
+            )
+            val_loss, val_acc, per_class = validate(model, val_loader, criterion, device)
+            
+            scheduler.step()
+            
+            # Log history
+            history["train_loss"].append(train_loss)
+            history["train_acc"].append(train_acc)
+            history["val_loss"].append(val_loss)
+            history["val_acc"].append(val_acc)
+            history["per_class_acc"].append(per_class)
+            history["lr"].append(current_lr)
+            
+            # Log to tracker
+            if tracker:
+                tracker.log_metrics({
+                    "train/loss": train_loss,
+                    "train/acc": train_acc,
+                    "val/loss": val_loss,
+                    "val/acc": val_acc,
+                    "lr": current_lr,
+                }, step=epoch + 5)  # offset by warmup epochs
+            
+            logger.info(
+                f"Epoch {epoch+1}/{args.epochs} | LR: {current_lr:.6f} | "
+                f"Train: {train_loss:.4f} / {train_acc:.1f}% | "
+                f"Val: {val_loss:.4f} / {val_acc:.1f}%"
+            )
+            
+            # Per-class accuracy (every 10 epochs)
+            if (epoch + 1) % 10 == 0:
+                logger.info("  Per-class accuracy:")
+                for chart_type, acc in sorted(per_class.items()):
+                    logger.info(f"    {chart_type:12}: {acc:.1f}%")
+            
+            # Save best model
+            if val_acc > best_val_acc:
+                best_val_acc = val_acc
+                patience_counter = 0
+                checkpoint = {
+                    "model_state_dict": model.state_dict(),
+                    "class_mapping": class_mapping,
+                    "val_acc": val_acc,
+                    "epoch": epoch,
+                    "history": history,
+                }
+                save_path = output_dir / "resnet18_chart_classifier_v2_best.pt"
+                torch.save(checkpoint, save_path)
+                logger.info(f"  [SAVED] Best model: {val_acc:.2f}%")
+            else:
+                patience_counter += 1
+                if patience_counter >= args.patience:
+                    logger.info(f"  [EARLY STOP] No improvement for {args.patience} epochs")
+                    break
+        
+        # ============================================================
+        # FINAL TEST
+        # ============================================================
+        logger.info("\n" + "=" * 60)
+        logger.info("FINAL TEST")
+        logger.info("=" * 60)
+        
+        # Load best model
+        checkpoint = torch.load(output_dir / "resnet18_chart_classifier_v2_best.pt")
+        model.load_state_dict(checkpoint["model_state_dict"])
+        
+        test_loss, test_acc, test_per_class = validate(model, test_loader, criterion, device)
+        
+        logger.info(f"Test Accuracy: {test_acc:.2f}%")
+        logger.info("Per-class accuracy:")
+        for chart_type, acc in sorted(test_per_class.items()):
+            logger.info(f"  {chart_type:12}: {acc:.1f}%")
+        
+        # Save final results
+        elapsed = datetime.now() - start_time
+        results: Dict[str, Any] = {
+            "test_acc": test_acc,
+            "test_per_class": test_per_class,
+            "best_val_acc": best_val_acc,
+            "epochs": args.epochs,
+            "training_time": str(elapsed),
+            "class_mapping": class_mapping,
+        }
+        
+        results_path = output_dir / "resnet18_v2_results.json"
+        with open(results_path, "w") as f:
+            json.dump(results, f, indent=2)
+        
+        # Finalize tracking
+        final_metrics = {
+            "test_acc": test_acc,
+            "best_val_acc": best_val_acc,
+            "training_time_seconds": elapsed.total_seconds(),
+        }
+
+        if tracker:
+            tracker.log_summary(final_metrics)
+            tracker.log_artifact(str(output_dir / "resnet18_chart_classifier_v2_best.pt"),
+                                 name="resnet18_best_model", artifact_type="model")
+            tracker.finish()
+
+        if run_manager:
+            run_manager.save_artifact(results, "resnet18_v2_results.json")
+            run_manager.finalize(metrics=final_metrics, status="completed")
+        
+        logger.info(f"\nTraining completed in {elapsed}")
+        logger.info(f"Best model saved to: {output_dir / 'resnet18_chart_classifier_v2_best.pt'}")
+        if run_manager:
+            logger.info(f"Run directory: {run_manager.run_dir}")
+
+    except Exception as exc:
+        logger.error(f"Training failed | error={exc}")
+        if run_manager:
+            run_manager.finalize(metrics={"error": str(exc)}, status="failed")
+        if tracker:
+            tracker.finish()
+        raise
 
 
 if __name__ == "__main__":

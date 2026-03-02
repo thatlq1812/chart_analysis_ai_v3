@@ -29,7 +29,7 @@ docs/
 +-- guides/                    # How-to guides
 |   +-- QUICK_START.md         # Getting started
 |   +-- DEVELOPMENT.md         # Development workflow
-|   +-- SLM_TRAINING_GUIDE.md  # SLM fine-tuning guide
+|   +-- TRAINING.md            # Comprehensive training guide
 |   +-- CHART_QA_GUIDE.md      # QA pair generation
 |   +-- ARXIV_DOWNLOAD_GUIDE.md # PDF download instructions
 +-- thesis_capstone/           # Academic thesis (39 pages)
@@ -73,7 +73,7 @@ docs/
 3. [STAGE4_REASONING.md](architecture/STAGE4_REASONING.md) - AI reasoning
 
 ### For Researchers
-1. [SLM_TRAINING_GUIDE.md](guides/SLM_TRAINING_GUIDE.md) - SLM fine-tuning
+1. [TRAINING.md](guides/TRAINING.md) - Model training (SLM, ResNet, YOLO)
 2. [STAGE4_REASONING.md](architecture/STAGE4_REASONING.md) - Reasoning design
 3. Weekly reports in `progress/`
 4. Thesis in `thesis_capstone/`
