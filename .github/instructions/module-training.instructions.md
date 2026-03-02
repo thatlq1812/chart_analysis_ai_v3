@@ -1,5 +1,5 @@
 ---
-applyTo: 'scripts/train_*,scripts/prepare_*,research/**,data/slm_training/**,models/slm/**'
+applyTo: 'scripts/training/**,research/**,data/slm_training/**,models/slm/**'
 ---
 
 # MODULE INSTRUCTIONS - SLM Training & Fine-tuning

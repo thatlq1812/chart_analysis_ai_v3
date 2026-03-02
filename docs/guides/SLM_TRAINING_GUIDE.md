@@ -2,109 +2,191 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 2.0.0 | 2026-03-02 | That Le | Updated for cloud GPU training, fixed config bugs |
 | 1.0.0 | 2026-03-01 | That Le | Initial guide for incremental training workflow |
 
 ---
 
-## 1. Tổng quan chiến lược
+## 0. Bai hoc tu phien train dau tien
 
-Training được chia thành **3 session riêng biệt**, mỗi session 1 epoch. Sau mỗi session, checkpoint tự động được lưu và session tiếp theo resume từ đó.
+> Xem chi tiet tai `docs/reports/SLM_TRAINING_POSTMORTEM_V1.md`
 
-```
-Session 1 (Ngày 1)         Session 2 (Ngày 2)         Session 3 (Ngày 3)
-    |                           |                           |
-  Epoch 1                     Epoch 2                     Epoch 3
-  ~13-15h                     ~13-15h                     ~13-15h
-    |                           |                           |
-  checkpoint-28500            checkpoint-57000            final/
-    |                           |                           |
-  [Kiểm tra loss]             [Kiểm tra loss]             [Đánh giá]
-  [Quyết định tiếp?]          [Quyết định tiếp?]          [So sánh models]
-```
+Phien train dau tien (Session 1, local RTX 3060) da phat hien **4 loi cau hinh nghiem trong**:
 
-**Lý do train từng epoch:**
-- RTX 3060 Laptop: ~13-15 giờ/epoch, không thể bỏ máy 45h liên tục
-- Có cơ hội kiểm tra loss curve sau mỗi epoch trước khi tiếp tục
-- Nếu overfitting xuất hiện ở epoch 2, dừng được ngay
-- Checkpoint sau mỗi epoch là "điểm an toàn" không bị mất công
+| Bug | Muc do | Van de |
+| --- | --- | --- |
+| `max_length=512` | **FATAL** | Model khong bao gio thay ground truth (bi cat) |
+| `lora_alpha=32` hardcoded | Medium | LoRA scaling bi sai khi thay doi rank |
+| `pad_token = eos_token` | Medium | Llama-3 dung sai padding, generation bi cat |
+| `gradient_accumulation=4` | Low | Effective batch=8 qua nho, gradient noisy |
+
+**Ket qua**: EM=4%, Contains=8% - model gan nhu khong hoc duoc gi.
+
+**Tat ca 4 bug da duoc sua** trong `scripts/training/train_slm_lora.py`. Phien tiep theo se dung cloud GPU.
 
 ---
 
-## 2. Cấu hình hệ thống
+## 1. Tong quan chien luoc
 
-| Thành phần | Giá trị |
+### 1.1. Tai sao dung Cloud GPU thay vi Local
+
+| So sanh | Local (RTX 3060 6GB) | Cloud (A100 40GB) |
+| --- | --- | --- |
+| VRAM | 6 GB | 40-80 GB |
+| Thoi gian/epoch | ~13-15 gio | ~1-3 gio |
+| max_length kha thi | 512-1024 (OOM risk) | 4096+ |
+| batch_size | 1-2 | 4-16 |
+| Chi phi 3 epochs | $0 (dien + ~45h) | ~$3-9 (~3-9h) |
+| Rui ro | Thermal throttling, OOM | Khong dang ke |
+
+**Quyet dinh**: Su dung cloud GPU (RunPod / Vast.ai / Lambda) de dam bao `max_length=4096` va hoan thanh trong 1 ngay.
+
+### 1.2. Chien luoc train
+
+Training chay **3 epoch lien tuc** tren cloud GPU (khong can chia session nhu truoc).
+
+```
+Cloud GPU Session (~3-9h total)
+    |
+  Epoch 1 → Epoch 2 → Epoch 3
+  ~1-3h      ~1-3h      ~1-3h
+    |          |          |
+  checkpoint  checkpoint  final/
+    |          |          |
+  [Auto eval] [Auto eval] [Full eval]
+```
+
+Neu can train tung epoch (vi gioi han thoi gian thue), van co the dung `--resume`.
+
+---
+
+## 2. Cau hinh he thong
+
+### 2.1. Cloud GPU (RECOMMENDED)
+
+| Thanh phan | Gia tri |
+| --- | --- |
+| GPU | NVIDIA A100 40GB (hoac L4 24GB) |
+| Provider | RunPod / Vast.ai / Lambda |
+| Chi phi uoc tinh | $1-3/hour |
+| CUDA | 12.x |
+| BF16 | Supported |
+| Model | Llama-3.2-1B-Instruct |
+| Dataset | `data/slm_training_v3/` (228,494 train / 26,888 val) |
+| Quantization | NF4 4-bit (BitsAndBytes) |
+| LoRA rank | 16 - 11.27M trainable params (0.9%) |
+
+### 2.2. Local GPU (chi de debug/test)
+
+| Thanh phan | Gia tri |
 | --- | --- |
 | GPU | NVIDIA RTX 3060 Laptop |
 | VRAM | 6.0 GB |
-| CUDA | 11.8 |
-| BF16 | Supported (native) |
-| Model | Llama-3.2-1B-Instruct (local: `models/slm/llama-3.2-1b-instruct/`) |
-| Dataset | `data/slm_training_v3/` (228,494 train / 26,888 val) |
-| Quantization | NF4 4-bit (BitsAndBytes) — VRAM ~3.5GB |
-| LoRA rank | 16 — 11.27M trainable params (0.9%) |
+| Luu y | Chi dung voi max-samples nho (<1000) de kiem tra config |
 
 ---
 
-## 3. Lệnh train từng session
+## 3. Lenh train
 
-### Session 1 — Epoch 1 (Fresh start)
+### Pre-training Checklist (BAT BUOC)
 
-```bash
-.venv/Scripts/python.exe scripts/train_slm_lora.py \
-    --model llama-1b \
-    --data-dir data/slm_training_v3 \
-    --output-dir models/slm/llama-3.2-1b-chart-lora-v3 \
-    --epochs 1 \
-    --batch-size 2 \
-    --lora-rank 16 \
-    --max-length 512 \
-    --eval-steps 1000 \
-    --save-steps 2000
-```
+- [ ] Verify max_length >= p95 cua sequence lengths (4096 la an toan)
+- [ ] Verify pad_token KHONG PHAI eos_token (da fix trong script)
+- [ ] Check disk space cho checkpoints (moi checkpoint ~60MB)
+- [ ] Upload data len cloud server (data/slm_training_v3/ + models/slm/llama-3.2-1b-instruct/)
 
-**Kết quả mong đợi:**
-- `models/slm/llama-3.2-1b-chart-lora-v3/checkpoint-28500/` (approx)
-- `train_loss` bắt đầu ~3.2, kết thúc ~1.5-2.0
-- Thời gian: 13-15 giờ
-
----
-
-### Session 2 — Epoch 2 (Resume)
+### Option A: Full 3-epoch run (Cloud GPU - Recommended)
 
 ```bash
-.venv/Scripts/python.exe scripts/train_slm_lora.py \
+python scripts/training/train_slm_lora.py \
     --model llama-1b \
     --data-dir data/slm_training_v3 \
-    --output-dir models/slm/llama-3.2-1b-chart-lora-v3 \
-    --epochs 2 \
-    --batch-size 2 \
-    --lora-rank 16 \
-    --max-length 512 \
-    --eval-steps 1000 \
-    --save-steps 2000 \
-    --resume
-```
-
-> `--epochs 2` = tổng epochs mục tiêu là 2. Trainer tự biết epoch 1 đã xong, chỉ train epoch 2.
-> `--resume` = tự động tìm checkpoint mới nhất trong `output-dir`.
-
----
-
-### Session 3 — Epoch 3 (Resume)
-
-```bash
-.venv/Scripts/python.exe scripts/train_slm_lora.py \
-    --model llama-1b \
-    --data-dir data/slm_training_v3 \
-    --output-dir models/slm/llama-3.2-1b-chart-lora-v3 \
+    --output-dir models/slm/llama-3.2-1b-chart-lora-v4 \
     --epochs 3 \
-    --batch-size 2 \
+    --batch-size 4 \
     --lora-rank 16 \
-    --max-length 512 \
-    --eval-steps 1000 \
-    --save-steps 2000 \
+    --max-length 4096 \
+    --gradient-accumulation-steps 4 \
+    --learning-rate 2e-4 \
+    --eval-steps 500 \
+    --save-steps 1000
+```
+
+**Ket qua mong doi (A100 40GB):**
+- `models/slm/llama-3.2-1b-chart-lora-v4/final/` (~60MB LoRA adapter)
+- Thoi gian: 3-9 gio tong cong
+- train_loss: bat dau ~3.2, ket thuc ~1.0-1.5
+
+### Option B: Per-epoch sessions (Cloud GPU co gioi han gio)
+
+#### Session 1 - Epoch 1
+
+```bash
+python scripts/training/train_slm_lora.py \
+    --model llama-1b \
+    --data-dir data/slm_training_v3 \
+    --output-dir models/slm/llama-3.2-1b-chart-lora-v4 \
+    --epochs 1 \
+    --batch-size 4 \
+    --lora-rank 16 \
+    --max-length 4096 \
+    --gradient-accumulation-steps 4 \
+    --eval-steps 500 \
+    --save-steps 1000
+```
+
+#### Session 2 - Epoch 2 (Resume)
+
+```bash
+python scripts/training/train_slm_lora.py \
+    --model llama-1b \
+    --data-dir data/slm_training_v3 \
+    --output-dir models/slm/llama-3.2-1b-chart-lora-v4 \
+    --epochs 2 \
+    --batch-size 4 \
+    --lora-rank 16 \
+    --max-length 4096 \
+    --gradient-accumulation-steps 4 \
+    --eval-steps 500 \
+    --save-steps 1000 \
     --resume
 ```
+
+#### Session 3 - Epoch 3 (Resume)
+
+```bash
+python scripts/training/train_slm_lora.py \
+    --model llama-1b \
+    --data-dir data/slm_training_v3 \
+    --output-dir models/slm/llama-3.2-1b-chart-lora-v4 \
+    --epochs 3 \
+    --batch-size 4 \
+    --lora-rank 16 \
+    --max-length 4096 \
+    --gradient-accumulation-steps 4 \
+    --eval-steps 500 \
+    --save-steps 1000 \
+    --resume
+```
+
+### Option C: Quick local smoke test (RTX 3060 - Debug only)
+
+```bash
+.venv/Scripts/python.exe scripts/training/train_slm_lora.py \
+    --model llama-1b \
+    --data-dir data/slm_training_v3 \
+    --output-dir models/slm/llama-3.2-1b-chart-lora-debug \
+    --epochs 1 \
+    --batch-size 1 \
+    --lora-rank 16 \
+    --max-length 2048 \
+    --gradient-accumulation-steps 16 \
+    --max-samples 500 \
+    --eval-steps 50 \
+    --save-steps 100
+```
+
+> Dung de verify script chay dung truoc khi deploy len cloud. Khong dung ket qua de danh gia.
 
 ---
 
@@ -128,7 +210,7 @@ Sau đó truyền vào `trainer.train(resume_from_checkpoint=...)`. HuggingFace 
 **Nếu muốn chỉ định checkpoint cụ thể:**
 
 ```bash
-.venv/Scripts/python.exe scripts/train_slm_lora.py \
+.venv/Scripts/python.exe scripts/training/train_slm_lora.py \
     --model llama-1b \
     --data-dir data/slm_training_v3 \
     --epochs 2 \
@@ -193,7 +275,7 @@ Script hiện tại đã tắt external logging (`report_to=[]`). Nếu muốn b
 Sau khi session hoàn thành, test nhanh với `test_qwen_slm.py` (hoặc tự viết):
 
 ```bash
-.venv/Scripts/python.exe scripts/test_qwen_slm.py \
+.venv/Scripts/python.exe scripts/pipeline/test_qwen_slm.py \
     --model-path models/slm/llama-3.2-1b-chart-lora-v3/final
 ```
 
@@ -232,47 +314,43 @@ Có thể chưa hoàn chỉnh — chủ yếu kiểm tra model đã học đư�
 
 ---
 
-## 7. Cấu trúc output sau 3 sessions
+## 7. Cau truc output sau 3 epochs
 
 ```
-models/slm/llama-3.2-1b-chart-lora-v3/
-    checkpoint-2000/         <- cuối step 2000 (epoch 1)
-    checkpoint-4000/         <- cuối step 4000 (epoch 1)
+models/slm/llama-3.2-1b-chart-lora-v4/
+    checkpoint-1000/         <- step 1000
+    checkpoint-2000/         <- step 2000
     ...
-    checkpoint-28500/        <- cuối epoch 1  [CHECKPOINT EPOCH 1]
-    checkpoint-30500/        <- đầu epoch 2
-    ...
-    checkpoint-57000/        <- cuối epoch 2  [CHECKPOINT EPOCH 2]
-    ...
-    checkpoint-85500/        <- cuối epoch 3  [CHECKPOINT EPOCH 3]
-    final/                   <- adapter cuối cùng (sau epoch 3)
+    final/                   <- adapter cuoi cung (sau epoch 3)
         adapter_config.json
-        adapter_model.safetensors  (~50MB)
+        adapter_model.safetensors  (~60MB)
         tokenizer.json
         ...
     training_info.json       <- metadata + sessions log
     trainer_state.json       <- HF Trainer state (loss history, best checkpoint)
 ```
 
-`save_total_limit=2` nghĩa là chỉ giữ 2 checkpoint gần nhất để tiết kiệm disk.
+`save_total_limit=2` nghia la chi giu 2 checkpoint gan nhat de tiet kiem disk.
 
 ---
 
-## 8. Xử lý sự cố
+## 8. Xu ly su co
 
-### Máy tắt giữa chừng / OOM crash
+### May tat giua chung / OOM crash
 
-Không mất công. Checkpoint gần nhất (trong vòng `save_steps=2000` steps cuối) vẫn còn:
+Khong mat cong. Checkpoint gan nhat (trong vong `save_steps` steps cuoi) van con:
 
 ```bash
-# Kiểm tra checkpoint nào tồn tại
-ls models/slm/llama-3.2-1b-chart-lora-v3/
+# Kiem tra checkpoint nao ton tai
+ls models/slm/llama-3.2-1b-chart-lora-v4/
 
-# Resume từ đó (dùng --resume hoặc --resume-from-checkpoint)
-.venv/Scripts/python.exe scripts/train_slm_lora.py \
+# Resume tu do (dung --resume hoac --resume-from-checkpoint)
+python scripts/training/train_slm_lora.py \
     --model llama-1b \
     --data-dir data/slm_training_v3 \
-    --epochs 1 \
+    --output-dir models/slm/llama-3.2-1b-chart-lora-v4 \
+    --epochs 3 \
+    --max-length 4096 \
     --resume
 ```
 
@@ -282,70 +360,142 @@ ls models/slm/llama-3.2-1b-chart-lora-v3/
 RuntimeError: CUDA out of memory
 ```
 
-Giải pháp theo thứ tự:
-1. Đóng các ứng dụng khác dùng GPU (Chrome, game, v.v.)
-2. Kiểm tra VRAM thực tế: `nvidia-smi`
-3. Giảm `--max-length 384` (từ 512 xuống)
-4. Giảm `--batch-size 1` (từ 2 xuống, tăng `gradient_accumulation_steps` lên 8 trong code)
+Giai phap theo thu tu:
+1. Giam `--batch-size 2` (hoac 1)
+2. Tang `--gradient-accumulation-steps 8` (giu effective batch=16)
+3. Giam `--max-length 2048` (neu van OOM)
+4. Doi GPU lon hon
 
-### eval_loss không giảm sau epoch 1
+> max_length KHONG DUOC giam duoi 1024. Xem postmortem: `docs/reports/SLM_TRAINING_POSTMORTEM_V1.md`
 
-- Learning rate có thể quá cao. Thử `--learning-rate 1e-4`
-- Hoặc dataset có vấn đề — kiểm tra lại với `_full_audit.py`
+### eval_loss khong giam sau epoch 1
+
+- Learning rate co the qua cao. Thu `--learning-rate 1e-4`
+- Hoac max_length qua nho (kiem tra p95 cua sequence lengths)
+- Hoac dataset co van de - kiem tra lai voi `_full_audit.py`
+
+---
+
+## 9. Cloud GPU Setup Guide
+
+### 9.1. Chuan bi data de upload
+
+```bash
+# Pack du lieu can thiet (~2.5GB base model + ~150MB dataset)
+tar -czf slm_training_bundle.tar.gz \
+    scripts/training/train_slm_lora.py \
+    scripts/evaluation/evaluate_slm.py \
+    data/slm_training_v3/ \
+    config/training.yaml \
+    pyproject.toml
+
+# Base model can upload rieng (2.4GB)
+# hoac dung HuggingFace truc tiep: --model meta-llama/Llama-3.2-1B-Instruct
+```
+
+### 9.2. Setup tren cloud server
+
+```bash
+# 1. Install dependencies
+pip install torch transformers peft bitsandbytes trl datasets accelerate
+
+# 2. Upload data + scripts
+# (dung scp, rsync, hoac cloud provider file manager)
+
+# 3. Verify GPU
+python -c "import torch; print(f'GPU: {torch.cuda.get_device_name(0)}, VRAM: {torch.cuda.get_device_properties(0).total_mem/1e9:.1f}GB')"
+
+# 4. Run training (xem Section 3 cho lenh cu the)
+```
+
+### 9.3. Download ket qua ve local
+
+```bash
+# Chi can download LoRA adapter (~60MB), khong can full model
+scp -r user@server:models/slm/llama-3.2-1b-chart-lora-v4/final/ \
+    models/slm/llama-3.2-1b-chart-lora-v4/final/
+
+# Download training info
+scp user@server:models/slm/llama-3.2-1b-chart-lora-v4/training_info.json \
+    models/slm/llama-3.2-1b-chart-lora-v4/
+
+# Download trainer state (loss history)
+scp user@server:models/slm/llama-3.2-1b-chart-lora-v4/trainer_state.json \
+    models/slm/llama-3.2-1b-chart-lora-v4/
+```
 
 ---
 
 ## 9. Sau khi train xong 3 epochs
 
-### 9.1. So sánh checkpoint tốt nhất
+### 9.1. So sanh checkpoint tot nhat
 
 ```bash
-# Xem checkpoint nào có eval_loss tốt nhất
-.venv/Scripts/python.exe -c "
+# Xem checkpoint nao co eval_loss tot nhat
+python -c "
 import json
 from pathlib import Path
-state = json.loads(Path('models/slm/llama-3.2-1b-chart-lora-v3/trainer_state.json').read_text())
+state = json.loads(Path('models/slm/llama-3.2-1b-chart-lora-v4/trainer_state.json').read_text())
 print('Best checkpoint:', state['best_model_checkpoint'])
 print('Best eval_loss:', state['best_metric'])
 "
 ```
 
-### 9.2. Đánh giá chính thức
+### 9.2. Danh gia chinh thuc
 
 ```bash
-# Khi scripts/evaluate_slm.py được tạo:
-.venv/Scripts/python.exe scripts/evaluate_slm.py \
-    --model-path models/slm/llama-3.2-1b-chart-lora-v3/final \
+# Evaluate LoRA fine-tuned model
+python scripts/evaluation/evaluate_slm.py \
+    --base-model models/slm/llama-3.2-1b-instruct \
+    --lora-path models/slm/llama-3.2-1b-chart-lora-v4/final \
     --test-data data/slm_training_v3/test.json \
-    --output models/evaluation/llama1b_v3_eval.json
+    --output models/evaluation/llama-1b-lora-v4.json \
+    --max-samples 500 --stratified
 ```
 
-### 9.3. So sánh với Qwen (thesis contribution)
+### 9.3. So sanh voi Base va Qwen (thesis contribution)
 
-| Model | train_loss | eval_loss | JSON Valid % | Latency |
-| --- | --- | --- | --- | --- |
-| Llama-3.2-1B (base) | - | - | ? | ? |
-| Llama-3.2-1B (LoRA v3) | ? | ? | ? | ? |
-| Qwen2.5-1.5B (LoRA v3) | ? | ? | ? | ? |
-| Gemini-2.0-flash | - | - | ~99%\* | API |
+```bash
+# Generate comparison table
+python scripts/evaluation/evaluate_slm.py \
+    --compare \
+        models/evaluation/llama-1b-lora-v4.json \
+        models/evaluation/llama-1b-base-quick.json \
+    --compare-output models/evaluation/comparison_table_v4.md
+```
+
+| Model | EM% | Contains% | Numeric% | BLEU-1 | Latency |
+| --- | --- | --- | --- | --- | --- |
+| Llama-3.2-1B (base) | 0.0% | 9.0% | 36.2% | 0.063 | 7.04s |
+| Llama-3.2-1B (LoRA v3, broken) | 4.0% | 8.0% | 17.5% | 0.281 | 1.34s |
+| Llama-3.2-1B (LoRA v4, fixed) | ? | ? | ? | ? | ? |
+| Qwen2.5-1.5B (LoRA) | ? | ? | ? | ? | ? |
+| Gemini-2.0-flash | - | - | ~99%* | - | API |
 
 *Bảng này là đóng góp học thuật chính của luận văn.*
 
 ---
 
-## 10. Tóm tắt nhanh — checklist hàng ngày
+## 10. Tom tat nhanh - checklist
 
-### Trước khi bật train
-- [ ] Đóng Chrome, các app nặng khác
-- [ ] Kiểm tra VRAM free: `nvidia-smi`
-- [ ] Kiểm tra disk còn trống: checkpoint ~500MB mỗi cái, cần ít nhất 5GB free
+### Truoc khi train (Cloud)
+- [ ] Upload data + scripts len server
+- [ ] Verify GPU VRAM >= 24GB
+- [ ] Install dependencies (torch, transformers, peft, trl, bitsandbytes)
+- [ ] Run smoke test voi --max-samples 10
 
-### Khi train đang chạy
-- [ ] Không cần theo dõi real-time, để máy chạy
-- [ ] Nếu muốn xem log: kiểm tra terminal output (logging_steps=10)
+### Truoc khi train (Local - debug only)
+- [ ] Dong Chrome, cac app nang khac
+- [ ] Kiem tra VRAM free: `nvidia-smi`
+- [ ] Chi dung --max-samples nho (<1000) va --max-length 2048
 
-### Sau khi session kết thúc
-- [ ] Đọc `train_loss` và `eval_loss` cuối epoch
-- [ ] Chạy 1-2 inference test để xem output quality
-- [ ] Ghi lại kết quả vào experiment log
-- [ ] Quyết định tiếp epoch tiếp hay dừng
+### Khi train dang chay
+- [ ] Monitor loss qua terminal output (logging_steps=10)
+- [ ] Kiem tra disk space (checkpoint ~60MB moi cai)
+
+### Sau khi train xong
+- [ ] Doc `train_loss` va `eval_loss` cuoi epoch
+- [ ] Chay evaluation: `evaluate_slm.py`
+- [ ] Download LoRA adapter ve local (~60MB)
+- [ ] Generate comparison table
+- [ ] Cap nhat MASTER_CONTEXT.md va CHANGELOG.md

@@ -1,120 +1,106 @@
 # Scripts Directory
 
-Utility scripts for training, evaluation, and data processing.
+Utility scripts for training, evaluation, data processing, and testing.
 
-Last updated: 2026-03-01 (v3.0.0 — post data-pipeline housekeeping)
+Last updated: 2026-03-02 (v4.3.0 -- reorganized into subdirectories)
 
-## Active Scripts
+## Directory Structure
 
-### Model Training
+```
+scripts/
+    training/           # Model training, data prep, cloud setup
+    evaluation/         # Model evaluation and export
+    pipeline/           # Pipeline testing and demo scripts
+    utils/              # Download, audit, thesis generation
+```
+
+## training/
 
 | Script | Purpose | Status |
 |--------|---------|--------|
+| `train_slm_lora.py` | Fine-tune SLM with QLoRA (4 models supported) | Production |
 | `train_resnet18_v2.py` | Train ResNet-18 chart classifier | Production |
 | `train_yolo_chart_detector.py` | YOLO chart detection training | Production |
-| `train_slm_lora.py` | Fine-tune Qwen2.5-1.5B with QLoRA | Ready (next step) |
+| `prepare_slm_training_v3.py` | Build SLM training dataset v3 (268,799 samples) | Production |
+| `extract_mini_dataset.py` | Stratified mini-dataset for model selection (5k train) | Production |
+| `run_model_selection.py` | Multi-model micro-training + comparison | Production |
+| `setup_cloud_training.sh` | Automated cloud GPU instance setup | Production |
 
-### Model Evaluation and Export
+## evaluation/
 
 | Script | Purpose | Status |
 |--------|---------|--------|
+| `evaluate_slm.py` | SLM evaluation (EM, Contains, Numeric, BLEU-1) | Production |
 | `evaluate_resnet18.py` | Evaluate ResNet-18 on test set | Ready |
 | `export_resnet18_onnx.py` | Export ResNet-18 to ONNX format | Ready |
-| `test_resnet_integration.py` | Integration test for ResNet classifier | Ready |
 
-### Data Processing
+## pipeline/
 
 | Script | Purpose | Status |
 |--------|---------|--------|
 | `batch_stage3_parallel.py` | Batch Stage 3 extraction (parallel, 8 workers) | Production |
-| `prepare_slm_training_v3.py` | Build SLM training dataset v3 (268,799 samples) | PRIMARY |
-| `_full_audit.py` | Quality audit of Stage3 features (all 8 types) | Ready |
-| `download_models.py` | Download model weights | Ready |
+| `demo_full_pipeline.py` | Demo full pipeline end-to-end | Ready |
+| `test_full_pipeline.py` | Full pipeline integration test | Ready |
+| `test_stage4.py` | Test Stage 4 reasoning | Ready |
+| `test_element_detector.py` | Test element detection module | Ready |
+| `test_resnet_integration.py` | Integration test for ResNet classifier | Ready |
+| `test_qwen_slm.py` | Test Qwen SLM integration | Ready |
 
-### Testing and Demo
+## utils/
 
 | Script | Purpose | Status |
 |--------|---------|--------|
-| `demo_full_pipeline.py` | Demo full pipeline end-to-end | Ready |
-| `test_element_detector.py` | Test element detection module | Ready |
-| `test_full_pipeline.py` | Full pipeline integration test | Ready |
-| `test_stage4.py` | Test Stage 4 reasoning | Ready |
-| `test_qwen_slm.py` | Test Qwen SLM integration | Ready |
+| `download_models.py` | Download model weights | Ready |
+| `context_scanner.py` | Scan project context for documentation | Ready |
+| `_full_audit.py` | Quality audit of Stage3 features (all 8 types) | Ready |
+| `generate_thesis_figures.py` | Generate thesis PDF figures | Ready |
+| `generate_thesis_tables.py` | Generate thesis LaTeX tables | Ready |
 
 ## Usage Examples
 
-### Build SLM Training Dataset v3
+### Model Selection (Micro-Training)
 
 ```bash
-# Dry-run (no disk write)
-.venv/Scripts/python.exe scripts/prepare_slm_training_v3.py --dry-run
+# 1. Extract stratified mini-dataset
+.venv/Scripts/python.exe scripts/training/extract_mini_dataset.py
 
-# Full build to disk
-.venv/Scripts/python.exe scripts/prepare_slm_training_v3.py --output-dir data/slm_training_v3
+# 2. Dry-run to see plan
+.venv/Scripts/python.exe scripts/training/run_model_selection.py \
+    --dry-run --models llama-1b qwen-1.5b
+
+# 3. Run model selection on cloud GPU
+python scripts/training/run_model_selection.py \
+    --models llama-1b qwen-1.5b \
+    --data-dir data/slm_training_mini --epochs 3
 ```
 
-### Train SLM (Qwen2.5-1.5B + QLoRA)
+### Full SLM Training
 
 ```bash
-.venv/Scripts/python.exe scripts/train_slm_lora.py \
+python scripts/training/train_slm_lora.py \
+    --model llama-1b \
     --data-dir data/slm_training_v3 \
-    --output-dir models/slm/qwen2.5-1.5b-chart-lora-v3 \
-    --epochs 3 --batch-size 4 --lora-rank 16
+    --epochs 3 --max-length 4096
+```
+
+### SLM Evaluation
+
+```bash
+.venv/Scripts/python.exe scripts/evaluation/evaluate_slm.py \
+    --base-model models/slm/llama-3.2-1b-instruct \
+    --lora-path models/slm/llama-3.2-1b-instruct-chart-lora-v4/final \
+    --test-data data/slm_training_v3/test.json \
+    --max-samples 200 --stratified
 ```
 
 ### Batch Stage 3 Extraction
 
 ```bash
-# Run parallel extraction on all classified charts
-.venv/Scripts/python.exe scripts/batch_stage3_parallel.py --workers 8
-
-# Limit to specific chart type
-.venv/Scripts/python.exe scripts/batch_stage3_parallel.py --workers 8 --chart-type bar
+.venv/Scripts/python.exe scripts/pipeline/batch_stage3_parallel.py --workers 8
 ```
 
-### Train ResNet-18 Classifier
+### Cloud GPU Setup
 
 ```bash
-.venv/Scripts/python.exe scripts/train_resnet18_v2.py \
-    --epochs 50 \
-    --batch-size 128 \
-    --preprocess
-```
-
-### Run Full Quality Audit
-
-```bash
-.venv/Scripts/python.exe scripts/_full_audit.py
-```
-
-### Train YOLO Chart Detector
-
-```bash
-.venv/Scripts/python.exe scripts/train_yolo_chart_detector.py \
-    --epochs 100 \
-    --batch 16
-```
-
-## Archive
-
-One-time and superseded scripts are in `scripts/_archive/`. Do not run these in production.
-
-| Script | Reason Archived |
-|--------|----------------|
-| `prepare_slm_training_data.py` | Replaced by v3 script (axis key bug, bar-only) |
-| `download_arxiv_batch.py` | Data collection complete (32,364 charts) |
-| `extract_backgrounds.py` | One-time YOLO background extraction, done |
-| `generate_gradcam.py` | One-time research visualization, done |
-| `generate_synthetic_dataset.py` | One-time synthetic data generation, done |
-| `verify_qa_dataset.py` | One-time QA dataset verification, done |
-| `_audit_data.py` | Absorbed by `_full_audit.py` |
-| `_audit_stage3.py` | Absorbed by `_full_audit.py` |
-| `_cross_check.py` | One-time QA cross-validation, done |
-
-### Export to ONNX
-
-```bash
-.venv/Scripts/python.exe scripts/export_resnet18_onnx.py \
-    --model models/weights/resnet18_chart_classifier_v2_best.pt \
-    --output models/onnx/resnet18_chart_classifier_v2.onnx
+bash scripts/training/setup_cloud_training.sh
 ```

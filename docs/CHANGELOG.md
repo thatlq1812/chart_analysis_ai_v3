@@ -6,6 +6,103 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.3.0] - 2026-03-02
+
+### Micro-Training Pipeline for Model Selection
+
+#### Added
+- **`scripts/extract_mini_dataset.py`** - Stratified mini-dataset extraction
+  - Two-phase sampling (minimum coverage + proportional fill)
+  - 5000 train / 500 val default, preserves all chart_type x question_type combinations
+  - `--analyze-only` and `--verify` modes for validation
+- **`scripts/run_model_selection.py`** - Multi-model comparison runner
+  - Trains multiple candidates on mini-dataset, evaluates each
+  - Generates comparison table with weighted scoring (EM, Contains, Numeric, BLEU)
+  - `--dry-run`, `--eval-only`, `--include-base` modes
+- **`scripts/setup_cloud_training.sh`** - Automated cloud GPU instance setup
+  - GPU/disk/tmux checks, venv creation, dependency installation
+  - Prints ready-to-use tmux commands for training
+- **`data/slm_training_mini/`** - Extracted stratified mini-dataset
+  - 5000 train, 500 val, 13417 test (shared with v3)
+  - All 8 chart types x 12 question types represented
+
+#### Changed
+- **`config/training.yaml`** - Updated with corrected values
+  - max_seq_length: 512 -> 4096
+  - bf16: false -> true (cloud GPU)
+  - gradient_accumulation_steps: 4 -> 8
+  - base_model: Llama-3.2-1B-Instruct (primary candidate)
+  - bnb_4bit_compute_dtype: float16 -> bfloat16
+  - data paths updated to v3
+
+---
+
+## [4.2.0] - 2026-03-02
+
+### Training Postmortem + Project Cleanup
+
+#### Added
+- **Training Postmortem** (`docs/reports/SLM_TRAINING_POSTMORTEM_V1.md`)
+  - Root cause analysis of 4 critical training config bugs
+  - Impact assessment, lessons learned, revised strategy
+  - Pre-training checklist, cloud GPU recommendation
+
+#### Changed
+- **SLM Training Guide** (`docs/guides/SLM_TRAINING_GUIDE.md`) v2.0.0
+  - Revised for cloud GPU training (RunPod/Vast.ai)
+  - Corrected all training commands (max_length=4096, auto lora_alpha)
+  - Added cloud setup guide (upload, install, download results)
+  - Added pre-training checklist
+- **train_slm_lora.py** - 4 critical bug fixes:
+  - max_length: 512 -> 4096 (model was never seeing ground truth)
+  - lora_alpha: hardcoded 32 -> auto rank*2
+  - pad_token: eos_token -> Llama-3 dedicated pad token
+  - gradient_accumulation: hardcoded 4 -> configurable (default 8)
+
+#### Removed (cleanup ~1.5GB)
+- `models/slm/llama-3.2-1b-chart-lora-v3/` checkpoints + final (broken training, 182MB)
+- `models/slm/llama-3.2-1b-instruct-chart-lora/` (incomplete experiment, 61MB)
+- `models/slm/qwen2.5-0.5b-instruct-chart-lora/` (trained with buggy config, 137MB)
+- `models/slm/qwen2.5-1.5b-instruct-chart-lora/` (incomplete experiment, 83MB)
+- `models/slm/qwen2.5-0.5b-instruct/` (unused base model, 954MB)
+- `models/evaluation/llama-1b-lora-v3*.json` (eval of broken model)
+- `data/slm_training_v2/` (replaced by v3, 54MB)
+- `Chart_QA/` (legacy prototypes, 52MB)
+- `runs/detect/` (old YOLO runs, 1.5MB)
+- `logs/*.log` (5 old log files)
+- `scripts/_archive/` (6 old scripts)
+- `docs/archive/chatlog*.md, restart.md`
+- `nul`, `instruction_Mar01.md` (root junk files)
+
+---
+
+## [4.1.0] - 2026-03-02
+
+### Stage 5 Reporting Enhancement + SLM Evaluation
+
+#### Added
+- **Stage 5 Unit Tests** (`tests/test_s5_reporting/`)
+  - 62 unit tests covering insights, validation, output formats, edge cases
+  - Total project tests: 294 (was 232)
+- **SLM Evaluation Script** (`scripts/evaluate_slm.py`)
+  - Automated evaluation pipeline for fine-tuned SLM models
+  - Metrics: Exact Match, Contains Match, Numeric Accuracy, BLEU-1
+  - Stratified sampling, comparison table generator
+
+#### Changed
+- **Stage 5: s5_reporting.py** (~940 lines, was ~600)
+  - Data validation: required fields, NaN/Inf detection, low confidence warnings
+  - Markdown report output with tables, insights, traceability
+  - CSV data export (flat one-row-per-data-point format)
+  - `PipelineResult.warnings` field added to schema
+- **evaluate_slm.py**: Fixed `max_length` conflict, `--base-model` no longer required in compare mode
+
+#### Evaluation Results (Llama-3.2-1B, 100 stratified samples)
+- **LoRA-tuned**: EM=4.0%, Contains=8.0%, Numeric=17.5%, BLEU-1=0.281, Latency=1.34s
+- **Base (zero-shot)**: EM=0.0%, Contains=9.0%, Numeric=36.2%, BLEU-1=0.063, Latency=7.04s
+
+---
+
 ## [4.0.0] - 2026-03-02
 
 ### Full Pipeline Complete + Academic Thesis

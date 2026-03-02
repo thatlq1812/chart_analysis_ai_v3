@@ -268,6 +268,10 @@ chart_analysis_ai_v3/
         test_api/                   # API tests (NEW)
         fixtures/
     scripts/
+        training/                   # SLM/YOLO/ResNet training, data prep
+        evaluation/                 # Model evaluation, ONNX export
+        pipeline/                   # Pipeline testing, demo, batch processing
+        utils/                      # Download, audit, thesis generation
     .env.example
     .gitignore
     pyproject.toml

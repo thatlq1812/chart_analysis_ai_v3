@@ -370,20 +370,20 @@ The 9.9x increase vs v2 is attributable to: (a) `line` charts now included (108,
 
 ```bash
 # Stage 3 extraction (from clean state)
-.venv/Scripts/python.exe scripts/batch_stage3_parallel.py --workers 8 --no-gpu
+.venv/Scripts/python.exe scripts/pipeline/batch_stage3_parallel.py --workers 8 --no-gpu
 
 # Status check
-.venv/Scripts/python.exe scripts/batch_stage3_parallel.py --status
+.venv/Scripts/python.exe scripts/pipeline/batch_stage3_parallel.py --status
 
 # Quality audit
 .venv/Scripts/python.exe scripts/_full_audit.py
 
 # Build SLM training v3
-.venv/Scripts/python.exe scripts/prepare_slm_training_v3.py \
+.venv/Scripts/python.exe scripts/training/prepare_slm_training_v3.py \
     --output-dir data/slm_training_v3
 
 # Dry run (stats only, no output written)
-.venv/Scripts/python.exe scripts/prepare_slm_training_v3.py --dry-run
+.venv/Scripts/python.exe scripts/training/prepare_slm_training_v3.py --dry-run
 ```
 
 ### 7.3. Configuration

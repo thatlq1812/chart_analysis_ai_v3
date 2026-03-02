@@ -2,6 +2,8 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 4.2.0 | 2026-03-02 | That Le | Training postmortem, cloud GPU strategy, project cleanup (~1.5GB freed) |
+| 4.1.0 | 2026-03-02 | That Le | Stage 5 enhanced (validation, MD/CSV), SLM eval framework, 294 tests passing |
 | 4.0.0 | 2026-03-02 | That Le | Full pipeline implemented, thesis complete (39 pages), 232 tests passing |
 | 3.0.0 | 2026-03-01 | That Le | Data pipeline complete, SLM training dataset v3 ready (268,799 samples) |
 | 2.0.0 | 2026-02-28 | That Le | Production-ready architecture upgrade (AI Routing, SLM Training, Serving) |
@@ -26,10 +28,10 @@
 | **Core Philosophy** | Hybrid Intelligence (Neural + Symbolic) |
 | **Primary Method** | YOLO Detection + Geometric Mapping + Multi-Provider AI Reasoning |
 | **Language** | Python 3.11+ |
-| **Current Phase** | Phase 3 - SLM Training |
+| **Current Phase** | Phase 3 - SLM Training (Model Selection) |
 | **Target** | Academic Thesis + Research Paper |
-| **Source Files** | 47 Python modules (~18,900 LOC) |
-| **Tests** | 232 tests passing (21 test files) |
+| **Source Files** | 48 Python modules (~19,800 LOC) |
+| **Tests** | 294 tests passing (23 test files) |
 | **OCR Cache** | 46,910 entries (~600MB) |
 | **Instructions** | 13 files (3-tier hierarchy) |
 | **Stage3 Dataset** | 32,364 charts extracted (100%, 0% error) |
@@ -98,11 +100,12 @@ All providers accessed through **AIRouter** with fallback chains. See `module-re
 
 | Component | Technology | Purpose |
 | --- | --- | --- |
-| Base Models | Qwen-2.5-1.5B / Llama-3.2 | Fine-tuning candidates |
+| Base Models | Llama-3.2-1B (PRIMARY) / Qwen-2.5-1.5B | Fine-tuning candidates |
 | Fine-tuning | LoRA + PEFT | Parameter-efficient training |
-| Quantization | BitsAndBytes 4-bit (QLoRA) | RTX 3060 6GB fit |
+| Quantization | BitsAndBytes 4-bit (QLoRA) | Cloud GPU or local |
 | Trainer | SFTTrainer (trl) | Supervised fine-tuning |
 | Format | ChatML | Standard conversation format |
+| Training Infra | Cloud GPU (RunPod/Vast.ai) | A100 40GB recommended |
 
 ### 2.4. Research & Training
 
@@ -308,7 +311,7 @@ chart_analysis_ai_v3/
 |   +-- prototypes/             # Quick tests
 |
 +-- src/
-|   +-- core_engine/            # Core AI engine (47 files, ~18,900 LOC)
+|   +-- core_engine/            # Core AI engine (48 files, ~19,800 LOC)
 |       +-- __init__.py
 |       +-- pipeline.py         # Main orchestrator (all 5 stages wired)
 |       +-- exceptions.py       # Custom exception hierarchy
@@ -335,24 +338,37 @@ chart_analysis_ai_v3/
 |       +-- validators/         # Output validators
 |       +-- data_factory/       # QA data generation
 |
-+-- tests/                      # 232 tests (21 files)
++-- tests/                      # 294 tests (23 files)
 |   +-- conftest.py             # Shared fixtures
 |   +-- test_schemas.py         # Schema validation tests
 |   +-- test_s3_extraction/     # Stage 3 tests (8 files, ~140 tests)
 |   +-- test_s4_reasoning/      # Stage 4 tests (3 files, ~36 tests)
+|   +-- test_s5_reporting/      # Stage 5 tests (2 files, ~62 tests)
 |   +-- test_ai/                # AI routing tests (5 files, ~55 tests)
 |   +-- fixtures/               # Test data
 |
-+-- scripts/                    # Utility scripts (18 files)
-|   +-- train_resnet18_v2.py    # ResNet-18 training
-|   +-- train_slm_lora.py       # SLM LoRA fine-tuning
-|   +-- train_yolo_chart_detector.py # YOLO training
-|   +-- prepare_slm_training_v3.py   # Build SLM dataset v3
-|   +-- batch_stage3_parallel.py     # CUDA-aware batch extraction
-|   +-- demo_full_pipeline.py        # Full pipeline demo
-|   +-- evaluate_resnet18.py         # Model evaluation
-|   +-- export_resnet18_onnx.py      # ONNX export
-|   +-- download_models.py           # HuggingFace model downloader
++-- scripts/                    # Utility scripts (4 subdirs, 19 files)
+|   +-- training/               # SLM/YOLO/ResNet training, data prep
+|   |   +-- train_slm_lora.py
+|   |   +-- train_resnet18_v2.py
+|   |   +-- train_yolo_chart_detector.py
+|   |   +-- prepare_slm_training_v3.py
+|   |   +-- extract_mini_dataset.py
+|   |   +-- run_model_selection.py
+|   |   +-- setup_cloud_training.sh
+|   +-- evaluation/             # Model evaluation, ONNX export
+|   |   +-- evaluate_slm.py
+|   |   +-- evaluate_resnet18.py
+|   |   +-- export_resnet18_onnx.py
+|   +-- pipeline/               # Pipeline testing, demo, batch
+|   |   +-- batch_stage3_parallel.py
+|   |   +-- demo_full_pipeline.py
+|   |   +-- test_*.py (5 files)
+|   +-- utils/                  # Download, audit, thesis generation
+|       +-- download_models.py
+|       +-- _full_audit.py
+|       +-- generate_thesis_*.py (2 files)
+|       +-- context_scanner.py
 |
 +-- logs/                       # Log files
 +-- pyproject.toml
@@ -536,7 +552,7 @@ Completed 2026-03-01. Stage 3 extraction complete, training dataset v3 built and
 
 **Build command:**
 ```bash
-.venv/Scripts/python.exe scripts/prepare_slm_training_v3.py --output-dir data/slm_training_v3
+.venv/Scripts/python.exe scripts/training/prepare_slm_training_v3.py --output-dir data/slm_training_v3
 ```
 
 ### 5.4. Phase 3: Production Architecture [PARTIALLY COMPLETED - v2.0.0]
@@ -560,8 +576,13 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 | `src/api/` creation | [TODO] | Implement FastAPI endpoints |
 | `src/worker/` creation | [TODO] | Implement Celery tasks |
 | Docker Compose setup | [TODO] | Multi-container deployment |
-| SLM model training | [IN PROGRESS] | QLoRA fine-tuning on Qwen-2.5-1.5B |
-| Model comparison experiment | [TODO] | Qwen vs Llama vs Gemini vs GPT-4o-mini |
+| SLM model training | [REDO] | Llama-3.2-1B v3 had 4 critical config bugs, retrain as v4 on cloud GPU |
+| SLM evaluation framework | [DONE] | `evaluate_slm.py` with EM, Contains, Numeric, BLEU-1 |
+| Model comparison experiment | [IN PROGRESS] | Micro-training pipeline ready, awaiting cloud GPU execution |
+| Training postmortem | [DONE] | 4 bugs found and fixed, cloud GPU strategy documented |
+| Model selection pipeline | [DONE] | `extract_mini_dataset.py`, `run_model_selection.py`, `setup_cloud_training.sh` |
+| Mini-dataset extraction | [DONE] | 5000 train, 500 val, stratified by chart_type x question_type |
+| Training config correction | [DONE] | training.yaml updated: max_length=4096, bf16=true, grad_accum=8 |
 
 **New Instruction Files Created:**
 - `module-training.instructions.md` - SLM fine-tuning framework
@@ -607,24 +628,44 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 
 | Phase | Focus | Timeline |
 | --- | --- | --- |
-| **SLM Training** | Fine-tune Qwen2.5-1.5B on 268,799 samples (v3 dataset) | CURRENT |
+| **Model Selection** | Micro-train 2-4 models on mini-dataset, compare, pick winner | CURRENT |
+| **SLM Full Train** | Full 3-epoch QLoRA on 228k samples (cloud GPU) | After selection |
 | **Serving Layer** | FastAPI + Celery + Docker | After SLM |
 | **Benchmarking** | Model comparison experiment (thesis contrib.) | Final |
 | **Optimization** | Performance tuning, demo interface (Streamlit) | Final |
 
-**SLM Training Plan (Expanded):**
+**Model Selection Pipeline (Eval for Selection Strategy):**
+
+| Step | Script | Description |
+| --- | --- | --- |
+| 1. Extract mini-dataset | `scripts/training/extract_mini_dataset.py` | 5000 train + 500 val, stratified |
+| 2. Setup cloud instance | `scripts/training/setup_cloud_training.sh` | Automated GPU env setup |
+| 3. Run model selection | `scripts/training/run_model_selection.py` | Train+eval 2-4 candidates |
+| 4. Pick winner | Manual (read comparison table) | Based on EM, accuracy, latency |
+| 5. Full training | `scripts/training/train_slm_lora.py` | 3 epochs on full 228k dataset |
+
+**Mini-Dataset (data/slm_training_mini/):**
+
+| Split | Samples | Source |
+| --- | --- | --- |
+| train_mini.json | 5,000 | Stratified from 228,494 |
+| val_mini.json | 500 | Stratified from 26,888 |
+| test.json | 13,417 | Shared with v3 (unchanged) |
+
+**SLM Training Plan (Revised after Postmortem):**
 
 | Item | Description |
 | --- | --- |
-| Base Model | Qwen2.5-1.5B-Instruct (PRIMARY), Llama-3.2-1B/3B (CANDIDATES) |
+| Base Model | Llama-3.2-1B-Instruct (PRIMARY), Qwen-2.5-1.5B (SECONDARY) |
 | Current Data | 268,799 samples (all 8 types, 69.9% with axis info) |
 | Data Location | `data/slm_training_v3/` (train/val/test split by chart_id) |
-| Training Type | QLoRA (4-bit quantization + LoRA rank 16) |
-| Curriculum | 4 stages (Structure → Numeric → Reasoning → Robustness) |
-| Hardware | RTX 3060 6GB VRAM |
-| Expected Output | LoRA adapter (~50MB) for local inference |
-| Evaluation | JSON valid rate >95%, field accuracy >90%, latency <2s |
-| Full Design | See `module-training.instructions.md` |
+| Training Type | QLoRA (4-bit quantization + LoRA rank 16, alpha auto=rank*2) |
+| max_length | **4096** (was 512, caused fatal bug in v3) |
+| Hardware | Cloud GPU - A100 40GB (RunPod/Vast.ai), ~$1-3/hr |
+| Expected Output | LoRA adapter (~60MB) saved to `llama-3.2-1b-chart-lora-v4/final/` |
+| Evaluation | EM >40%, Contains >60%, Numeric >50%, latency <2s |
+| Postmortem | See `docs/reports/SLM_TRAINING_POSTMORTEM_V1.md` |
+| Training Guide | See `docs/guides/SLM_TRAINING_GUIDE.md` v2.0.0 |
 
 ### 5.6. OCR Cache Status (2026-02-04)
 
@@ -656,8 +697,9 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 | Schemas | ~19 | 1 | Schema validation |
 | Stage 3 Extraction | ~140 | 8 | OCR, geometry, elements, integration |
 | Stage 4 Reasoning | ~36 | 3 | ValueMapper, PromptBuilder |
+| Stage 5 Reporting | ~62 | 2 | Insights, validation, output formats |
 | AI Routing | ~55 | 5 | Adapters, router, task types, prompts, exceptions |
-| **Total** | **232** | **21** | **All passing** |
+| **Total** | **294** | **23** | **All passing** |
 
 ### 5.8. Project Cleanup (2026-02-04)
 
@@ -672,6 +714,20 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 - `scripts/README.md` - Current script list
 - `notebooks/README.md` - Current notebook list
 - All docs version headers updated to v2.0.0
+
+### 5.9. Project Cleanup (2026-03-02)
+
+**Deleted (~1.5GB freed):**
+- Broken LoRA training artifacts: `llama-3.2-1b-chart-lora-v3/` checkpoints + final (182MB)
+- Incomplete experiments: `llama-3.2-1b-instruct-chart-lora/` (61MB), `qwen2.5-1.5b-instruct-chart-lora/` (83MB)
+- Buggy Qwen LoRA: `qwen2.5-0.5b-instruct-chart-lora/` (137MB, trained with max_length=512)
+- Unused base model: `qwen2.5-0.5b-instruct/` (954MB)
+- Invalid eval results: `llama-1b-lora-v3*.json`
+- Old dataset: `data/slm_training_v2/` (54MB, replaced by v3)
+- Legacy code: `Chart_QA/` (52MB), `scripts/_archive/` (6 scripts)
+- Misc: `runs/`, `logs/*.log`, `docs/archive/chatlog*.md`, `nul`, `instruction_Mar01.md`
+
+**Reason**: First training session revealed critical config bugs. All artifacts from that run are invalid. See `docs/reports/SLM_TRAINING_POSTMORTEM_V1.md`.
 
 **Stage 5 Architecture (Implemented):**
 
@@ -728,6 +784,8 @@ Final Output (PipelineResult)
 | 4-stage curriculum learning | Progressive difficulty for small dataset | 2026-02-28 |
 | Celery + Redis task queue | Async processing (from elix pattern) | 2026-02-28 |
 | 3-tier instruction hierarchy | Scalable AI agent guidance system | 2026-02-28 |
+| Cloud GPU for SLM training | Local 6GB too constrained for max_length=4096 | 2026-03-02 |
+| max_length=4096 for SFT | Ensure model sees full ground truth during training | 2026-03-02 |
 
 ---
 

@@ -47,7 +47,7 @@
 
 4. **Pipeline Orchestrator is a Skeleton**: `_initialize_stages()` in [pipeline.py](../../src/core_engine/pipeline.py) has all stage imports commented out with TODOs. The orchestrator cannot actually run end-to-end.
 
-5. **Script-Driven Workflow**: `scripts/batch_stage3_parallel.py` and `scripts/test_full_pipeline.py` are ad-hoc scripts, not composable services. Each script reinvents initialization logic.
+5. **Script-Driven Workflow**: `scripts/pipeline/batch_stage3_parallel.py` and `scripts/pipeline/test_full_pipeline.py` are ad-hoc scripts, not composable services. Each script reinvents initialization logic.
 
 6. **No API Surface**: No way for external systems to submit charts for analysis. Everything runs via scripts or notebooks.
 

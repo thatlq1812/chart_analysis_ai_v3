@@ -8,13 +8,16 @@ slm_training:
   # ---------------------------------------------------------------------------
   # Base Model Selection
   # ---------------------------------------------------------------------------
-  base_model: "Qwen/Qwen2.5-1.5B-Instruct"
+  # NOTE: base_model here is the default. Use train_slm_lora.py --model
+  # to select from MODEL_REGISTRY at training time.
+  base_model: "meta-llama/Llama-3.2-1B-Instruct"
   model_revision: "main"  # Pin for reproducibility
   
-  # Candidates (uncomment to switch):
-  # base_model: "Qwen/Qwen2.5-3B-Instruct"
-  # base_model: "meta-llama/Llama-3.2-1B-Instruct"
-  # base_model: "meta-llama/Llama-3.2-3B-Instruct"
+  # Candidates (use --model flag in train_slm_lora.py):
+  # llama-1b:  meta-llama/Llama-3.2-1B-Instruct  (PRIMARY)
+  # qwen-1.5b: Qwen/Qwen2.5-1.5B-Instruct
+  # qwen-0.5b: Qwen/Qwen2.5-0.5B-Instruct
+  # llama-3b:  meta-llama/Llama-3.2-3B-Instruct   (needs >24GB VRAM)
   
   # ---------------------------------------------------------------------------
   # LoRA Configuration
@@ -39,15 +42,15 @@ slm_training:
   # ---------------------------------------------------------------------------
   training:
     num_train_epochs: 3
-    per_device_train_batch_size: 4
-    gradient_accumulation_steps: 4
+    per_device_train_batch_size: 2
+    gradient_accumulation_steps: 8     # effective batch = 2 * 8 = 16
     learning_rate: 2.0e-4
     lr_scheduler_type: "cosine"
     warmup_ratio: 0.05
     weight_decay: 0.01
-    max_seq_length: 512
-    fp16: true
-    bf16: false                 # RTX 3060 does not support bf16
+    max_seq_length: 4096            # CRITICAL: must cover full conversation
+    fp16: false
+    bf16: true                  # Cloud GPU (A100/RTX 3090+) supports bf16
     gradient_checkpointing: true
     optim: "paged_adamw_32bit"
     
@@ -69,16 +72,20 @@ slm_training:
   quantization:
     use_4bit: true
     bnb_4bit_quant_type: "nf4"
-    bnb_4bit_compute_dtype: "float16"
+    bnb_4bit_compute_dtype: "bfloat16"  # Match bf16 training
     bnb_4bit_use_double_quant: true
   
   # ---------------------------------------------------------------------------
   # Data
   # ---------------------------------------------------------------------------
   data:
-    train_file: "data/slm_training/train.json"
-    val_file: "data/slm_training/val.json"
-    test_file: "data/slm_training/test.json"
+    # Full dataset (v3):
+    train_file: "data/slm_training_v3/train.json"
+    val_file: "data/slm_training_v3/val.json"
+    test_file: "data/slm_training_v3/test.json"
+    # Mini dataset for model selection:
+    # train_file: "data/slm_training_mini/train.json"
+    # val_file: "data/slm_training_mini/val.json"
     
     # Format
     format: "chatml"            # ChatML conversation format
@@ -99,7 +106,7 @@ slm_training:
   # ---------------------------------------------------------------------------
   # Output
   # ---------------------------------------------------------------------------
-  output_dir: "models/slm/qwen2.5-1.5b-chart-lora"
+  output_dir: "models/slm/llama-3.2-1b-instruct-chart-lora-v4"
   hub_model_id: null            # HuggingFace Hub (optional)
   
   # ---------------------------------------------------------------------------

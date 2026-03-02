@@ -62,7 +62,7 @@ Stored in `data/academic_dataset/classified_charts/` organized by type.
 ## 3. Stage 3 Batch Extraction
 
 ### 3.1. Process
-- `scripts/batch_stage3_parallel.py` processes all 32,364 charts
+- `scripts/pipeline/batch_stage3_parallel.py` processes all 32,364 charts
 - Parallel execution with worker pool
 - Atomic file writes (write to temp, then rename)
 - Pure CPU extraction (no GPU required for this stage)
@@ -116,7 +116,7 @@ Stored in `data/academic_dataset/classified_charts/` organized by type.
 ## 5. SLM Training Dataset v3
 
 ### 5.1. Assembly
-Built by `scripts/prepare_slm_training_v3.py`:
+Built by `scripts/training/prepare_slm_training_v3.py`:
 - Merges Stage 3 features + QA pairs
 - Formats as ChatML conversations
 - Splits by `chart_id` (no data leakage between train/val/test)
