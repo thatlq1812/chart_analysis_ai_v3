@@ -54,14 +54,19 @@ def generate_response(model, tokenizer, messages: list, max_tokens: int = 512) -
     
     inputs = tokenizer([text], return_tensors="pt").to(model.device)
     
+    from transformers import GenerationConfig
+
+    gen_config = GenerationConfig(
+        max_new_tokens=max_tokens,
+        temperature=0.3,
+        top_p=0.9,
+        do_sample=True,
+        pad_token_id=tokenizer.eos_token_id,
+    )
     with torch.no_grad():
         outputs = model.generate(
             **inputs,
-            max_new_tokens=max_tokens,
-            temperature=0.3,
-            top_p=0.9,
-            do_sample=True,
-            pad_token_id=tokenizer.eos_token_id,
+            generation_config=gen_config,
         )
     
     generated = outputs[0][inputs.input_ids.shape[1]:]

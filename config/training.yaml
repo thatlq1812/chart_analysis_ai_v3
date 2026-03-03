@@ -69,7 +69,7 @@ slm_training:
     lr_scheduler_type: "cosine"
     warmup_ratio: 0.05
     weight_decay: 0.01
-    max_seq_length: 4096            # CRITICAL: must cover full conversation
+    max_seq_length: 1024            # P99.9=1576, P99=412 -> 1024 covers 99.8%
     fp16: false
     bf16: true                  # Cloud GPU (A100/RTX 3090+) supports bf16
     gradient_checkpointing: true

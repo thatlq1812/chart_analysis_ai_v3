@@ -1,0 +1,10 @@
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Run} & \textbf{Train Loss} & \textbf{Eval Loss} & \textbf{Best Eval Loss} & \textbf{Train Acc} & \textbf{Eval Acc} \\
+\midrule
+baseline  & 0.2687 & 1.3069 & \textbf{0.9464} & 93.2\% & 78.3\% \\
+low\_lr   & 1.2279 & 1.2026 & 1.2024          & 77.9\% & 76.9\% \\
+rank8     & 0.4799 & \textbf{1.1321} & 0.9491  & 88.7\% & \textbf{78.9\%} \\
+no\_accum & \textbf{0.0736} & 1.5399 & 0.9405  & \textbf{97.6\%} & \textbf{78.9\%} \\
+\bottomrule
+\end{tabular}

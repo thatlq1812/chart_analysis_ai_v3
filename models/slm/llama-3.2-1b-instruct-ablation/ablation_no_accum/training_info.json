@@ -1,0 +1,23 @@
+{
+  "model_key": "llama-1b",
+  "base_model": "meta-llama/Llama-3.2-1B-Instruct",
+  "lora_rank": 16,
+  "lora_alpha": 32,
+  "gradient_accumulation_steps": 1,
+  "effective_batch_size": 2,
+  "total_epochs_target": 10,
+  "batch_size": 2,
+  "learning_rate": 0.0002,
+  "max_length": 4096,
+  "use_4bit": true,
+  "train_samples": 800,
+  "val_samples": 160,
+  "sessions": [
+    {
+      "epochs_target": 10,
+      "resumed_from": null,
+      "completed_at": "2026-03-03T01:01:15.091505"
+    }
+  ],
+  "last_updated": "2026-03-03T01:01:15.091505"
+}

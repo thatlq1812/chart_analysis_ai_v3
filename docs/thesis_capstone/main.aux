@@ -176,39 +176,61 @@
 \@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Estimated processing time per chart by pipeline stage. OCR in Stage~3 accounts for approximately 65\% of total time.}}{26}{}\protected@file@percent }
 \newlabel{fig:processing_time}{{10}{26}{End-to-End Pipeline Performance}{figure.10}{}}
 \newlabel{fig:processing_time@cref}{{[figure][10][]10}{[1][25][]26}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.5}Code Quality}{26}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.5}Stage 4: SLM Hyperparameter Ablation Study}{26}{}\protected@file@percent }
+\newlabel{sec:slm_ablation}{{6.1.5}{26}{Stage 4: SLM Hyperparameter Ablation Study}{subsubsection.6.1.5}{}}
+\newlabel{sec:slm_ablation@cref}{{[subsubsection][5][6,1]6.1.5}{[1][26][]26}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Token length analysis.}{27}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces Token length distribution of training conversations (228{,}494 samples, Llama-3.2-1B tokenizer). Mean = 224, median = 223, P99 = 412, max = 1{,}576.}}{27}{}\protected@file@percent }
+\newlabel{tab:token_dist}{{14}{27}{Token length analysis.}{table.14}{}}
+\newlabel{tab:token_dist@cref}{{[table][14][]14}{[1][26][]27}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Micro dataset.}{27}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Ablation configurations.}{27}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {15}{\ignorespaces Ablation study configurations. Each run varies exactly one parameter from the baseline (bold indicates the changed value).}}{27}{}\protected@file@percent }
+\newlabel{tab:ablation_configs}{{15}{27}{Ablation configurations.}{table.15}{}}
+\newlabel{tab:ablation_configs@cref}{{[table][15][]15}{[1][27][]27}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Results.}{27}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {16}{\ignorespaces Ablation study results (Llama-3.2-1B, 800 samples, 10 epochs). Bold indicates best value per column.}}{27}{}\protected@file@percent }
+\newlabel{tab:ablation_results}{{16}{27}{Results.}{table.16}{}}
+\newlabel{tab:ablation_results@cref}{{[table][16][]16}{[1][27][]27}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Analysis.}{27}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {17}{\ignorespaces Overfitting analysis: train--eval loss gap by configuration.}}{28}{}\protected@file@percent }
+\newlabel{tab:ablation_overfit}{{17}{28}{Analysis.}{table.17}{}}
+\newlabel{tab:ablation_overfit@cref}{{[table][17][]17}{[1][28][]28}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Pipeline validation.}{28}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Recommended configuration.}{28}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.6}Code Quality}{28}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {18}{\ignorespaces Test suite results by component.}}{28}{}\protected@file@percent }
+\newlabel{tab:tests}{{18}{28}{Code Quality}{table.18}{}}
+\newlabel{tab:tests@cref}{{[table][18][]18}{[1][28][]28}{}{}{}}
 \citation{liu2023deplot}
 \citation{lee2023matcha}
 \citation{chen2022chartreader}
 \citation{savva2011revision}
 \citation{liu2023deplot}
 \citation{lee2023matcha}
-\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces Test suite results by component.}}{27}{}\protected@file@percent }
-\newlabel{tab:tests}{{14}{27}{Code Quality}{table.14}{}}
-\newlabel{tab:tests@cref}{{[table][14][]14}{[1][26][]27}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Discussion}{27}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.1}Hybrid Architecture Validates Core Hypothesis}{27}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.2}Comparison with Related Work}{27}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {15}{\ignorespaces Comparison with related chart understanding methods.}}{27}{}\protected@file@percent }
-\newlabel{tab:related_cmp}{{15}{27}{Comparison with Related Work}{table.15}{}}
-\newlabel{tab:related_cmp@cref}{{[table][15][]15}{[1][27][]27}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Discussion}{29}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.1}Hybrid Architecture Validates Core Hypothesis}{29}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.2}Comparison with Related Work}{29}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {19}{\ignorespaces Comparison with related chart understanding methods.}}{29}{}\protected@file@percent }
+\newlabel{tab:related_cmp}{{19}{29}{Comparison with Related Work}{table.19}{}}
+\newlabel{tab:related_cmp@cref}{{[table][19][]19}{[1][29][]29}{}{}{}}
 \citation{masry2022chartqa}
 \citation{methani2020plotqa}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.3}Modularity Enables Iterative Improvement}{28}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.4}Core-First Strategy Validates Vietnamese Readiness}{28}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.5}Limitations of Current Results}{29}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Recommendations}{29}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion}{30}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Summary of Contributions}{30}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Achievement of Objectives}{30}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {16}{\ignorespaces Achievement of project objectives.}}{30}{}\protected@file@percent }
-\newlabel{tab:objectives}{{16}{30}{Achievement of Objectives}{table.16}{}}
-\newlabel{tab:objectives@cref}{{[table][16][]16}{[1][30][]30}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.3}Modularity Enables Iterative Improvement}{30}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.4}Core-First Strategy Validates Vietnamese Readiness}{30}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.5}Limitations of Current Results}{30}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Recommendations}{31}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion}{32}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Summary of Contributions}{32}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Achievement of Objectives}{32}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {20}{\ignorespaces Achievement of project objectives.}}{32}{}\protected@file@percent }
+\newlabel{tab:objectives}{{20}{32}{Achievement of Objectives}{table.20}{}}
+\newlabel{tab:objectives@cref}{{[table][20][]20}{[1][32][]32}{}{}{}}
 \citation{masry2022chartqa}
 \citation{methani2020plotqa}
 \citation{liu2023deplot}
 \citation{lee2023matcha}
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Future Work}{31}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Future Work}{33}{}\protected@file@percent }
 \bibstyle{elsarticle-num-names}
 \bibdata{refs}
 \bibcite{liu2023deplot}{{1}{2023}{{Liu et~al.}}{{Liu, Piccinno, Krichene, Pang, Lee, Joshi, Choi, and Eisenschlos}}}
@@ -220,7 +242,7 @@
 \bibcite{douglas1973rdp}{{7}{1973}{{Douglas and Peucker}}{{}}}
 \bibcite{ramer1972rdp}{{8}{1972}{{Ramer}}{{}}}
 \bibcite{lee1994skeleton}{{9}{1994}{{Lee et~al.}}{{Lee, Kashyap, and Chu}}}
-\@writefile{toc}{\contentsline {section}{References}{32}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{34}{}\protected@file@percent }
 \bibcite{bradski2000opencv}{{10}{2000}{{Bradski}}{{}}}
 \bibcite{yang2024qwen2}{{11}{2024}{{Yang et~al.}}{{Yang, Yang et~al.}}}
 \bibcite{dettmers2024qlora}{{12}{2024}{{Dettmers et~al.}}{{Dettmers, Pagnoni, Holtzman, and Zettlemoyer}}}
@@ -232,4 +254,4 @@
 \bibcite{jaided2020easyocr}{{18}{2020}{{JaidedAI}}{{}}}
 \bibcite{hu2022lora}{{19}{2022}{{Hu et~al.}}{{Hu, Shen, Wallis, Allen-Zhu, Li, Wang, Wang, and Chen}}}
 \bibcite{selvaraju2017gradcam}{{20}{2020}{{Selvaraju et~al.}}{{Selvaraju, Cogswell, Das, Vedantam, Parikh, and Batra}}}
-\gdef \@abspage@last{39}
+\gdef \@abspage@last{41}

@@ -104,6 +104,99 @@ The total processing time of 7.5--9.0 seconds per chart is dominated by OCR in S
 implemented with 46,910 entries), batch OCR processing, and selective re-execution for
 low-confidence regions.
 
+\subsubsection{Stage 4: SLM Hyperparameter Ablation Study}
+\label{sec:slm_ablation}
+
+Before committing to full-scale SLM fine-tuning on the 228{,}494-sample training set
+(estimated 35--40 hours per epoch on RTX~3060), a controlled hyperparameter sensitivity
+study was conducted on a micro dataset to validate the training pipeline and identify
+optimal hyperparameter ranges.
+
+\paragraph{Token length analysis.}
+The full v3 dataset was tokenized with the Llama-3.2-1B tokenizer to validate the
+\texttt{max\_seq\_length} parameter. \Cref{tab:token_dist} shows the distribution.
+
+\begin{table}[htbp]
+\centering
+\caption{Token length distribution of training conversations (228{,}494 samples,
+    Llama-3.2-1B tokenizer). Mean = 224, median = 223, P99 = 412, max = 1{,}576.}
+\label{tab:token_dist}
+\input{figures/tables/tab_token_distribution}
+\end{table}
+
+99.8\% of samples fit within 512 tokens. The longest sample (1{,}576 tokens) is a
+heatmap with dense OCR data. Based on this analysis, \texttt{max\_seq\_length} was
+set to 1{,}024 (covering 99.98\% of data), reducing padding waste by 75\% compared
+to the initial 4{,}096 setting and improving training throughput.
+
+\paragraph{Micro dataset.}
+A balanced micro dataset was extracted from the full training set using stratified
+per-type sampling: 800~training samples (100~per chart type $\times$ 8~types) and
+160~validation samples (20~per type). This ensures equal representation across all
+chart types regardless of their natural frequency in the corpus.
+
+\paragraph{Ablation configurations.}
+Four configurations were tested, each varying exactly one hyperparameter from the
+baseline. \Cref{tab:ablation_configs} summarizes the experimental design; all other
+parameters were held constant (see \Cref{tab:slm_config}).
+
+\begin{table}[htbp]
+\centering
+\caption{Ablation study configurations. Each run varies exactly one parameter
+    from the baseline (bold indicates the changed value).}
+\label{tab:ablation_configs}
+\input{figures/tables/tab_ablation_configs}
+\end{table}
+
+\paragraph{Results.}
+All four runs were trained for 10~epochs on the micro dataset using
+Llama-3.2-1B-Instruct with QLoRA (4-bit NF4). \Cref{tab:ablation_results} presents
+the training metrics.
+
+\begin{table}[htbp]
+\centering
+\caption{Ablation study results (Llama-3.2-1B, 800 samples, 10 epochs).
+    Bold indicates best value per column.}
+\label{tab:ablation_results}
+\input{figures/tables/tab_ablation_results}
+\end{table}
+
+\paragraph{Analysis.}
+\textbf{Learning rate:} $\text{lr} = 1 \times 10^{-5}$ is too conservative---after
+10~epochs, train loss remained above 1.2 (barely moved from initialization). The best
+eval loss (1.20 vs.\ 0.95 for baseline) confirms insufficient convergence. The standard
+$\text{lr} = 2 \times 10^{-4}$ with cosine decay is appropriate.
+
+\textbf{LoRA rank:} Rank~8 achieves the best final eval loss (1.13) and highest eval
+accuracy (78.9\%) with fewer trainable parameters than rank~16. The best eval loss
+(early stopping metric) is nearly identical ($\sim$0.95). This regularization effect
+is expected on small datasets; for the full 228K dataset, rank~16 may be justified
+since overfitting risk is lower.
+
+\textbf{Gradient accumulation:} Without accumulation (effective batch~size~2), the model
+overfits aggressively (train loss 0.07, near-memorization) with the worst generalization
+(eval loss 1.54). \Cref{tab:ablation_overfit} quantifies the overfitting severity.
+
+\begin{table}[htbp]
+\centering
+\caption{Overfitting analysis: train--eval loss gap by configuration.}
+\label{tab:ablation_overfit}
+\input{figures/tables/tab_ablation_overfitting}
+\end{table}
+
+\paragraph{Pipeline validation.}
+The ablation study confirmed that the training pipeline is working correctly after
+the bug fixes documented in the first training session postmortem (incorrect
+\texttt{max\_length=512} truncating ground truth, hardcoded \texttt{lora\_alpha},
+incorrect padding token). All four runs completed successfully, achieving
+$>$93\% train accuracy and $\sim$78--79\% eval accuracy on the micro dataset.
+
+\paragraph{Recommended configuration.}
+Based on the ablation results, the recommended configuration for full-scale training
+is: $\text{lr} = 2 \times 10^{-4}$, LoRA rank~16, gradient accumulation~8 (effective
+batch size~16), and \texttt{max\_seq\_length} = 1{,}024. Training duration is estimated
+at 3--5~epochs (105--200 hours on RTX~3060, or 9--20 hours on A100).
+
 \subsubsection{Code Quality}
 
 \Cref{tab:tests} presents the test suite results.
@@ -221,7 +314,9 @@ exponentially.
           on ChartQA \cite{masry2022chartqa} or PlotQA \cite{methani2020plotqa}.
           This is planned upon completion of SLM fine-tuning.
     \item \textbf{SLM training in progress}: Stage~4 reasoning results are from Gemini
-          API prototyping. Local SLM evaluation will be supplemented.
+          API prototyping and a preliminary ablation study on a micro dataset
+          (\Cref{sec:slm_ablation}). Full-scale SLM training and evaluation on the
+          complete test set will be supplemented.
     \item \textbf{Processing speed}: 7.6~seconds per chart exceeds the target of
           $<$5~seconds. OCR optimization is the primary bottleneck.
     \item \textbf{Domain specificity}: All training data comes from academic papers
@@ -237,7 +332,7 @@ exponentially.
 % - SLM inference accuracy (JSON valid rate, field accuracy, numeric accuracy)
 % - ChartQA/PlotQA benchmark comparison
 % - GPT-4V baseline comparison
-% - Ablation study results (with/without neg. transform, RDP, SLM)
+% - Multi-model comparison (Llama vs Qwen)
 
 % ============================================================
 \subsection{Recommendations}

@@ -76,6 +76,51 @@ def compute_distribution(
     return {k: dict(v.most_common()) for k, v in stats.items()}
 
 
+def fixed_per_type_extract(
+    data: List[Dict[str, Any]],
+    per_type: int,
+    seed: int = 42,
+) -> List[Dict[str, Any]]:
+    """
+    Extract exactly N samples per chart type for sanity-check experiments.
+
+    This mode gives equal representation to every chart type regardless of
+    the original dataset distribution. Useful for overfitting tests and
+    mini ablation studies.
+
+    Args:
+        data: Full dataset
+        per_type: Exact number of samples per chart type
+        seed: Random seed for reproducibility
+
+    Returns:
+        Subset with exactly per_type samples per chart type
+    """
+    rng = random.Random(seed)
+
+    # Group by chart_type
+    by_type: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for sample in data:
+        meta = sample.get("metadata", {})
+        ct = meta.get("chart_type", "unknown")
+        by_type[ct].append(sample)
+
+    sampled: List[Dict[str, Any]] = []
+    for ct in sorted(by_type.keys()):
+        group = by_type[ct]
+        rng.shuffle(group)
+        n = min(per_type, len(group))
+        sampled.extend(group[:n])
+        if n < per_type:
+            logger.warning(
+                f"Chart type '{ct}' has only {len(group)} samples "
+                f"(requested {per_type})"
+            )
+
+    rng.shuffle(sampled)
+    return sampled
+
+
 def stratified_extract(
     data: List[Dict[str, Any]],
     target_size: int,
@@ -251,6 +296,8 @@ def extract_mini_datasets(
     train_size: int = 5000,
     val_size: int = 500,
     seed: int = 42,
+    per_type: Optional[int] = None,
+    val_per_type: Optional[int] = None,
 ) -> Tuple[int, int]:
     """
     Extract stratified mini-datasets from the full training data.
@@ -258,9 +305,11 @@ def extract_mini_datasets(
     Args:
         source_dir: Directory with train.json, val.json
         output_dir: Output directory for train_mini.json, val_mini.json
-        train_size: Target number of training samples
-        val_size: Target number of validation samples
+        train_size: Target number of training samples (ignored if per_type set)
+        val_size: Target number of validation samples (ignored if val_per_type set)
         seed: Random seed
+        per_type: If set, use fixed_per_type_extract with N per chart type for train
+        val_per_type: If set, use fixed_per_type_extract with N per chart type for val
 
     Returns:
         Tuple of (actual_train_size, actual_val_size)
@@ -285,12 +334,18 @@ def extract_mini_datasets(
     train_size = min(train_size, len(train_data))
     val_size = min(val_size, len(val_data))
 
-    # Stratified extraction
-    logger.info(f"Extracting train_mini | target={train_size} | seed={seed}")
-    train_mini = stratified_extract(train_data, train_size, seed=seed)
-
-    logger.info(f"Extracting val_mini | target={val_size} | seed={seed + 1}")
-    val_mini = stratified_extract(val_data, val_size, seed=seed + 1)
+    # Extraction
+    if per_type:
+        logger.info(f"Extracting train_mini | per_type={per_type} | seed={seed}")
+        train_mini = fixed_per_type_extract(train_data, per_type, seed=seed)
+        vpt = val_per_type or max(1, per_type // 5)
+        logger.info(f"Extracting val_mini | per_type={vpt} | seed={seed + 1}")
+        val_mini = fixed_per_type_extract(val_data, vpt, seed=seed + 1)
+    else:
+        logger.info(f"Extracting train_mini | target={train_size} | seed={seed}")
+        train_mini = stratified_extract(train_data, train_size, seed=seed)
+        logger.info(f"Extracting val_mini | target={val_size} | seed={seed + 1}")
+        val_mini = stratified_extract(val_data, val_size, seed=seed + 1)
 
     # Write outputs
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -350,6 +405,7 @@ def extract_mini_datasets(
     # Write dataset_info.json
     info = {
         "source": str(source_dir),
+        "extraction_mode": f"per_type={per_type}" if per_type else f"stratified",
         "train_mini_samples": len(train_mini),
         "val_mini_samples": len(val_mini),
         "test_samples": len(json.loads(test_path.read_text(encoding="utf-8"))) if test_path.exists() else 0,
@@ -405,6 +461,14 @@ def main() -> None:
         help="Random seed (default: 42)",
     )
     parser.add_argument(
+        "--per-type",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Extract exactly N samples per chart type (overrides --train-size). "
+             "Validation gets N//5 per type. Example: --per-type 50 = 400 train + 80 val",
+    )
+    parser.add_argument(
         "--analyze-only",
         action="store_true",
         help="Print source distribution without extracting",
@@ -443,6 +507,7 @@ def main() -> None:
         train_size=args.train_size,
         val_size=args.val_size,
         seed=args.seed,
+        per_type=args.per_type,
     )
 
     # Verify the result

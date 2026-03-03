@@ -1,0 +1,10 @@
+\begin{tabular}{@{}llccccc@{}}
+\toprule
+\textbf{Run} & \textbf{Variable Changed} & \textbf{Rank} & \textbf{Alpha} & \textbf{LR} & \textbf{Grad Accum} & \textbf{Eff.\ BS} \\
+\midrule
+baseline & (reference)       & 16 & 32 & $2 \times 10^{-4}$ & 8 & 16 \\
+low\_lr  & Learning rate     & 16 & 32 & $1 \times 10^{-5}$ & 8 & 16 \\
+rank8    & LoRA capacity     &  8 & 16 & $2 \times 10^{-4}$ & 8 & 16 \\
+no\_accum & Batch dynamics   & 16 & 32 & $2 \times 10^{-4}$ & 1 &  2 \\
+\bottomrule
+\end{tabular}

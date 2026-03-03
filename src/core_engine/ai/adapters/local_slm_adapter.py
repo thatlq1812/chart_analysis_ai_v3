@@ -225,6 +225,13 @@ class LocalSLMAdapter(BaseAIAdapter):
                 tokenizer=tokenizer,
             )
 
+            # Clear default max_length to avoid conflict with max_new_tokens.
+            # Both model and pipeline generation_config must be patched.
+            for obj in (model, self._pipeline.model, self._pipeline):
+                gc = getattr(obj, "generation_config", None)
+                if gc is not None and getattr(gc, "max_length", None) is not None:
+                    gc.max_length = None
+
             logger.info(
                 f"LocalSLMAdapter | ready | model={self._model_path}"
             )
@@ -256,12 +263,17 @@ class LocalSLMAdapter(BaseAIAdapter):
             {"role": "user", "content": user_prompt},
         ]
 
-        outputs = self._pipeline(
-            messages,
+        from transformers import GenerationConfig  # type: ignore[import]
+
+        gen_config = GenerationConfig(
             max_new_tokens=kwargs.get("max_new_tokens", self._max_tokens),
             temperature=kwargs.get("temperature", self._temperature),
             do_sample=self._temperature > 0,
             pad_token_id=self._tokenizer.eos_token_id,
+        )
+        outputs = self._pipeline(
+            messages,
+            generation_config=gen_config,
         )
 
         # Extract generated text (exclude input tokens)

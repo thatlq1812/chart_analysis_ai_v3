@@ -260,9 +260,13 @@ def load_local_model(
 
     pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
 
-    # Clear default max_length to avoid conflict with max_new_tokens
-    if hasattr(model, "generation_config") and model.generation_config.max_length:
-        model.generation_config.max_length = None
+    # Clear default max_length to avoid conflict with max_new_tokens.
+    # Both model and pipeline generation_config must be patched,
+    # otherwise transformers emits a warning on every forward call.
+    for obj in (model, pipe.model, pipe):
+        gc = getattr(obj, "generation_config", None)
+        if gc is not None and getattr(gc, "max_length", None) is not None:
+            gc.max_length = None
 
     # Log VRAM usage
     if torch.cuda.is_available():
@@ -304,13 +308,18 @@ def run_inference(
         {"role": "user", "content": user_prompt},
     ]
 
-    t0 = time.perf_counter()
-    outputs = pipe(
-        messages,
+    from transformers import GenerationConfig
+
+    gen_config = GenerationConfig(
         max_new_tokens=max_new_tokens,
         temperature=temperature,
         do_sample=temperature > 0,
         pad_token_id=tokenizer.eos_token_id,
+    )
+    t0 = time.perf_counter()
+    outputs = pipe(
+        messages,
+        generation_config=gen_config,
     )
     t1 = time.perf_counter()
 

@@ -1,0 +1,149 @@
+{
+  "model_name": "llama-3.2-1b-instruct+LoRA(ablation_baseline)",
+  "evaluated_at": "2026-03-03T14:13:55.564139",
+  "test_data_path": "data/slm_training_v3/test.json",
+  "config": {
+    "max_new_tokens": 128,
+    "temperature": 0.1
+  },
+  "aggregate": {
+    "exact_match": 0.0,
+    "contains_match": 0.0,
+    "numeric_accuracy": 0.0,
+    "bleu_1": 0.3078,
+    "mean_latency_s": 1.6303,
+    "p50_latency_s": 1.4363,
+    "p95_latency_s": 2.4193,
+    "total_samples": 5,
+    "total_time_s": 8.15,
+    "vram_peak_mb": 2310.0
+  },
+  "by_question_type": {
+    "comparison": {
+      "count": 3,
+      "exact_match": 0.0,
+      "contains_match": 0.0,
+      "numeric_accuracy": 0.0,
+      "bleu_1": 0.3068
+    },
+    "range": {
+      "count": 1,
+      "exact_match": 0.0,
+      "contains_match": 0.0,
+      "numeric_accuracy": 0.0,
+      "bleu_1": 0.3879
+    },
+    "extraction": {
+      "count": 1,
+      "exact_match": 0.0,
+      "contains_match": 0.0,
+      "numeric_accuracy": 0.0,
+      "bleu_1": 0.2308
+    }
+  },
+  "by_chart_type": {
+    "line": {
+      "count": 2,
+      "exact_match": 0.0,
+      "contains_match": 0.0,
+      "numeric_accuracy": 0.0,
+      "bleu_1": 0.1939
+    },
+    "heatmap": {
+      "count": 2,
+      "exact_match": 0.0,
+      "contains_match": 0.0,
+      "numeric_accuracy": 0.0,
+      "bleu_1": 0.3881
+    },
+    "bar": {
+      "count": 1,
+      "exact_match": 0.0,
+      "contains_match": 0.0,
+      "numeric_accuracy": null,
+      "bleu_1": 0.375
+    }
+  },
+  "samples": [
+    {
+      "index": 0,
+      "chart_type": "line",
+      "question_type": "range",
+      "curriculum_stage": 2,
+      "reference": "The maximum value is 2.0e+3 K and the minimum value is 1.1e+3 K, so the difference is 0.9e+3 K.",
+      "prediction": "The difference between the maximum and minimum value of Tn is approximately 0.",
+      "exact_match": false,
+      "contains_match": false,
+      "numeric_accuracy": 0.0,
+      "bleu_1": 0.3879,
+      "answer_category": "long",
+      "latency_s": 1.6625
+    },
+    {
+      "index": 1,
+      "chart_type": "heatmap",
+      "question_type": "extraction",
+      "curriculum_stage": 2,
+      "reference": "OD pair index 4",
+      "prediction": "The OD pair index 3 has the highest demand at time interval 0.",
+      "exact_match": false,
+      "contains_match": false,
+      "numeric_accuracy": 0.0,
+      "bleu_1": 0.2308,
+      "answer_category": "medium",
+      "latency_s": 1.4174
+    },
+    {
+      "index": 2,
+      "chart_type": "heatmap",
+      "question_type": "comparison",
+      "curriculum_stage": 3,
+      "reference": "The blue channel has the highest value with 255",
+      "prediction": "The color channel with the highest value is the red channel.",
+      "exact_match": false,
+      "contains_match": false,
+      "numeric_accuracy": 0.0,
+      "bleu_1": 0.5455,
+      "answer_category": "medium",
+      "latency_s": 1.2158
+    },
+    {
+      "index": 3,
+      "chart_type": "line",
+      "question_type": "comparison",
+      "curriculum_stage": 3,
+      "reference": "Above",
+      "prediction": "The mean calibration is below the perfect calibration line when the mean predicted probability is 0.2.",
+      "exact_match": false,
+      "contains_match": false,
+      "numeric_accuracy": null,
+      "bleu_1": 0.0,
+      "answer_category": "short",
+      "latency_s": 2.4193
+    },
+    {
+      "index": 4,
+      "chart_type": "bar",
+      "question_type": "comparison",
+      "curriculum_stage": 3,
+      "reference": "RealCamo has the highest value.",
+      "prediction": "The model with the highest value is 0'20.",
+      "exact_match": false,
+      "contains_match": false,
+      "numeric_accuracy": null,
+      "bleu_1": 0.375,
+      "answer_category": "medium",
+      "latency_s": 1.4363
+    }
+  ],
+  "args": {
+    "base_model": "models/slm/llama-3.2-1b-instruct",
+    "lora_path": "models/slm/llama-3.2-1b-instruct-ablation/ablation_baseline/final",
+    "max_samples": 5,
+    "stratified": false,
+    "max_new_tokens": 128,
+    "temperature": 0.1,
+    "load_in_4bit": true,
+    "seed": 42
+  }
+}

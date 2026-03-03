@@ -484,6 +484,7 @@ def train(
     save_steps: int = 100,
     smoke_test: bool = False,
     resume_from_checkpoint: Optional[str] = None,
+    lr_scheduler_type: str = "cosine",
     run_manager: Optional[RunManager] = None,
     tracker: Optional[ExperimentTracker] = None,
 ) -> None:
@@ -564,7 +565,7 @@ def train(
         gradient_accumulation_steps=gradient_accumulation_steps,
         gradient_checkpointing=True,
         learning_rate=learning_rate,
-        lr_scheduler_type="cosine",
+        lr_scheduler_type=lr_scheduler_type,
         warmup_steps=20,
         weight_decay=0.01,
         logging_steps=1 if smoke_test else 10,
@@ -641,6 +642,48 @@ def train(
         "completed_at": datetime.now().isoformat(),
     })
 
+    # Extract final metrics from trainer state
+    final_train_loss = None
+    final_eval_loss = None
+    best_eval_loss = None
+    final_train_acc = None
+    final_eval_acc = None
+    if hasattr(trainer, "state") and trainer.state.log_history:
+        log_history = trainer.state.log_history
+        train_logs = [l for l in log_history if "loss" in l and "eval_loss" not in l]
+        eval_logs = [l for l in log_history if "eval_loss" in l]
+        if train_logs:
+            final_train_loss = train_logs[-1].get("loss")
+            final_train_acc = train_logs[-1].get("mean_token_accuracy")
+        if eval_logs:
+            final_eval_loss = eval_logs[-1].get("eval_loss")
+            final_eval_acc = eval_logs[-1].get("eval_mean_token_accuracy")
+        if hasattr(trainer.state, "best_metric") and trainer.state.best_metric is not None:
+            best_eval_loss = trainer.state.best_metric
+
+    # Extract trainable parameters count
+    trainable_params = None
+    total_params = None
+    try:
+        tp, ap = 0, 0
+        for p in trainer.model.parameters():
+            ap += p.numel()
+            if p.requires_grad:
+                tp += p.numel()
+        trainable_params = tp
+        total_params = ap
+    except Exception:
+        pass
+
+    # Extract peak VRAM
+    vram_peak_mb = None
+    try:
+        import torch
+        if torch.cuda.is_available():
+            vram_peak_mb = round(torch.cuda.max_memory_allocated() / 1024 / 1024, 1)
+    except Exception:
+        pass
+
     info: Dict[str, Any] = {
         "model_key": model_key,
         "base_model": entry["repo_id"],
@@ -651,10 +694,20 @@ def train(
         "total_epochs_target": epochs,
         "batch_size": batch_size,
         "learning_rate": learning_rate,
+        "lr_scheduler_type": lr_scheduler_type,
         "max_length": max_length,
         "use_4bit": use_4bit,
         "train_samples": len(train_dataset),
         "val_samples": len(val_dataset),
+        "final_train_loss": final_train_loss,
+        "final_eval_loss": final_eval_loss,
+        "best_eval_loss": best_eval_loss,
+        "final_train_accuracy": final_train_acc,
+        "final_eval_accuracy": final_eval_acc,
+        "trainable_params": trainable_params,
+        "total_params": total_params,
+        "trainable_pct": round(trainable_params / total_params * 100, 2) if trainable_params and total_params else None,
+        "vram_peak_mb": vram_peak_mb,
         "sessions": sessions,
         "last_updated": datetime.now().isoformat(),
     }
@@ -754,6 +807,14 @@ def main() -> None:
     parser.add_argument(
         "--gradient-accumulation-steps", type=int, default=8,
         help="Gradient accumulation steps. Effective batch = batch_size * this (default: 8)",
+    )
+    parser.add_argument(
+        "--lr-scheduler",
+        type=str,
+        default="cosine",
+        choices=["cosine", "linear", "constant", "constant_with_warmup",
+                 "cosine_with_restarts", "polynomial", "inverse_sqrt"],
+        help="Learning rate scheduler type (default: cosine)",
     )
     parser.add_argument("--no-4bit", action="store_true", help="Disable 4-bit quantization")
     parser.add_argument("--eval-steps", type=int, default=50)
@@ -910,6 +971,7 @@ def main() -> None:
             save_steps=args.save_steps,
             smoke_test=args.smoke_test,
             resume_from_checkpoint=checkpoint_path,
+            lr_scheduler_type=args.lr_scheduler,
             run_manager=run_manager,
             tracker=tracker,
         )

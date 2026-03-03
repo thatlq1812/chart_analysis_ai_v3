@@ -1,0 +1,45 @@
+{
+  "runs": [
+    {
+      "name": "baseline",
+      "success": true,
+      "elapsed_s": 0,
+      "final_train_loss": 0.26872718334198,
+      "final_train_accuracy": 0.9317285552620888,
+      "final_eval_loss": 1.3069053888320923,
+      "final_eval_accuracy": 0.7828943341970444,
+      "best_eval_loss": 0.9464108347892761
+    },
+    {
+      "name": "low_lr",
+      "success": true,
+      "elapsed_s": 0,
+      "final_train_loss": 1.2278996467590333,
+      "final_train_accuracy": 0.7794232256710529,
+      "final_eval_loss": 1.2025684118270874,
+      "final_eval_accuracy": 0.7692116990685463,
+      "best_eval_loss": 1.202371597290039
+    },
+    {
+      "name": "no_accum",
+      "success": true,
+      "elapsed_s": 0,
+      "final_train_loss": 0.0735504150390625,
+      "final_train_accuracy": 0.9756239354610443,
+      "final_eval_loss": 1.5398691892623901,
+      "final_eval_accuracy": 0.7891883745789527,
+      "best_eval_loss": 0.9404975771903992
+    },
+    {
+      "name": "rank8",
+      "success": true,
+      "elapsed_s": 0,
+      "final_train_loss": 0.4798515796661377,
+      "final_train_accuracy": 0.8869894869625569,
+      "final_eval_loss": 1.1320527791976929,
+      "final_eval_accuracy": 0.788919671624899,
+      "best_eval_loss": 0.949095606803894
+    }
+  ],
+  "generated": "2026-03-03T13:15:10.748869"
+}
