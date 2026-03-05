@@ -80,7 +80,7 @@ ai_routing:
     
     gemini:
       enabled: true
-      model: "gemini-2.0-flash"
+      model: "gemini-2.5-flash"  # Upgraded 2026-03-05 (was gemini-2.0-flash)
       api_key_env: "GOOGLE_API_KEY"
       priority: 2
     

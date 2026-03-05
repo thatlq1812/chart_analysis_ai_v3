@@ -2,6 +2,7 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 4.4.0 | 2026-03-05 | That Le | Stage 3 benchmark with Gemini Vision GT, model upgrade to gemini-2.5-flash |
 | 4.2.0 | 2026-03-02 | That Le | Training postmortem, cloud GPU strategy, project cleanup (~1.5GB freed) |
 | 4.1.0 | 2026-03-02 | That Le | Stage 5 enhanced (validation, MD/CSV), SLM eval framework, 294 tests passing |
 | 4.0.0 | 2026-03-02 | That Le | Full pipeline implemented, thesis complete (39 pages), 232 tests passing |
@@ -28,10 +29,10 @@
 | **Core Philosophy** | Hybrid Intelligence (Neural + Symbolic) |
 | **Primary Method** | YOLO Detection + Geometric Mapping + Multi-Provider AI Reasoning |
 | **Language** | Python 3.11+ |
-| **Current Phase** | Phase 3 - SLM Training (Model Selection) |
+| **Current Phase** | Phase 3 - SLM Training + Stage 3 Benchmark |
 | **Target** | Academic Thesis + Research Paper |
 | **Source Files** | 48 Python modules (~19,800 LOC) |
-| **Tests** | 294 tests passing (23 test files) |
+| **Tests** | 300 tests passing (23 test files) |
 | **OCR Cache** | 46,910 entries (~600MB) |
 | **Instructions** | 13 files (3-tier hierarchy) |
 | **Stage3 Dataset** | 32,364 charts extracted (100%, 0% error) |
@@ -91,8 +92,18 @@ A **hybrid AI system** for extracting structured data from chart images with aca
 | Provider | Model | Purpose | Status |
 | --- | --- | --- | --- |
 | Local SLM | Qwen-2.5-1.5B + LoRA | Primary reasoning (offline) | TRAINING |
-| Gemini | gemini-2.0-flash | Cloud fallback (high accuracy) | ACTIVE |
+| Gemini | gemini-2.5-flash | Cloud fallback (high accuracy) | ACTIVE |
 | OpenAI | gpt-4o-mini | Secondary fallback | OPTIONAL |
+
+**Available Gemini Models (2026-03-05):**
+
+| Tier | Models | Output Tokens |
+| --- | --- | --- |
+| Stable | gemini-2.5-flash (DEFAULT), gemini-2.5-pro, gemini-2.5-flash-lite | 65,536 |
+| Preview | gemini-3.1-pro-preview, gemini-3-flash-preview, gemini-3.1-flash-lite-preview | 65,536 |
+| Legacy | gemini-2.0-flash, gemini-2.0-flash-lite | 8,192 |
+
+Full reference: `docs/guides/GEMINI_MODELS_API.md`
 
 All providers accessed through **AIRouter** with fallback chains. See `module-reasoning.instructions.md`.
 
@@ -628,11 +639,46 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 
 | Phase | Focus | Timeline |
 | --- | --- | --- |
+| **Stage 3 Benchmark** | Evaluate geometric extraction accuracy on 50 real charts | DONE (v4.4.0) |
 | **Model Selection** | Micro-train 2-4 models on mini-dataset, compare, pick winner | CURRENT |
 | **SLM Full Train** | Full 3-epoch QLoRA on 228k samples (cloud GPU) | After selection |
 | **Serving Layer** | FastAPI + Celery + Docker | After SLM |
 | **Benchmarking** | Model comparison experiment (thesis contrib.) | Final |
 | **Optimization** | Performance tuning, demo interface (Streamlit) | Final |
+
+### 5.7. Stage 3 Benchmark Evaluation [COMPLETED - 2026-03-05]
+
+50-chart stratified benchmark with Gemini Vision ground truth:
+
+| Metric | Score | Verdict |
+| --- | --- | --- |
+| Classification Accuracy | **92.0%** | PASS (>= 90%) |
+| Element Count (+-25%) | **16.0%** | FAIL (< 70%) |
+| Element Type Accuracy | **86.0%** | - |
+| Axis Range (+-15%) | **0.0%** | FAIL (< 60%) |
+| Mean Confidence | 46.7% | - |
+
+**By Chart Type:**
+
+| Type | N | Classification | Element Accuracy | Mean Error |
+| --- | --- | --- | --- | --- |
+| bar | 10 | 90% | **50%** | 36.3% |
+| pie | 10 | 100% | **30%** | 113.3% |
+| line | 10 | 80% | 0% | 105.0% |
+| scatter | 10 | 100% | 0% | 93.4% |
+| area | 3 | 100% | 0% | 88.9% |
+| histogram | 3 | 100% | 0% | 96.9% |
+| box | 2 | 100% | 0% | 100.0% |
+| heatmap | 2 | 50% | 0% | 100.0% |
+
+**Key Findings:**
+- Stage 3 classification (ResNet-18) is reliable: 92% on real-world charts
+- Element counting: only bar (50%) and pie (30%) above zero
+- Axis calibrator completely non-functional: 0/40 non-pie charts detected any axis
+- OCR pipeline produces no output (texts=[]) for all 50 charts
+- Benchmark infrastructure: `scripts/evaluation/benchmark/` (sampler, evaluator, gemini_annotate)
+- GT data: `data/benchmark/annotations/` (50 files, annotator=gemini_vision)
+- Reports: `data/benchmark/results/evaluation_report.md`
 
 **Model Selection Pipeline (Eval for Selection Strategy):**
 

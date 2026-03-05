@@ -392,11 +392,13 @@ class Stage3Extraction(BaseStage):
                 cal_confs.append(axis_info.x_calibration_confidence)
             axis_cal_conf = sum(cal_confs) / len(cal_confs) if cal_confs else 0.0
 
-        confidence = ExtractionConfidence(
-            classification_confidence=classification_conf,
-            ocr_mean_confidence=ocr_conf,
-            axis_calibration_confidence=axis_cal_conf,
-            element_detection_confidence=element_conf,
+        # [FIX] Use compute_overall() to populate overall_confidence
+        # Previously used direct constructor which left overall_confidence=0.0
+        confidence = ExtractionConfidence.compute_overall(
+            classification=classification_conf,
+            ocr=ocr_conf,
+            axis=axis_cal_conf,
+            elements=element_conf,
         )
 
         return RawMetadata(

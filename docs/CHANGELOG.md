@@ -6,6 +6,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.4.0] - 2026-03-05
+
+### Stage 3 Benchmark: Gemini Vision Ground Truth + Model Upgrade
+
+#### Added
+- **`scripts/evaluation/benchmark/gemini_annotate.py`** - Gemini Vision annotation pipeline
+  - Sends chart images to Gemini 2.5 Flash for structured GT extraction
+  - Retry logic (3 attempts) on JSON parse failure
+  - JSON cleanup: trailing commas, string-to-int element_count (`"~400"` -> 400)
+  - 120s HTTP timeout to prevent indefinite hangs
+  - Resume support: skips already-annotated charts without `--force`
+  - Rate limiting: 1s between requests
+- **`docs/guides/GEMINI_MODELS_API.md`** - Full Gemini API model reference
+  - All available models (stable, preview, alias, image gen, Gemma, specialized)
+  - Token limits, model selection guide for chart analysis tasks
+  - SDK usage examples, configuration reference
+- **`data/benchmark/results/gemini_raw/*.json`** (50 files) - Raw Gemini Vision responses
+- **`data/benchmark/annotations/*.json`** (50 files) - Overwritten with Gemini Vision GT
+  - All 50 charts: element_count, axis ranges, title, texts, data_values
+  - `annotator: "gemini_vision"`, model: gemini-2.5-flash
+
+#### Changed
+- **`.env`** - Gemini model upgraded: `gemini-2.0-flash` -> `gemini-2.5-flash`
+  - Model options comment updated with latest stable/preview models
+  - Note: gemini-2.5-flash supports 65,536 output tokens (8x more than 2.0)
+- **`config/models.yaml`** - Gemini provider model updated to `gemini-2.5-flash`
+- **`scripts/evaluation/benchmark/evaluate.py`** - Handle string element_count from Gemini
+  - Parse `"~400"` / `"~3500"` to integers via regex
+- **`scripts/evaluation/benchmark/gemini_annotate.py`** - Robustness improvements
+  - `max_output_tokens`: 4096 -> 16384 (prevent truncated JSON responses)
+  - Added retry with exponential backoff on parse failure
+  - Added JSON cleanup in `_parse_response()`: trailing commas, string element counts
+
+#### Benchmark Results (50 charts, Gemini Vision GT)
+
+| Metric | Previous (QA GT) | Current (Gemini GT) |
+| --- | --- | --- |
+| Classification Accuracy | 92.0% | 92.0% |
+| Element Count (+-25%) | 12.1% | 16.0% |
+| Element Type Accuracy | 90.9% | 86.0% |
+| Axis Range (+-15%) | 0.0% | 0.0% |
+
+**Key finding**: Stage 3 axis calibrator is completely non-functional on real-world charts
+(0/40 non-pie charts detected any axis). Bar charts best at element counting (50% accuracy).
+
+---
+
 ## [4.3.0] - 2026-03-02
 
 ### Micro-Training Pipeline for Model Selection

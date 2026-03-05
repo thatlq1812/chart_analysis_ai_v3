@@ -7,6 +7,7 @@ Tests detection of discrete chart elements: bars, markers, pie slices.
 import numpy as np
 import pytest
 import cv2
+import math
 from typing import List
 
 from core_engine.stages.s3_extraction.element_detector import (
@@ -260,4 +261,144 @@ class TestElementDetectorEdgeCases:
         
         # Should have analyzed at least 2 contours
         assert result.contours_analyzed >= 2
+
+
+class TestPieSliceDetection:
+    """Tests for pie slice detection correctness.
+
+    These tests verify that _detect_pie_slices_by_kmeans() is actually called
+    and produces non-empty results for synthetic pie chart images.
+    This addresses a critical bug where the method existed but was never wired
+    into the detect() flow, leaving slices=[] for all pie charts.
+    """
+
+    @staticmethod
+    def _make_synthetic_pie(size: int = 400, n_slices: int = 4) -> np.ndarray:
+        """Create a synthetic pie chart image with distinct colored slices.
+
+        Args:
+            size: Image width and height in pixels.
+            n_slices: Number of equal-angle slices to draw.
+
+        Returns:
+            BGR color image with a synthetic pie chart.
+        """
+        img = np.ones((size, size, 3), dtype=np.uint8) * 255  # white background
+        center = (size // 2, size // 2)
+        radius = size // 2 - 30
+
+        # Distinct colors (BGR) for up to 8 slices
+        colors = [
+            (0, 0, 200),    # Red
+            (0, 180, 0),    # Green
+            (200, 0, 0),    # Blue
+            (0, 180, 220),  # Yellow-ish
+            (180, 0, 180),  # Purple
+            (0, 128, 255),  # Orange
+            (128, 128, 0),  # Teal
+            (50, 50, 200),  # Dark red
+        ]
+
+        angle_step = 360 // n_slices
+        for i in range(n_slices):
+            start_angle = i * angle_step
+            end_angle = (i + 1) * angle_step
+            color = colors[i % len(colors)]
+            cv2.ellipse(
+                img,
+                center,
+                (radius, radius),
+                0,
+                start_angle,
+                end_angle,
+                color,
+                thickness=-1,
+            )
+
+        return img
+
+    @pytest.fixture
+    def detector(self) -> ElementDetector:
+        """Create detector with pie detection enabled."""
+        return ElementDetector(ElementDetectorConfig(detect_pie_slices=True))
+
+    def test_pie_slices_detected_not_empty(self, detector: ElementDetector) -> None:
+        """Pie chart images must produce len(slices) > 0, not just hasattr."""
+        pie_image = self._make_synthetic_pie(n_slices=4)
+        binary = cv2.cvtColor(pie_image, cv2.COLOR_BGR2GRAY)
+        _, binary = cv2.threshold(binary, 250, 255, cv2.THRESH_BINARY_INV)
+
+        result = detector.detect(binary, color_image=pie_image, chart_type="pie")
+
+        assert len(result.slices) > 0, (
+            "Pie slice detection returned 0 slices. "
+            "Verify _detect_pie_slices_by_kmeans() is wired into detect()."
+        )
+
+    def test_pie_slices_have_valid_geometry(self, detector: ElementDetector) -> None:
+        """Each detected PieSlice must have non-zero radius and angle span."""
+        pie_image = self._make_synthetic_pie(n_slices=3)
+        binary = cv2.cvtColor(pie_image, cv2.COLOR_BGR2GRAY)
+        _, binary = cv2.threshold(binary, 250, 255, cv2.THRESH_BINARY_INV)
+
+        result = detector.detect(binary, color_image=pie_image, chart_type="pie")
+
+        for s in result.slices:
+            assert s.radius_outer > 0, "Slice radius_outer must be positive"
+            assert s.angle_end != s.angle_start, "Slice must have non-zero angle span"
+
+    def test_pie_slices_have_color(self, detector: ElementDetector) -> None:
+        """Each detected PieSlice should carry its dominant color."""
+        pie_image = self._make_synthetic_pie(n_slices=4)
+        binary = cv2.cvtColor(pie_image, cv2.COLOR_BGR2GRAY)
+        _, binary = cv2.threshold(binary, 250, 255, cv2.THRESH_BINARY_INV)
+
+        result = detector.detect(binary, color_image=pie_image, chart_type="pie")
+
+        for s in result.slices:
+            assert s.color is not None, "Slice must have a color"
+            # Color channels should not all be zero (that would be pure black)
+            assert s.color.r + s.color.g + s.color.b > 0
+
+    def test_pie_detection_skipped_for_bar_chart(
+        self, detector: ElementDetector
+    ) -> None:
+        """When chart_type='bar', pie slice detection should NOT run."""
+        pie_image = self._make_synthetic_pie(n_slices=4)
+        binary = cv2.cvtColor(pie_image, cv2.COLOR_BGR2GRAY)
+        _, binary = cv2.threshold(binary, 250, 255, cv2.THRESH_BINARY_INV)
+
+        result = detector.detect(binary, color_image=pie_image, chart_type="bar")
+
+        assert len(result.slices) == 0, (
+            "Pie slices should not be detected when chart_type='bar'"
+        )
+
+    def test_pie_detection_disabled_by_config(self) -> None:
+        """When detect_pie_slices=False, slices must be empty."""
+        config = ElementDetectorConfig(detect_pie_slices=False)
+        detector = ElementDetector(config)
+
+        pie_image = self._make_synthetic_pie(n_slices=4)
+        binary = cv2.cvtColor(pie_image, cv2.COLOR_BGR2GRAY)
+        _, binary = cv2.threshold(binary, 250, 255, cv2.THRESH_BINARY_INV)
+
+        result = detector.detect(binary, color_image=pie_image, chart_type="pie")
+
+        assert len(result.slices) == 0
+
+    def test_multiple_slices_count(self, detector: ElementDetector) -> None:
+        """A 6-slice pie should produce at least 3 detected slices (conservative).
+
+        K-Means may merge similar-looking clusters, so we accept >= 50%.
+        """
+        pie_image = self._make_synthetic_pie(n_slices=6)
+        binary = cv2.cvtColor(pie_image, cv2.COLOR_BGR2GRAY)
+        _, binary = cv2.threshold(binary, 250, 255, cv2.THRESH_BINARY_INV)
+
+        result = detector.detect(binary, color_image=pie_image, chart_type="pie")
+
+        assert len(result.slices) >= 3, (
+            f"Expected >= 3 slices from 6-slice pie, got {len(result.slices)}"
+        )
 

@@ -654,11 +654,12 @@ class Skeletonizer:
         Returns:
             Stroke width map (2 * distance_map at skeleton pixels)
         """
-        stroke_width = np.zeros_like(distance_map)
+        stroke_width = np.zeros_like(distance_map, dtype=np.float64)
         
         # Stroke width = 2 * distance at skeleton
+        # [FIX] Cast to float64 to prevent overflow when distance_map is uint8
         mask = skeleton > 0
-        stroke_width[mask] = 2 * distance_map[mask]
+        stroke_width[mask] = 2.0 * distance_map[mask].astype(np.float64)
         
         return stroke_width
     

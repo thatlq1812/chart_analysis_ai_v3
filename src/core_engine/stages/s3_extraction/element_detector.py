@@ -181,7 +181,9 @@ class ElementDetector:
             method = self.config.bar_separation_method
             
             if method == BarSeparationMethod.HYBRID:
-                bars = self._detect_bars_hybrid(binary_image, color_image, chart_id)
+                # [FIX] Pass chart_type to enable K-Means path for stacked bars
+                # Previously chart_type was omitted, so K-Means stacked detection never triggered
+                bars = self._detect_bars_hybrid(binary_image, color_image, chart_id, chart_type=chart_type)
             elif method == BarSeparationMethod.WATERSHED:
                 bars = self._detect_bars_watershed(binary_image, color_image, chart_id)
             elif method == BarSeparationMethod.PROJECTION:
@@ -229,6 +231,22 @@ class ElementDetector:
         if self.config.detect_markers:
             hough_markers = self._detect_circles_hough(binary_image, color_image)
             markers.extend(hough_markers)
+        
+        # [FIX] Detect pie slices using K-Means color clustering
+        # Previously this was dead code -- _detect_pie_slices_by_kmeans() existed
+        # but was never called, leaving slices=[] for ALL pie charts.
+        if self.config.detect_pie_slices and color_image is not None:
+            # Only run pie detection for pie charts or unknown types
+            # (avoid false positives on bar/line charts)
+            if chart_type in ("pie", None, "unknown"):
+                slices = self._detect_pie_slices_by_kmeans(
+                    color_image, chart_id
+                )
+                if slices:
+                    self.logger.debug(
+                        f"Pie slice detection found {len(slices)} slices | "
+                        f"chart_id={chart_id}"
+                    )
         
         self.logger.info(
             f"Element detection complete | chart_id={chart_id} | "
