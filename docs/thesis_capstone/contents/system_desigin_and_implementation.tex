@@ -165,8 +165,9 @@ progression.
 A cascade of three classifiers determines chart type:
 
 \begin{enumerate}
-    \item \textbf{ResNet-18} \cite{he2016resnet}: CNN on $256 \times 256$ grayscale input,
-          8 classes, 94.14\% test accuracy, 6.90ms ONNX inference (CPU).
+    \item \textbf{EfficientNet-B0} \cite{tan2019efficientnet}: CNN on $224 \times 224$ RGB
+          input, 3 classes (bar, line, pie), 97.54\% test accuracy, 4.01\,M parameters.
+          Confidence threshold 0.70; images below threshold are labelled \texttt{unknown}.
     \item \textbf{ML Classifier}: Random Forest on structural features ($\sim$70\% accuracy).
     \item \textbf{Rule-based}: Heuristics (has bars? has slices?) as final fallback
           ($\sim$50\% accuracy).
@@ -326,7 +327,7 @@ Skeletonizer           & S3 & Agnostic  & Topology-preserving thinning \\
 Vectorizer (RDP)       & S3 & Agnostic  & Polyline simplification \\
 Element Detector       & S3 & Agnostic  & Watershed, Hough, contour analysis \\
 Geometric Mapper       & S3 & Agnostic  & Pixel-to-value calibration (numeric) \\
-ResNet-18 Classifier   & S3 & Agnostic  & Visual feature classification \\
+EfficientNet-B0 Classifier & S3 & Agnostic  & Visual feature classification (3-class, 97.54\%) \\
 \midrule
 OCR Engine             & S3 & \textbf{Config}    & Language set via \texttt{config/models.yaml} \\
 OCR Role Classifier    & S3 & \textbf{Keywords}  & English keyword lists, needs Vietnamese extension \\

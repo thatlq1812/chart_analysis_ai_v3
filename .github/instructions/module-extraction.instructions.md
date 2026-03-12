@@ -1,11 +1,12 @@
 ---
-applyTo: 'src/core_engine/stages/s3_extraction/**,models/weights/resnet18*,models/weights/chart_classifier*'
+applyTo: 'src/core_engine/stages/s3_extraction/**,models/weights/efficientnet_b0*,models/weights/chart_classifier*'
 ---
 
 # MODULE INSTRUCTIONS - Chart Extraction (Stage 3)
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 1.1.0 | 2026-03-12 | That Le | Classifier upgraded to EfficientNet-B0 3-class (97.54%), updated cascade and model details |
 | 1.0.0 | 2026-02-28 | That Le | OCR, classification, and geometric extraction pipeline |
 
 ---
@@ -34,7 +35,8 @@ Input:  Cropped chart image (from Stage 2)
   │    - Top-hat morphological transform                 │
   ├─────────────────────────────────────────────────────┤
   │ 2. Chart Classification (parallel to preprocessing)  │
-  │    ├─ resnet_classifier.py (283L) ← PRIMARY          │
+  │    ├─ resnet_classifier.py (283L) ← LEGACY (ResNet-18 8-class)  │
+  │    ├─ train_chart_classifier.py output → efficientnet_b0_3class_v1_best.pt [PRIMARY]  │
   │    ├─ classifier.py (406L) ← Rule-based fallback     │
   │    ├─ ml_classifier.py (195L) ← Random Forest        │
   │    └─ simple_classifier.py (988L) ← Feature extract  │
@@ -81,7 +83,7 @@ Output: RawMetadata (chart_type, texts, elements, axis_calibration)
 | `geometric_mapper.py` | 999 | `GeometricMapper` | `MapperConfig` | Coordinate calibration |
 | `skeletonizer.py` | 758 | `Skeletonizer` | `SkeletonConfig` | Line thinning |
 | `vectorizer.py` | 1,124 | `Vectorizer` | `VectorizeConfig` | Curve fitting |
-| `resnet_classifier.py` | 283 | `ResNet18Classifier` | - | Deep learning classifier |
+| `resnet_classifier.py` | 283 | `ResNet18Classifier` | - | Legacy 8-class DL classifier (use EfficientNet-B0 for new work) |
 | `classifier.py` | 406 | `ChartClassifier` | `ClassifierConfig` | Rule-based classifier |
 | `ml_classifier.py` | 195 | `MLChartClassifier` | - | Random Forest classifier |
 | `simple_classifier.py` | 988 | `SimpleChartClassifier` | `SimpleClassifierConfig` | Feature extraction |
@@ -94,36 +96,35 @@ Output: RawMetadata (chart_type, texts, elements, axis_calibration)
 ### 3.1. Classification Cascade
 
 ```
-Image → ResNet-18 (94.14% accuracy)
-           ↓ confidence < 0.7?
+Image → EfficientNet-B0 (97.54% accuracy, 3 classes: bar/line/pie)
+           ↓ confidence < 0.7 OR type = unknown?
          ML Classifier (Random Forest)
            ↓ confidence < 0.6?
          Rule-based Classifier (structural features)
 ```
 
-### 3.2. Supported Chart Types (8 classes)
+### 3.2. Supported Chart Types (3 production classes)
 
-| Class | ResNet Accuracy | Key Features |
+| Class | EfficientNet-B0 F1 | Key Features |
 | --- | --- | --- |
-| `bar` | 95.3% | Rectangular contours, parallel alignment |
-| `line` | 94.2% | Continuous curves, markers |
-| `pie` | 98.8% | Circular region, angular sectors |
-| `scatter` | 93.3% | Isolated markers, no connecting lines |
-| `area` | 90.5% | Filled curves, similar to line |
-| `histogram` | 91.2% | Adjacent bars, no gaps |
-| `heatmap` | 94.9% | Grid pattern, color gradient |
-| `box` | 89.8% | Box-whisker shapes |
+| `bar` | 97.4% | Rectangular contours, parallel alignment |
+| `line` | 97.2% | Continuous curves, markers |
+| `pie` | 93.5% | Circular region, angular sectors |
 
-### 3.3. ResNet-18 Model Details
+Note: 8-class support (scatter, area, histogram, heatmap, box) is handled by the rule-based
+fallback cascade and was part of the legacy ResNet-18 model (archived in `models/weights/resnet18_chart_classifier_v2_best.pt`).
+
+### 3.3. EfficientNet-B0 Model Details
 
 | Property | Value |
 | --- | --- |
-| Architecture | ResNet-18 (transfer learning) |
-| Input | 224x224, grayscale→3ch |
-| Training accuracy | 94.80% (val), 94.14% (test) |
-| Training time | 50m 22s |
-| Weights file | `resnet18_chart_classifier_v2_best.pt` |
-| ONNX export | `models/onnx/resnet18_chart_classifier.onnx` |
+| Architecture | EfficientNet-B0 (transfer learning, torchvision) |
+| Input | 224x224, RGB |
+| Training accuracy | 97.54% (val + test) |
+| Macro F1 | 94.63% |
+| Epochs | 21 (early stopping, patience=10) |
+| Weights file | `efficientnet_b0_3class_v1_best.pt` |
+| Training script | `scripts/training/train_chart_classifier.py` |
 
 ---
 
@@ -214,12 +215,12 @@ Pixel coordinates → Data coordinates
 1. **Orchestrator** (`Stage3Extraction`) calls submodules in sequence -- individual submodules don't call each other
 2. **Each submodule** has its own Pydantic config -- no shared mutable state
 3. **OCR caching** is mandatory for development speed (processing 1,000+ images)
-4. **Classification cascade** must be followed -- ResNet-18 first, fallback only on low confidence
+4. **Classification cascade** must be followed -- EfficientNet-B0 first, fallback only on low confidence or unknown type
 5. **Never** hardcode image dimensions -- use relative coordinates
 6. **All coordinates** in output are normalized [0, 1] unless explicitly labeled as pixel
 7. **Color extraction** returns RGB tuples, converted to hex only at display time
 8. **Preprocessing** is applied before EVERY submodule that processes images
-9. **GPU** used for: ResNet-18 inference, PaddleOCR. CPU for: all OpenCV operations
+9. **GPU** used for: EfficientNet-B0 inference, PaddleOCR. CPU for: all OpenCV operations
 10. **Element detection** runs AFTER classification (chart type determines which detector to use)
 
 ---

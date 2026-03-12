@@ -150,15 +150,21 @@ class ChartAnalysisPipeline:
 
         # Stage 2: Detection
         if cfg.pipeline.stages.detection.enabled:
+            adapter_name = OmegaConf.select(
+                cfg, "pipeline.stages.detection.adapter", default="yolov8"
+            )
             s2_config = DetectionConfig(
                 model_path=cfg.yolo.path,
                 device=cfg.yolo.device,
                 conf_threshold=cfg.detection.confidence_threshold,
                 iou_threshold=cfg.yolo.iou_threshold,
                 imgsz=cfg.yolo.input_size,
+                adapter=adapter_name,
             )
             stages.append(Stage2Detection(s2_config))
-            logger.info("Stage 2 (Detection) initialized")
+            logger.info(
+                f"Stage 2 (Detection) initialized | adapter={adapter_name}"
+            )
 
         # Stage 3: Extraction
         if cfg.pipeline.stages.extraction.enabled:

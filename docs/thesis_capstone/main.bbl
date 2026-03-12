@@ -172,15 +172,13 @@
   models},
 \newblock \bibinfo{journal}{International Conference on Learning
   Representations}  (\bibinfo{year}{2022}).
-%Type = Article
-\bibitem[{Selvaraju et~al.(2020)Selvaraju, Cogswell, Das, Vedantam, Parikh, and
-  Batra}]{selvaraju2017gradcam}
-\bibinfo{author}{R.~R. Selvaraju}, \bibinfo{author}{M.~Cogswell},
-  \bibinfo{author}{A.~Das}, \bibinfo{author}{R.~Vedantam},
-  \bibinfo{author}{D.~Parikh}, \bibinfo{author}{D.~Batra},
-\newblock \bibinfo{title}{{Grad-CAM}: Visual explanations from deep networks
-  via gradient-based localization},
-\newblock \bibinfo{journal}{International Journal of Computer Vision}
-  \bibinfo{volume}{128} (\bibinfo{year}{2020}) \bibinfo{pages}{336--359}.
+%Type = Inproceedings
+\bibitem[{Tan and Le(2019)}]{tan2019efficientnet}
+\bibinfo{author}{M.~Tan}, \bibinfo{author}{Q.~V. Le},
+\newblock \bibinfo{title}{{EfficientNet}: Rethinking model scaling for
+  convolutional neural networks},
+\newblock in: \bibinfo{booktitle}{Proceedings of the 36th International
+  Conference on Machine Learning}, \bibinfo{year}{2019}, pp.
+  \bibinfo{pages}{6105--6114}.
 
 \end{thebibliography}

@@ -1,18 +1,21 @@
 # Makefile for Geo-SLM Chart Analysis
 # Common development commands
 
-.PHONY: help install install-dev test lint format clean run-demo
+.PHONY: help install install-dev install-api test lint format clean run-demo serve serve-dev
 
 # Default target
 help:
 	@echo "Available commands:"
 	@echo "  make install      Install production dependencies"
 	@echo "  make install-dev  Install development dependencies"
+	@echo "  make install-api  Install API serving dependencies"
 	@echo "  make test         Run tests"
 	@echo "  make lint         Run linting checks"
 	@echo "  make format       Format code"
 	@echo "  make clean        Clean build artifacts"
 	@echo "  make run-demo     Run Streamlit demo"
+	@echo "  make serve        Start API server (production mode)"
+	@echo "  make serve-dev    Start API server with hot-reload (dev mode)"
 
 # Installation
 install:
@@ -23,6 +26,16 @@ install-dev:
 
 install-all:
 	pip install -e ".[all]"
+
+install-api:
+	pip install -e ".[api]"
+
+# API Server
+serve:
+	uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers 2
+
+serve-dev:
+	uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
 
 # Testing
 test:

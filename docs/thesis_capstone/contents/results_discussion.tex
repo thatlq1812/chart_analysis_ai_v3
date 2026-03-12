@@ -24,35 +24,61 @@ The detector achieves 93.5\% mAP@0.5, exceeding the target of 85\%. The single-c
 strategy simplifies training and avoids category confusion at the detection stage,
 delegating type classification to a dedicated model.
 
-\subsubsection{Stage 2b: Chart Classification (ResNet-18)}
+\subsubsection{Stage 2b: Chart Type Classification (Ablation Study)}
+\label{sec:results_classifier}
 
-The ResNet-18 classifier was trained on 32,445 classified chart images (8 types) and
-exported to ONNX format (42.64~MB). \Cref{tab:resnet} summarizes classification results.
+An ablation study was conducted comparing two backbone architectures (EfficientNet-B0
+and ResNet-18) and two class-scope configurations. Starting from an 8-class baseline
+that included a heterogeneous \texttt{others} catch-all, the scope was narrowed to
+the three primary chart types targeted by the pipeline: bar, line, and pie.
+
+\Cref{tab:classifier_ablation} summarises the four experimental runs. All models used
+the same training protocol: two-phase training (frozen backbone warm-up for 5 epochs,
+then full fine-tune), cosine learning rate schedule, weighted cross-entropy with label
+smoothing ($\alpha=0.1$), and early stopping with patience~10.
 
 \begin{table}[htbp]
 \centering
-\caption{ResNet-18 chart classification results.}
-\label{tab:resnet}
-\input{figures/tables/tab_resnet_results}
+\caption{Chart classifier ablation: backbone, resolution, and class scope.}
+\label{tab:classifier_ablation}
+\input{figures/tables/tab_classifier_ablation}
 \end{table}
 
-\Cref{fig:resnet_class} shows per-class accuracy. All types exceed 89\% accuracy except
-area charts (90.5\% on full test set, 50\% on a small 2-sample integration test). The
-area/line confusion is expected due to visual similarity (area charts are filled line
-charts) and the smallest class size (412 charts, 1.3\% of corpus).
+The selected production model is EfficientNet-B0 trained on $224 \times 224$ RGB
+input (3-class scope), achieving 97.54\% test accuracy and 94.63\% macro F1 after
+early convergence at epoch~21. \Cref{tab:classifier_final} presents the per-class
+precision, recall, and F1 breakdown for this model.
 
-\begin{figure}[htbp]
+\begin{table}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{figures/fig_resnet_per_class_accuracy.pdf}
-\caption{ResNet-18 per-class classification accuracy across 8 chart types.}
-\label{fig:resnet_class}
-\end{figure}
+\caption{EfficientNet-B0 3-class per-class evaluation (test set, $n=1{,}952$).}
+\label{tab:classifier_final}
+\input{figures/tables/tab_classifier_final}
+\end{table}
 
-Grad-CAM \cite{selvaraju2017gradcam} visualizations confirm that ResNet-18 focuses on
-chart-specific visual features: vertical bar regions for bar charts, continuous line
-trajectories for line charts, point clusters for scatter plots, and circular regions
-for pie charts. This validates that the model learns meaningful chart structure rather
-than background artifacts.
+Key findings from the ablation:
+
+\begin{itemize}
+    \item \textbf{Resolution matters more than architecture.} Increasing the input
+    crop from 160\,px to 224\,px raised accuracy from 84.64\% to 95--97\%
+    regardless of backbone choice.
+
+    \item \textbf{Class scope is the primary driver.} Removing the heterogeneous
+    \texttt{others} category (which grouped area, box, heatmap, histogram, scatter,
+    and table charts) eliminated the dominant source of inter-class confusion.
+
+    \item \textbf{EfficientNet-B0 vs.\ ResNet-18.} At identical configuration,
+    EfficientNet-B0 surpasses ResNet-18 by +1.59 percentage points in accuracy and
+    +2.01 percentage points in macro F1, while using 66\% fewer parameters
+    (4.01\,M vs.\ 11.7\,M). EfficientNet-B0 is therefore adopted as the production
+    backbone.
+
+    \item \textbf{Pie chart recall.} Despite only 668 training samples, the final
+    model achieves 98.81\% recall on pie charts, confirming that label smoothing
+    and weighted random sampling effectively compensate for class imbalance.
+    The lower precision (79.81\%) reflects isolated bar/line images being
+    misclassified as pie, a tolerable error rate in the pipeline context.
+\end{itemize}
 
 \subsubsection{Stage 3: Structural Extraction}
 

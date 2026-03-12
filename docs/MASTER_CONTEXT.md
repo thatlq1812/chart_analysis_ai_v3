@@ -2,6 +2,7 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 5.0.0 | 2026-03-12 | That Le | EfficientNet-B0 3-class classifier (97.54%), unified training script, Stage 2 adapter architecture |
 | 4.4.0 | 2026-03-05 | That Le | Stage 3 benchmark with Gemini Vision GT, model upgrade to gemini-2.5-flash |
 | 4.2.0 | 2026-03-02 | That Le | Training postmortem, cloud GPU strategy, project cleanup (~1.5GB freed) |
 | 4.1.0 | 2026-03-02 | That Le | Stage 5 enhanced (validation, MD/CSV), SLM eval framework, 294 tests passing |
@@ -28,8 +29,8 @@
 | **Project Type** | AI Research / Thesis Project |
 | **Core Philosophy** | Hybrid Intelligence (Neural + Symbolic) |
 | **Primary Method** | YOLO Detection + Geometric Mapping + Multi-Provider AI Reasoning |
-| **Language** | Python 3.11+ |
-| **Current Phase** | Phase 3 - SLM Training + Stage 3 Benchmark |
+| **Language** | Python 3.12.10 |
+| **Current Phase** | Phase 3 - Classifier Complete, Pipeline Integration |
 | **Target** | Academic Thesis + Research Paper |
 | **Source Files** | 48 Python modules (~19,800 LOC) |
 | **Tests** | 300 tests passing (23 test files) |
@@ -296,8 +297,8 @@ chart_analysis_ai_v3/
 |   +-- archive/                # Historical docs
 |
 +-- models/
-|   +-- weights/                # Trained model files (YOLO, ResNet)
-|   +-- onnx/                   # ONNX exports (ResNet-18: 42.64 MB)
+|   +-- weights/                # Trained model files (YOLO, EfficientNet-B0)
+|   +-- onnx/                   # ONNX exports
 |   +-- slm/                    # SLM LoRA adapters
 |   +-- evaluation/             # Model evaluation results
 |   +-- explainability/         # Grad-CAM visualizations
@@ -359,14 +360,15 @@ chart_analysis_ai_v3/
 |   +-- fixtures/               # Test data
 |
 +-- scripts/                    # Utility scripts (4 subdirs, 19 files)
-|   +-- training/               # SLM/YOLO/ResNet training, data prep
+|   +-- training/               # SLM/YOLO/classifier training, data prep
+|   |   +-- train_chart_classifier.py  # Unified (3class/4class/8class, 7 backbones)
 |   |   +-- train_slm_lora.py
-|   |   +-- train_resnet18_v2.py
 |   |   +-- train_yolo_chart_detector.py
 |   |   +-- prepare_slm_training_v3.py
 |   |   +-- extract_mini_dataset.py
 |   |   +-- run_model_selection.py
 |   |   +-- setup_cloud_training.sh
+|   |   +-- archive/            # train_resnet18_v2.py, train_resnet_4class.py
 |   +-- evaluation/             # Model evaluation, ONNX export
 |   |   +-- evaluate_slm.py
 |   |   +-- evaluate_resnet18.py
@@ -478,36 +480,30 @@ Stage 5 Input (RefinedChartData)
 | OCR Engine | [DONE] | PaddleOCR with role classification |
 | Geometric Mapper | [DONE] | Axis calibration, pixel-to-value |
 | Element Detector | [DONE] | Bars, markers, pie slices |
-| Classifier | [UPGRADED] | ResNet-18 v2 (94.14% accuracy, 32,445 images) |
+| Classifier | [UPGRADED] | EfficientNet-B0 v1 (97.54% accuracy, 3-class, 15,608 images) |
 | Unit Tests | [DONE] | 7 test modules, 129 test cases |
 | Documentation | [DONE] | STAGE3_EXTRACTION.md created |
 | Academic Dataset Test | [DONE] | 15/15 images processed successfully |
-| Production Integration | [DONE] | ResNet18Classifier wrapper ready |
+| Production Integration | [DONE] | ClassifierModel (EfficientNet-B0) via train_chart_classifier.py |
 
-**ResNet-18 Classifier (v2 - 2026-01-31):**
+**EfficientNet-B0 Classifier (v1 - 2026-03-12):**
 
 | Metric | Value |
 | --- | --- |
-| Test Accuracy | **94.14%** |
-| Best Validation Accuracy | 94.80% |
-| Training Time | 50:22 (RTX 3060) |
-| Inference Speed (ONNX) | 6.90ms mean (CPU), 144.9 img/sec |
-| Model Size | 42.64 MB (ONNX format) |
-| Classes | 8 types (area, bar, box, heatmap, histogram, line, pie, scatter) |
-| Dataset | 32,445 preprocessed images (256x256 grayscale) |
+| Test Accuracy | **97.54%** |
+| Best Validation Accuracy | 97.54% |
+| Training Time | ~21 epochs (early stopped, RTX 3060) |
+| Classes | 3 types (bar, line, pie) |
+| Dataset | 15,608 images (224x224 RGB) |
+| Confidence Threshold | 0.70 (below = unknown) |
 
-**Per-class Accuracy (v2):**
+**Per-class Metrics (EfficientNet-B0 v1):**
 
-| Class | Accuracy | Samples |
-| --- | --- | --- |
-| pie | 98.8% | 2,421 |
-| bar | 95.3% | 9,086 |
-| heatmap | 94.9% | 680 |
-| line | 94.2% | 10,036 |
-| scatter | 93.3% | 2,802 |
-| histogram | 91.2% | 2,060 |
-| area | 90.5% | 493 |
-| box | 89.8% | 4,867 |
+| Class | Precision | Recall | F1 |
+| --- | --- | --- | --- |
+| bar | 96.8% | 98.1% | 97.4% |
+| line | 97.9% | 96.6% | 97.2% |
+| pie | 93.9% | 93.2% | 93.5% |
 
 **Stage 3 Full Pipeline Test Results (2026-01-29):**
 
@@ -616,7 +612,7 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 | Chapter 2: Literature Review | [DONE] | 21 references, related work comparison table |
 | Chapter 3: Methodology | [DONE] | Hybrid pipeline design, geometric analysis, AI routing |
 | Chapter 4: System Design | [DONE] | Architecture, data flow, AI Router, database schema |
-| Chapter 5: Results | [DONE] | ResNet-18, YOLO, dataset stats, feature quality analysis |
+| Chapter 5: Results | [DONE] | EfficientNet-B0 ablation, YOLO, dataset stats, feature quality analysis |
 | Chapter 6: Project Management | [DONE] | Timeline, Git statistics, resource allocation |
 | Chapter 7: Conclusion | [DONE] | Summary, contributions, future work, Vietnamese research |
 | Visual assets | [DONE] | 7 PDF figures + 12 LaTeX tables + 6 TikZ diagrams |
@@ -630,9 +626,9 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 | --- | --- | --- |
 | Content chapters (.tex) | 7 | `docs/thesis_capstone/contents/` |
 | PDF figures | 7 | `docs/thesis_capstone/figures/` |
-| LaTeX tables | 12 | `docs/thesis_capstone/figures/tables/` |
+| LaTeX tables | 14 | `docs/thesis_capstone/figures/tables/` |
 | TikZ diagrams | 6 | `docs/thesis_capstone/figures/tikz/` |
-| Bibliography entries | 21 | `docs/thesis_capstone/refs.bib` |
+| Bibliography entries | 22 | `docs/thesis_capstone/refs.bib` |
 | Total pages | 39 | `docs/thesis_capstone/main.pdf` |
 
 ### 5.6. Upcoming Phases
@@ -672,7 +668,7 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 | heatmap | 2 | 50% | 0% | 100.0% |
 
 **Key Findings:**
-- Stage 3 classification (ResNet-18) is reliable: 92% on real-world charts
+- Stage 3 classification (EfficientNet-B0 3-class) is reliable: 97.54% val accuracy
 - Element counting: only bar (50%) and pie (30%) above zero
 - Axis calibrator completely non-functional: 0/40 non-pie charts detected any axis
 - OCR pipeline produces no output (texts=[]) for all 50 charts

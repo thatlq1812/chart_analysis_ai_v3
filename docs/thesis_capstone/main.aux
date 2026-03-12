@@ -124,7 +124,7 @@
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.3}Vectorizer}{17}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.4}OCR Engine}{17}{}\protected@file@percent }
 \citation{fischler1981ransac}
-\citation{he2016resnet}
+\citation{tan2019efficientnet}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.5}Element Detector}{18}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.6}Geometric Mapper}{18}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.7}Classifier}{18}{}\protected@file@percent }
@@ -151,57 +151,58 @@
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.3}Stage 3: Bilingual Role Classification}{22}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.4}Stage 4: Vietnamese Prompt Architecture}{22}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.5}Data Factory: Vietnamese QA Generation}{23}{}\protected@file@percent }
-\citation{selvaraju2017gradcam}
 \@writefile{toc}{\contentsline {section}{\numberline {6}Results and Discussion}{24}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Results and Analysis}{24}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.1}Stage 2: Chart Detection (YOLOv8m)}{24}{}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces YOLOv8m chart detection results.}}{24}{}\protected@file@percent }
 \newlabel{tab:yolo}{{11}{24}{Stage 2: Chart Detection (YOLOv8m)}{table.11}{}}
 \newlabel{tab:yolo@cref}{{[table][11][]11}{[1][24][]24}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.2}Stage 2b: Chart Classification (ResNet-18)}{24}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces ResNet-18 chart classification results.}}{24}{}\protected@file@percent }
-\newlabel{tab:resnet}{{12}{24}{Stage 2b: Chart Classification (ResNet-18)}{table.12}{}}
-\newlabel{tab:resnet@cref}{{[table][12][]12}{[1][24][]24}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces ResNet-18 per-class classification accuracy across 8 chart types.}}{25}{}\protected@file@percent }
-\newlabel{fig:resnet_class}{{8}{25}{Stage 2b: Chart Classification (ResNet-18)}{figure.8}{}}
-\newlabel{fig:resnet_class@cref}{{[figure][8][]8}{[1][24][]25}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.2}Stage 2b: Chart Type Classification (Ablation Study)}{24}{}\protected@file@percent }
+\newlabel{sec:results_classifier}{{6.1.2}{24}{Stage 2b: Chart Type Classification (Ablation Study)}{subsubsection.6.1.2}{}}
+\newlabel{sec:results_classifier@cref}{{[subsubsection][2][6,1]6.1.2}{[1][24][]24}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Chart classifier ablation: backbone, resolution, and class scope.}}{24}{}\protected@file@percent }
+\newlabel{tab:classifier_ablation}{{12}{24}{Stage 2b: Chart Type Classification (Ablation Study)}{table.12}{}}
+\newlabel{tab:classifier_ablation@cref}{{[table][12][]12}{[1][24][]24}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces EfficientNet-B0 3-class per-class evaluation (test set, $n=1{,}952$).}}{25}{}\protected@file@percent }
+\newlabel{tab:classifier_final}{{13}{25}{Stage 2b: Chart Type Classification (Ablation Study)}{table.13}{}}
+\newlabel{tab:classifier_final@cref}{{[table][13][]13}{[1][24][]25}{}{}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.3}Stage 3: Structural Extraction}{25}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces Stage~3 feature quality by chart type.}}{25}{}\protected@file@percent }
-\newlabel{tab:s3_quality}{{13}{25}{Stage 3: Structural Extraction}{table.13}{}}
-\newlabel{tab:s3_quality@cref}{{[table][13][]13}{[1][25][]25}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Feature extraction quality by chart type: axis information coverage (left axis) and mean OCR confidence (right axis).}}{26}{}\protected@file@percent }
-\newlabel{fig:feature_quality}{{9}{26}{Stage 3: Structural Extraction}{figure.9}{}}
-\newlabel{fig:feature_quality@cref}{{[figure][9][]9}{[1][25][]26}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces Stage~3 feature quality by chart type.}}{25}{}\protected@file@percent }
+\newlabel{tab:s3_quality}{{14}{25}{Stage 3: Structural Extraction}{table.14}{}}
+\newlabel{tab:s3_quality@cref}{{[table][14][]14}{[1][25][]25}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Feature extraction quality by chart type: axis information coverage (left axis) and mean OCR confidence (right axis).}}{26}{}\protected@file@percent }
+\newlabel{fig:feature_quality}{{8}{26}{Stage 3: Structural Extraction}{figure.8}{}}
+\newlabel{fig:feature_quality@cref}{{[figure][8][]8}{[1][25][]26}{}{}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.4}End-to-End Pipeline Performance}{26}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Estimated processing time per chart by pipeline stage. OCR in Stage~3 accounts for approximately 65\% of total time.}}{26}{}\protected@file@percent }
-\newlabel{fig:processing_time}{{10}{26}{End-to-End Pipeline Performance}{figure.10}{}}
-\newlabel{fig:processing_time@cref}{{[figure][10][]10}{[1][25][]26}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Estimated processing time per chart by pipeline stage. OCR in Stage~3 accounts for approximately 65\% of total time.}}{26}{}\protected@file@percent }
+\newlabel{fig:processing_time}{{9}{26}{End-to-End Pipeline Performance}{figure.9}{}}
+\newlabel{fig:processing_time@cref}{{[figure][9][]9}{[1][25][]26}{}{}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.5}Stage 4: SLM Hyperparameter Ablation Study}{26}{}\protected@file@percent }
 \newlabel{sec:slm_ablation}{{6.1.5}{26}{Stage 4: SLM Hyperparameter Ablation Study}{subsubsection.6.1.5}{}}
 \newlabel{sec:slm_ablation@cref}{{[subsubsection][5][6,1]6.1.5}{[1][26][]26}{}{}{}}
 \@writefile{toc}{\contentsline {paragraph}{Token length analysis.}{27}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces Token length distribution of training conversations (228{,}494 samples, Llama-3.2-1B tokenizer). Mean = 224, median = 223, P99 = 412, max = 1{,}576.}}{27}{}\protected@file@percent }
-\newlabel{tab:token_dist}{{14}{27}{Token length analysis.}{table.14}{}}
-\newlabel{tab:token_dist@cref}{{[table][14][]14}{[1][26][]27}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {15}{\ignorespaces Token length distribution of training conversations (228{,}494 samples, Llama-3.2-1B tokenizer). Mean = 224, median = 223, P99 = 412, max = 1{,}576.}}{27}{}\protected@file@percent }
+\newlabel{tab:token_dist}{{15}{27}{Token length analysis.}{table.15}{}}
+\newlabel{tab:token_dist@cref}{{[table][15][]15}{[1][26][]27}{}{}{}}
 \@writefile{toc}{\contentsline {paragraph}{Micro dataset.}{27}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Ablation configurations.}{27}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {15}{\ignorespaces Ablation study configurations. Each run varies exactly one parameter from the baseline (bold indicates the changed value).}}{27}{}\protected@file@percent }
-\newlabel{tab:ablation_configs}{{15}{27}{Ablation configurations.}{table.15}{}}
-\newlabel{tab:ablation_configs@cref}{{[table][15][]15}{[1][27][]27}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {16}{\ignorespaces Ablation study configurations. Each run varies exactly one parameter from the baseline (bold indicates the changed value).}}{27}{}\protected@file@percent }
+\newlabel{tab:ablation_configs}{{16}{27}{Ablation configurations.}{table.16}{}}
+\newlabel{tab:ablation_configs@cref}{{[table][16][]16}{[1][27][]27}{}{}{}}
 \@writefile{toc}{\contentsline {paragraph}{Results.}{27}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {16}{\ignorespaces Ablation study results (Llama-3.2-1B, 800 samples, 10 epochs). Bold indicates best value per column.}}{27}{}\protected@file@percent }
-\newlabel{tab:ablation_results}{{16}{27}{Results.}{table.16}{}}
-\newlabel{tab:ablation_results@cref}{{[table][16][]16}{[1][27][]27}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {17}{\ignorespaces Ablation study results (Llama-3.2-1B, 800 samples, 10 epochs). Bold indicates best value per column.}}{27}{}\protected@file@percent }
+\newlabel{tab:ablation_results}{{17}{27}{Results.}{table.17}{}}
+\newlabel{tab:ablation_results@cref}{{[table][17][]17}{[1][27][]27}{}{}{}}
 \@writefile{toc}{\contentsline {paragraph}{Analysis.}{27}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {17}{\ignorespaces Overfitting analysis: train--eval loss gap by configuration.}}{28}{}\protected@file@percent }
-\newlabel{tab:ablation_overfit}{{17}{28}{Analysis.}{table.17}{}}
-\newlabel{tab:ablation_overfit@cref}{{[table][17][]17}{[1][28][]28}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {18}{\ignorespaces Overfitting analysis: train--eval loss gap by configuration.}}{28}{}\protected@file@percent }
+\newlabel{tab:ablation_overfit}{{18}{28}{Analysis.}{table.18}{}}
+\newlabel{tab:ablation_overfit@cref}{{[table][18][]18}{[1][28][]28}{}{}{}}
 \@writefile{toc}{\contentsline {paragraph}{Pipeline validation.}{28}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Recommended configuration.}{28}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.6}Code Quality}{28}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {18}{\ignorespaces Test suite results by component.}}{28}{}\protected@file@percent }
-\newlabel{tab:tests}{{18}{28}{Code Quality}{table.18}{}}
-\newlabel{tab:tests@cref}{{[table][18][]18}{[1][28][]28}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {19}{\ignorespaces Test suite results by component.}}{28}{}\protected@file@percent }
+\newlabel{tab:tests}{{19}{28}{Code Quality}{table.19}{}}
+\newlabel{tab:tests@cref}{{[table][19][]19}{[1][28][]28}{}{}{}}
 \citation{liu2023deplot}
 \citation{lee2023matcha}
 \citation{chen2022chartreader}
@@ -211,9 +212,9 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Discussion}{29}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.1}Hybrid Architecture Validates Core Hypothesis}{29}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.2}Comparison with Related Work}{29}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {19}{\ignorespaces Comparison with related chart understanding methods.}}{29}{}\protected@file@percent }
-\newlabel{tab:related_cmp}{{19}{29}{Comparison with Related Work}{table.19}{}}
-\newlabel{tab:related_cmp@cref}{{[table][19][]19}{[1][29][]29}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {20}{\ignorespaces Comparison with related chart understanding methods.}}{29}{}\protected@file@percent }
+\newlabel{tab:related_cmp}{{20}{29}{Comparison with Related Work}{table.20}{}}
+\newlabel{tab:related_cmp@cref}{{[table][20][]20}{[1][29][]29}{}{}{}}
 \citation{masry2022chartqa}
 \citation{methani2020plotqa}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.3}Modularity Enables Iterative Improvement}{30}{}\protected@file@percent }
@@ -223,9 +224,9 @@
 \@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion}{32}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Summary of Contributions}{32}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Achievement of Objectives}{32}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {20}{\ignorespaces Achievement of project objectives.}}{32}{}\protected@file@percent }
-\newlabel{tab:objectives}{{20}{32}{Achievement of Objectives}{table.20}{}}
-\newlabel{tab:objectives@cref}{{[table][20][]20}{[1][32][]32}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {21}{\ignorespaces Achievement of project objectives.}}{32}{}\protected@file@percent }
+\newlabel{tab:objectives}{{21}{32}{Achievement of Objectives}{table.21}{}}
+\newlabel{tab:objectives@cref}{{[table][21][]21}{[1][32][]32}{}{}{}}
 \citation{masry2022chartqa}
 \citation{methani2020plotqa}
 \citation{liu2023deplot}
@@ -253,5 +254,5 @@
 \bibcite{du2020paddleocr}{{17}{2020}{{Du et~al.}}{{Du, Chen, Li et~al.}}}
 \bibcite{jaided2020easyocr}{{18}{2020}{{JaidedAI}}{{}}}
 \bibcite{hu2022lora}{{19}{2022}{{Hu et~al.}}{{Hu, Shen, Wallis, Allen-Zhu, Li, Wang, Wang, and Chen}}}
-\bibcite{selvaraju2017gradcam}{{20}{2020}{{Selvaraju et~al.}}{{Selvaraju, Cogswell, Das, Vedantam, Parikh, and Batra}}}
+\bibcite{tan2019efficientnet}{{20}{2019}{{Tan and Le}}{{}}}
 \gdef \@abspage@last{41}

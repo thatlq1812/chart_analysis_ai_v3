@@ -6,6 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [5.0.0] - 2026-03-12
+
+### Classifier Upgrade: EfficientNet-B0 3-class + Stage 2 Adapter Architecture + Unified Training
+
+#### Added
+- **`scripts/training/train_chart_classifier.py`** (971 lines) - Unified classifier training script
+  - Replaces both `train_resnet18_v2.py` and `train_resnet_4class.py` (archived)
+  - Modes: `3class` (bar/line/pie), `4class` (bar/line/pie/others), `8class`
+  - `BACKBONE_REGISTRY`: resnet18/34/50, efficientnet_b0/b1, mobilenet_v3_small/large
+  - 2-phase training: frozen warmup (5 ep) + full fine-tune
+  - Early stopping (patience=10), `WeightedRandomSampler`, label smoothing=0.1
+  - `GradScaler("cuda")` + `autocast("cuda")` (fixed deprecated torch.cuda.amp API)
+  - CLI: `--config`, `--override KEY=VALUE`, `--dry-run`
+- **`config/README.md`** - Documents all 5 config files, merge order, backbone comparison table
+- **`scripts/training/archive/`** - Archived old scripts (train_resnet18_v2.py, train_resnet_4class.py)
+- **`docs/reports/classifier_ablation_study_v1.md`** - Full ablation report (3 runs, findings)
+- **`docs/thesis_capstone/figures/tables/tab_classifier_ablation.tex`** - Ablation LaTeX table
+- **`docs/thesis_capstone/figures/tables/tab_classifier_final.tex`** - Per-class metrics LaTeX table
+- Stage 2 adapter architecture: `registry.py`, `metrics.py`, YOLO/mock/v11 adapters, `PipelineBuilder`
+
+#### Changed
+- **`config/training.yaml`** - `classifier.mode=3class`, `backbone=efficientnet_b0`, `image_size=224`
+- **`config/models.yaml`** - Classifier updated to EfficientNet-B0, `conf_threshold=0.70`, `classes=[bar,line,pie]`
+- **`docs/thesis_capstone/contents/results_discussion.tex`** - Stage 2b section rewritten with ablation analysis
+- **`docs/thesis_capstone/contents/system_desigin_and_implementation.tex`** - ResNet-18 -> EfficientNet-B0
+- **`docs/thesis_capstone/refs.bib`** - Added `tan2019efficientnet` (22 entries total)
+
+#### Ablation Results
+
+| Run | Backbone | Classes | Image Size | Val Acc | Macro F1 | Epochs |
+| --- | --- | --- | --- | --- | --- | --- |
+| v3 | EfficientNet-B0 | 4 (w/ others) | 160px | 84.64% | 77.52% | 60 |
+| v1 | **EfficientNet-B0** | **3** | **224px** | **97.54%** | **94.63%** | **21** |
+| v1 | ResNet-18 | 3 | 224px | 95.95% | 92.62% | 25 |
+
+**Key finding**: Removing the `others` class and increasing resolution to 224px were the dominant factors.
+EfficientNet-B0 (97.54%) outperforms ResNet-18 (95.95%) by ~1.6pp with the same data.
+
+**Production model**: `models/weights/efficientnet_b0_3class_v1_best.pt`
+
+---
+
 ## [4.4.0] - 2026-03-05
 
 ### Stage 3 Benchmark: Gemini Vision Ground Truth + Model Upgrade

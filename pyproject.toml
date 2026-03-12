@@ -45,6 +45,9 @@ dependencies = [
     "pymupdf>=1.23",
     "python-docx>=1.0",
     
+    # Settings management (API config)
+    "pydantic-settings>=2.0",
+    
     # Utilities
     "tqdm>=4.66",
     "loguru>=0.7",
@@ -98,9 +101,17 @@ tracking = [
 
 api = [
     # API Server
-    "fastapi>=0.104",
-    "uvicorn>=0.24",
-    "python-multipart>=0.0.6",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "python-multipart>=0.0.9",
+    "aiofiles>=23.0",
+    # Task queue (async job processing)
+    "celery[redis]>=5.3",
+    "redis>=5.0",
+    # Async DB (SQLAlchemy for job persistence)
+    "sqlalchemy[asyncio]>=2.0",
+    "aiosqlite>=0.20",          # SQLite async driver (dev)
+    "alembic>=1.13",
 ]
 
 demo = [

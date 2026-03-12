@@ -12,21 +12,17 @@ yolo:
 
 classifier:
   # Chart type classification
-  # UPDATED: Now using ResNet-18 (94.66% accuracy vs 37.5% baseline)
-  model: "resnet18"  # resnet18, simple
-  path: "models/weights/resnet18_chart_classifier_best.pt"
-  onnx_path: "models/onnx/resnet18_chart_classifier.onnx"  # Optional ONNX version
+  # EfficientNet-B0 3-class | test_acc=97.54% | macro_f1=94.63% | trained 2026-03-12
+  # Ablation: beats ResNet-18 3-class (95.95% / 92.62%) by +1.59% acc, +2.01% F1
+  model: "efficientnet_b0"
+  path: "models/weights/efficientnet_b0_3class_v1_best.pt"
+  onnx_path: "models/onnx/efficientnet_b0_3class_v1.onnx"
   device: "auto"
-  confidence_threshold: 0.5
+  confidence_threshold: 0.70  # Below this → label as unknown (not bar/line/pie)
   classes:
-    - area
     - bar
-    - box
-    - heatmap
-    - histogram
     - line
     - pie
-    - scatter
 
 ocr:
   # OCR engine configuration

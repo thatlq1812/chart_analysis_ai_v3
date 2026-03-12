@@ -18,16 +18,50 @@ from .enums import ChartType, InsightType, TextRole, ElementType  # Single Sourc
 # ============================================================================
 
 class CleanImage(BaseModel):
-    """Single cleaned and normalized image from Stage 1."""
-    
+    """Single cleaned and normalized image from Stage 1.
+
+    Carries both the rasterized image and the rich context extracted from the
+    source document so that downstream stages (particularly Stage 4 Reasoning)
+    have the surrounding text available without re-parsing the original file.
+    """
+
     model_config = ConfigDict(frozen=True)
-    
+
+    # --- Core image fields ---
     image_path: Path = Field(..., description="Path to normalized image file")
     original_path: Path = Field(..., description="Path to source file")
     page_number: int = Field(default=1, ge=1, description="Page number in source")
     width: int = Field(..., gt=0, description="Image width in pixels")
     height: int = Field(..., gt=0, description="Image height in pixels")
     is_grayscale: bool = Field(default=False, description="Whether image is grayscale")
+
+    # --- Production context fields (Stage 1 v2.0) ---
+    source_format: str = Field(
+        default="unknown",
+        description="Source file format: pdf, docx, md, png, jpg, webp, etc.",
+    )
+    is_scanned: bool = Field(
+        default=False,
+        description="True if source page has no selectable text layer (scanned document)",
+    )
+    surrounding_text: Optional[str] = Field(
+        default=None,
+        description=(
+            "Text context from the source document surrounding the chart/figure location. "
+            "Used by Stage 4 Reasoning to ground LLM interpretation."
+        ),
+    )
+    figure_caption: Optional[str] = Field(
+        default=None,
+        description=(
+            "Caption text extracted from the source document "
+            "(e.g., 'Figure 1. Revenue trend 2020-2024')."
+        ),
+    )
+    document_title: Optional[str] = Field(
+        default=None,
+        description="Title of the source document (from metadata or first heading).",
+    )
 
 
 class Stage1Output(BaseModel):

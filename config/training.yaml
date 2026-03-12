@@ -140,3 +140,130 @@ slm_training:
     ocr_correction_rate: 0.80   # >80% OCR errors fixed
     inference_latency_s: 2.0    # <2s per chart
     vram_usage_gb: 4.0          # <4GB during inference
+
+# =============================================================================
+# Chart Classifier Training
+# =============================================================================
+# Unified config for all chart type classifier experiments.
+# Script: scripts/training/train_chart_classifier.py
+#
+# Quick mode switching:
+#   4-class thesis run (default):
+#     python scripts/training/train_chart_classifier.py
+#
+#   8-class research run:
+#     python scripts/training/train_chart_classifier.py \
+#       --override classifier.mode=8class
+#
+#   EfficientNet-B0 ablation:
+#     python scripts/training/train_chart_classifier.py \
+#       --override classifier.model.backbone=efficientnet_b0 \
+#       --override classifier.output.model_name=efficientnet_b0_3class_v1
+#
+#   Smoke-test (200 samples / class):
+#     python scripts/training/train_chart_classifier.py \
+#       --override classifier.data.max_samples_per_class=200 \
+#       --override classifier.training.epochs=5 \
+#       --dry-run
+
+classifier:
+
+  # ---------------------------------------------------------------------------
+  # Mode
+  # ---------------------------------------------------------------------------
+  # 3class (thesis scope): bar | line | pie
+  # 8class (research):     area | bar | box | heatmap | histogram | line | pie | scatter
+  mode: "3class"
+
+  # ---------------------------------------------------------------------------
+  # Class Definition
+  # ---------------------------------------------------------------------------
+  # Active when mode=3class.
+  # Only bar / line / pie are trained. All other folders are skipped.
+  classes_3class: ["bar", "line", "pie"]
+
+  remap_3class:
+    bar: bar
+    line: line
+    pie: pie
+    # All other raw folders (area, heatmap, scatter, etc.) are absent
+    # from this map and will be skipped by the dataset loader.
+
+  # Active when mode=8class.
+  # Only folders listed here are included; all other folders are skipped.
+  classes_8class: ["area", "bar", "box", "heatmap", "histogram", "line", "pie", "scatter"]
+
+  # ---------------------------------------------------------------------------
+  # Data
+  # ---------------------------------------------------------------------------
+  data:
+    classified_dir: "data/academic_dataset/classified_charts"
+    image_extensions: [".png", ".jpg", ".jpeg", ".webp"]
+
+    # Stratified split ratios (train / val / test) — must sum to 1.0
+    split_ratio: [0.80, 0.10, 0.10]
+
+    # null = use all; integer = cap per target class (useful for ablation)
+    max_samples_per_class: null
+
+    seed: 42
+
+  # ---------------------------------------------------------------------------
+  # Architecture
+  # ---------------------------------------------------------------------------
+  # Supported backbones (all from torchvision, ImageNet1K pretrained):
+  #   resnet18           11.7M params   fast    good accuracy   (default)
+  #   resnet34           21.8M params   medium  slightly better
+  #   resnet50           25.6M params   slow    best ResNet
+  #   efficientnet_b0     5.3M params   medium  best accuracy/size ratio
+  #   efficientnet_b1     7.8M params   medium  marginally better than b0
+  #   mobilenet_v3_small  2.5M params   fastest smallest  (edge deployment)
+  #   mobilenet_v3_large  5.5M params   fast    good for production
+  model:
+    backbone: efficientnet_b0
+    pretrained: true
+    dropout: 0.3
+    image_size: 224             # Same as ResNet-18 for fair ablation comparison
+
+  # ---------------------------------------------------------------------------
+  # Training Schedule
+  # ---------------------------------------------------------------------------
+  training:
+    epochs: 60
+    batch_size: 128             # RTX 3060 6GB + AMP + 160px => ~1.8GB VRAM, safe
+    num_workers: 8              # Ryzen 7 6800H = 8 physical cores
+    persistent_workers: true    # Keep workers alive between epochs (big speedup)
+    prefetch_factor: 4          # 32GB RAM -> prefetch more batches
+
+    freeze_backbone_epochs: 5   # Phase 1: only train head (faster convergence)
+    frozen_lr: 5.0e-3           # LR during frozen phase
+    learning_rate: 1.0e-3       # LR after backbone is unfrozen
+    warmup_epochs: 3            # Linear warmup at start of each phase
+    weight_decay: 1.0e-4
+    lr_scheduler: cosine        # cosine (recommended) | step | plateau
+
+    use_amp: true               # Mixed precision — requires CUDA
+    label_smoothing: 0.1        # Prevent overconfidence on majority class (others=58%)
+    log_interval_batches: 50
+    save_top_k: 3               # Keep top K checkpoints by val_acc
+    early_stopping_patience: 10 # Stop if val_acc does not improve for N epochs
+                                # Counted separately per phase (Phase 1 + Phase 2)
+                                # Set to 0 to disable
+
+  # ---------------------------------------------------------------------------
+  # Output
+  # ---------------------------------------------------------------------------
+  # model_name drives all output file names:
+  #   models/weights/{model_name}_best.pt
+  #   models/weights/{model_name}_results.json
+  output:
+    weights_dir: "models/weights"
+    model_name: "efficientnet_b0_3class_v1"
+
+  # ---------------------------------------------------------------------------
+  # Benchmark Targets (thesis acceptance criteria)
+  # ---------------------------------------------------------------------------
+  evaluation:
+    target_accuracy: 0.92
+    target_f1_macro: 0.90
+    target_f1_others: 0.85      # Not checked in 3-class mode

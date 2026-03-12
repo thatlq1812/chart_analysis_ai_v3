@@ -6,11 +6,16 @@ pipeline:
   version: "3.0.0"
   
   # Enable/disable stages
+  # Each stage supports an optional 'adapter' key for plugin selection.
+  # Set 'adapter: mock' for testing without GPU/model weights.
   stages:
     ingestion:
       enabled: true
     detection:
       enabled: true
+      # Adapter options: yolov8 | yolov11 | mock
+      # Default: yolov8 (auto-selected when adapter key is absent)
+      adapter: yolov8
     extraction:
       enabled: true
     reasoning:

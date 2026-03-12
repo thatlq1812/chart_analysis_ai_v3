@@ -6,6 +6,7 @@ applyTo: 'scripts/training/**,research/**,data/slm_training/**,models/slm/**'
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 1.3.0 | 2026-03-12 | That Le | Unified train_chart_classifier.py (3class/4class/8class, 7 backbones), archived old ResNet scripts |
 | 1.2.0 | 2026-03-02 | That Le | Updated file statuses (training.yaml exists, thesis complete) |
 | 1.1.0 | 2026-03-01 | That Le | Dataset v3 complete (268k samples, all 8 types, axis info) |
 | 1.0.0 | 2026-02-28 | That Le | SLM training framework design for chart analysis |
@@ -17,6 +18,9 @@ applyTo: 'scripts/training/**,research/**,data/slm_training/**,models/slm/**'
 **SLM Training Module** manages the full lifecycle of fine-tuning Small Language Models (Qwen-2.5, Llama-3.2) for chart analysis tasks. This is a core academic contribution of the thesis -- building a specialized, locally-runnable model that replaces cloud API dependency.
 
 **Key Files:**
+- `scripts/training/train_chart_classifier.py` - Unified classifier training (3class/4class/8class, 7 backbones) [PRIMARY]
+- `scripts/training/archive/train_resnet18_v2.py` - [ARCHIVED] replaced by train_chart_classifier.py
+- `scripts/training/archive/train_resnet_4class.py` - [ARCHIVED] replaced by train_chart_classifier.py
 - `scripts/prepare_slm_training_v3.py` - Data pipeline v3 (Stage3 features + QA -> training format) [PRIMARY]
 - `scripts/prepare_slm_training_data.py` - [DEPRECATED] replaced by v3 script; archived to `scripts/_archive/`
 - `scripts/train_slm_lora.py` - LoRA fine-tuning with PEFT

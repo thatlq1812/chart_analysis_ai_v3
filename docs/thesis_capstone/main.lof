@@ -5,6 +5,5 @@
 \contentsline {figure}{\numberline {5}{\ignorespaces Geo-SLM 5-layer system architecture. Each layer depends only on layers below it. The Core Engine is independent of the serving layer.}}{15}{}%
 \contentsline {figure}{\numberline {6}{\ignorespaces Stage~3 extraction pipeline: 7 submodules process the cropped chart image sequentially. Each submodule has an independent configuration and can be toggled on/off.}}{17}{}%
 \contentsline {figure}{\numberline {7}{\ignorespaces AI Router with Adapter Pattern and per-task fallback chains. Each provider implements the common \texttt {BaseAIAdapter} interface.}}{19}{}%
-\contentsline {figure}{\numberline {8}{\ignorespaces ResNet-18 per-class classification accuracy across 8 chart types.}}{25}{}%
-\contentsline {figure}{\numberline {9}{\ignorespaces Feature extraction quality by chart type: axis information coverage (left axis) and mean OCR confidence (right axis).}}{26}{}%
-\contentsline {figure}{\numberline {10}{\ignorespaces Estimated processing time per chart by pipeline stage. OCR in Stage~3 accounts for approximately 65\% of total time.}}{26}{}%
+\contentsline {figure}{\numberline {8}{\ignorespaces Feature extraction quality by chart type: axis information coverage (left axis) and mean OCR confidence (right axis).}}{26}{}%
+\contentsline {figure}{\numberline {9}{\ignorespaces Estimated processing time per chart by pipeline stage. OCR in Stage~3 accounts for approximately 65\% of total time.}}{26}{}%
