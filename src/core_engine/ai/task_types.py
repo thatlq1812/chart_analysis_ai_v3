@@ -28,3 +28,7 @@ class TaskType(str, Enum):
 
     DATA_VALIDATION = "data_validation"
     """Validate extracted data series against visual evidence."""
+
+    DATA_EXTRACTION = "data_extraction"
+    """Extract raw data table from chart image (Stage 3 use case).
+    Primary: paddlevl (PaddleOCR-VL microservice). Fallback: gemini vision."""

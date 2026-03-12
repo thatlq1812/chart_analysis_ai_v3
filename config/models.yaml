@@ -55,6 +55,24 @@ slm:
   fallback_to_rules: true
   timeout_seconds: 30
 
+vintern:
+  # Vintern-1B-v3.5 fine-tuned by XHoang04 team member — local chart QA model
+  # Used as local_slm alternative for DATA_EXTRACTION + QA tasks
+  path: "models/slm/vintern_finetuned"
+  device: "auto"
+  max_new_tokens: 1024
+  # Requires transformers==4.44.2 (same as main venv)
+  # Architecture: InternVL (vision encoder + language decoder)
+
+paddleocr_vl:
+  # PaddleOCR-VL — specialized chart data extraction model (Vision-Language)
+  # Runs as microservice (paddle_server.py, port 8001) due to transformers>=4.45 conflict
+  path: "models/paddleocr_vl"
+  server_url: "http://localhost:8001"
+  max_new_tokens: 512
+  # To start: python paddle_server.py
+  # Requires separate venv with transformers>=4.45
+
 # =============================================================================
 # AI Routing Configuration (NEW - v2.0.0)
 # =============================================================================
@@ -85,6 +103,13 @@ ai_routing:
       model: "gpt-4o-mini"
       api_key_env: "OPENAI_API_KEY"
       priority: 3
+
+    paddlevl:
+      enabled: true
+      server_url: "http://localhost:8001"  # paddle_server.py must be running
+      timeout: 300.0                        # PaddleOCR-VL can be slow (GPU first call)
+      max_new_tokens: 512
+      priority: 1                           # Preferred for DATA_EXTRACTION tasks
   
   # Task-specific fallback chains
   fallback_chains:
@@ -92,3 +117,4 @@ ai_routing:
     ocr_correction: ["local_slm", "gemini"]
     description_gen: ["local_slm", "gemini", "openai"]
     data_validation: ["gemini", "openai"]
+    data_extraction: ["paddlevl", "gemini"]

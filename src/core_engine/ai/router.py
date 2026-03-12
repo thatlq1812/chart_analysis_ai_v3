@@ -25,6 +25,7 @@ from .adapters.base import AIResponse, BaseAIAdapter
 from .adapters.gemini_adapter import GeminiAdapter
 from .adapters.local_slm_adapter import LocalSLMAdapter
 from .adapters.openai_adapter import OpenAIAdapter
+from .adapters.paddlevl_adapter import PaddleVLAdapter
 from .exceptions import (
     AIAuthenticationError,
     AIProviderError,
@@ -41,6 +42,9 @@ DEFAULT_FALLBACK_CHAINS: Dict[TaskType, List[str]] = {
     TaskType.OCR_CORRECTION: ["local_slm", "gemini"],
     TaskType.DESCRIPTION_GEN: ["local_slm", "gemini", "openai"],
     TaskType.DATA_VALIDATION: ["gemini", "openai"],
+    # DATA_EXTRACTION: PaddleVL microservice first (offline, fast for images),
+    # fall back to Gemini vision if the local server is not running.
+    TaskType.DATA_EXTRACTION: ["paddlevl", "gemini"],
 }
 
 # Local-only chains — NO cloud API fallback.
@@ -52,6 +56,8 @@ LOCAL_ONLY_CHAINS: Dict[TaskType, List[str]] = {
     TaskType.OCR_CORRECTION: ["local_slm"],
     TaskType.DESCRIPTION_GEN: ["local_slm"],
     TaskType.DATA_VALIDATION: ["local_slm"],
+    # DATA_EXTRACTION local-only: PaddleVL server must be running.
+    TaskType.DATA_EXTRACTION: ["paddlevl"],
 }
 
 
@@ -415,10 +421,13 @@ class AIRouter:
 
         Gemini and OpenAI adapters read API keys from env.
         LocalSLM is disabled by default (requires training).
+        PaddleVL is always registered; health_check() returns False if the
+        paddle_server is not running (graceful no-op fallback).
         """
         adapters: Dict[str, BaseAIAdapter] = {
             "gemini": GeminiAdapter(),
             "openai": OpenAIAdapter(),
             "local_slm": LocalSLMAdapter(enabled=False),
+            "paddlevl": PaddleVLAdapter(),
         }
         return adapters

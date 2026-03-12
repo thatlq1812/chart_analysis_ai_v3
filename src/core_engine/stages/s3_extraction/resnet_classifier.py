@@ -248,6 +248,169 @@ class ResNet18Classifier:
             return {cls: 0.0 for cls in self.class_names}
 
 
+# ============ EfficientNet Classifier ============
+
+class EfficientNetClassifier:
+    """
+    EfficientNet-B0 chart classifier.
+
+    Trained with train_chart_classifier.py (backbone=efficientnet_b0).
+    Weights saved as raw state_dict (torch.save(model.state_dict(), path)).
+    Default: 3-class (bar / line / pie), test_acc=97.54%, macro_F1=94.63%.
+
+    Usage:
+        clf = create_efficientnet_classifier()
+        chart_type, conf = clf.predict_with_confidence(image_bgr_or_path)
+    """
+
+    DEFAULT_CLASSES = ["bar", "line", "pie"]
+    IN_FEATURES = 1280  # EfficientNet-B0 penultimate layer
+
+    def __init__(
+        self,
+        model_path: Path,
+        class_names: Optional[list] = None,
+        device: str = "auto",
+        confidence_threshold: float = 0.65,
+    ) -> None:
+        self.model_path = Path(model_path)
+        self.class_names = class_names or self.DEFAULT_CLASSES
+        self.num_classes = len(self.class_names)
+        self.confidence_threshold = confidence_threshold
+
+        if device == "auto":
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda")
+            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                self.device = torch.device("mps")
+            else:
+                self.device = torch.device("cpu")
+        else:
+            self.device = torch.device(device)
+
+        self.transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+
+        self._load_model()
+        logger.info(
+            f"EfficientNetClassifier loaded | classes={self.class_names} | "
+            f"device={self.device} | path={self.model_path.name}"
+        )
+
+    def _load_model(self) -> None:
+        if not self.model_path.exists():
+            raise FileNotFoundError(f"EfficientNet weights not found: {self.model_path}")
+
+        # Build architecture matching training script
+        base = models.efficientnet_b0(weights=None)
+        base.classifier = nn.Sequential(
+            nn.Dropout(p=0.2, inplace=True),
+            nn.Linear(self.IN_FEATURES, self.num_classes),
+        )
+
+        state = torch.load(self.model_path, map_location=self.device, weights_only=True)
+        # Training script (ClassifierModel) wraps backbone under self.net → prefix "net."
+        # Strip the prefix when present so weights map to the bare EfficientNet-B0.
+        if isinstance(state, dict) and "model_state_dict" in state:
+            state = state["model_state_dict"]
+        if isinstance(state, dict) and any(k.startswith("net.") for k in state):
+            state = {k[len("net."):]: v for k, v in state.items() if k.startswith("net.")}
+        base.load_state_dict(state)
+        base = base.to(self.device)
+        base.eval()
+        self.model = base
+
+    def predict_with_confidence(self, image_input) -> tuple:
+        """
+        Args:
+            image_input: Path / str to image file OR BGR numpy array.
+
+        Returns:
+            (chart_type: str, confidence: float)
+            Returns ('unknown', conf) when confidence < threshold.
+        """
+        try:
+            if isinstance(image_input, (Path, str)):
+                pil = Image.open(image_input).convert("RGB")
+            elif isinstance(image_input, np.ndarray):
+                import cv2 as _cv2
+                rgb = _cv2.cvtColor(image_input, _cv2.COLOR_BGR2RGB)
+                pil = Image.fromarray(rgb)
+            else:
+                raise ValueError(f"Unsupported input type: {type(image_input)}")
+
+            tensor = self.transform(pil).unsqueeze(0).to(self.device)
+            with torch.no_grad():
+                probs = torch.softmax(self.model(tensor), dim=1)
+                conf, idx = torch.max(probs, dim=1)
+                conf, idx = conf.item(), idx.item()
+
+            chart_type = self.class_names[idx]
+            if conf < self.confidence_threshold:
+                logger.warning(
+                    f"EfficientNet low conf | pred={chart_type} | "
+                    f"conf={conf:.3f} < {self.confidence_threshold}"
+                )
+                return "unknown", conf
+            return chart_type, conf
+
+        except Exception as exc:
+            logger.error(f"EfficientNet prediction failed | error={exc}")
+            return "unknown", 0.0
+
+    def predict(self, image_input) -> str:
+        chart_type, _ = self.predict_with_confidence(image_input)
+        return chart_type
+
+    def get_class_probabilities(self, image_input) -> dict:
+        if isinstance(image_input, (Path, str)):
+            pil = Image.open(image_input).convert("RGB")
+        elif isinstance(image_input, np.ndarray):
+            import cv2 as _cv2
+            pil = Image.fromarray(_cv2.cvtColor(image_input, _cv2.COLOR_BGR2RGB))
+        else:
+            raise ValueError(f"Unsupported input type: {type(image_input)}")
+        tensor = self.transform(pil).unsqueeze(0).to(self.device)
+        with torch.no_grad():
+            probs = torch.softmax(self.model(tensor), dim=1).cpu().numpy()[0]
+        return {cls: float(probs[i]) for i, cls in enumerate(self.class_names)}
+
+
+def create_efficientnet_classifier(
+    model_path: Optional[Path] = None,
+    class_names: Optional[list] = None,
+    device: str = "auto",
+    confidence_threshold: float = 0.65,
+) -> EfficientNetClassifier:
+    """
+    Factory for EfficientNetClassifier.
+
+    Auto-detects the best available weights when model_path is None:
+      1. efficientnet_b0_3class_v1_best.pt  (97.54% acc — production)
+      2. efficientnet_b0_4class_v3_best.pt  (4-class fallback)
+    """
+    if model_path is None:
+        root = Path(__file__).parent.parent.parent.parent.parent
+        weights_dir = root / "models" / "weights"
+        for candidate in (
+            "efficientnet_b0_3class_v1_best.pt",
+            "efficientnet_b0_4class_v3_best.pt",
+        ):
+            p = weights_dir / candidate
+            if p.exists():
+                model_path = p
+                break
+        if model_path is None:
+            raise FileNotFoundError(
+                f"No EfficientNet weights found in {weights_dir}. "
+                "Run scripts/training/train_chart_classifier.py first."
+            )
+    return EfficientNetClassifier(model_path, class_names, device, confidence_threshold)
+
+
 # ============ Factory Function ============
 
 def create_resnet_classifier(

@@ -22,7 +22,12 @@ from .ocr_engine import OCREngine, OCRConfig
 from .geometric_mapper import GeometricMapper, MapperConfig
 from .element_detector import ElementDetector, ElementDetectorConfig
 from .classifier import ChartClassifier, ClassifierConfig
-from .resnet_classifier import ResNet18Classifier, create_resnet_classifier
+from .resnet_classifier import (
+    ResNet18Classifier,
+    create_resnet_classifier,
+    EfficientNetClassifier,
+    create_efficientnet_classifier,
+)
 
 __all__ = [
     # Main Stage
@@ -43,7 +48,9 @@ __all__ = [
     "ElementDetectorConfig",
     "ChartClassifier",
     "ClassifierConfig",
-    # Deep Learning Classifier
+    # Deep Learning Classifiers
     "ResNet18Classifier",
     "create_resnet_classifier",
+    "EfficientNetClassifier",
+    "create_efficientnet_classifier",
 ]

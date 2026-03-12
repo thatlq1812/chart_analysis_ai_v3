@@ -48,7 +48,12 @@ from ...schemas.stage_outputs import (
 from ..base import BaseStage
 from .classifier import ChartClassifier, ClassifierConfig
 from .element_detector import ElementDetector, ElementDetectorConfig
-from .resnet_classifier import ResNet18Classifier, create_resnet_classifier
+from .resnet_classifier import (
+    ResNet18Classifier,
+    create_resnet_classifier,
+    EfficientNetClassifier,
+    create_efficientnet_classifier,
+)
 from .geometric_mapper import GeometricMapper, MapperConfig
 from .ml_classifier import MLChartClassifier
 from .ocr_engine import OCREngine, OCRConfig
@@ -102,22 +107,41 @@ class ExtractionConfig(BaseModel):
         default=True,
         description="Use ML-based classifier instead of rule-based"
     )
-    use_resnet_classifier: bool = Field(
+    use_efficientnet_classifier: bool = Field(
         default=True,
-        description="Use ResNet-18 classifier (94.14% accuracy) instead of Random Forest"
+        description=(
+            "Use EfficientNet-B0 classifier (97.54% acc, 3-class) as the primary chart type "
+            "classifier. Takes precedence over use_resnet_classifier when both are True."
+        ),
+    )
+    efficientnet_model_path: Optional[Path] = Field(
+        default=None,
+        description=(
+            "Path to EfficientNet-B0 weights. Defaults to "
+            "models/weights/efficientnet_b0_3class_v1_best.pt"
+        ),
+    )
+    efficientnet_classes: Optional[list] = Field(
+        default=None,
+        description="Class list for EfficientNet; None = ['bar','line','pie'] (3-class default).",
+    )
+    use_resnet_classifier: bool = Field(
+        default=False,
+        description="Use ResNet-18 classifier. Ignored when use_efficientnet_classifier=True."
     )
     resnet_model_path: Optional[Path] = Field(
         default=None,
         description="Path to ResNet-18 model weights (defaults to models/weights/resnet18_chart_classifier_v2_best.pt)"
     )
     resnet_confidence_threshold: float = Field(
-        default=0.65,
+        default=0.55,
         ge=0.0,
         le=1.0,
         description=(
-            "Minimum ResNet confidence to trust the prediction without rule-based cross-check. "
-            "When confidence < threshold, rule-based classifier is used as a tie-breaker "
-            "after element detection (step 10). Typical borderline: area vs line (0.56)."
+            "Minimum classifier confidence to trust the prediction without rule-based cross-check. "
+            "EfficientNet-B0 3-class: 0.55 (fewer classes, lower entropy). "
+            "ResNet-18 8-class: 0.65 (more classes, higher threshold needed). "
+            "When confidence < threshold, rule-based classifier acts as tie-breaker (step 10)."
         ),
     )
     
@@ -139,6 +163,25 @@ class ExtractionConfig(BaseModel):
     debug_output_dir: Optional[Path] = Field(
         default=None,
         description="Directory for debug images"
+    )
+
+    # PaddleOCR-VL (optional, requires paddle_server.py running on port 8001)
+    use_paddlevl: bool = Field(
+        default=False,
+        description=(
+            "Enable PaddleOCR-VL extraction via HTTP microservice. "
+            "Requires paddle_server.py to be running on paddlevl_server_url. "
+            "When True, extracted text is stored in RawMetadata.paddlevl_raw_text "
+            "and passed to Stage 4 as high-quality context."
+        ),
+    )
+    paddlevl_server_url: str = Field(
+        default="http://localhost:8001/extract",
+        description="URL of the PaddleOCR-VL extraction microservice (paddle_server.py)",
+    )
+    paddlevl_timeout: float = Field(
+        default=300.0,
+        description="HTTP timeout in seconds for PaddleOCR-VL extraction",
     )
 
 
@@ -196,9 +239,27 @@ class Stage3Extraction(BaseStage):
         
         self.classifier = ChartClassifier(config.classifier)
         
-        # ResNet-18 classifier (preferred, 94.14% accuracy)
+        # EfficientNet-B0 classifier (primary, 97.54% accuracy, 3-class)
+        self.efficientnet_classifier = None
+        if config.use_efficientnet_classifier:
+            try:
+                self.efficientnet_classifier = create_efficientnet_classifier(
+                    model_path=config.efficientnet_model_path,
+                    class_names=config.efficientnet_classes,
+                    confidence_threshold=config.resnet_confidence_threshold,
+                )
+                self.logger.info(
+                    f"EfficientNet-B0 classifier loaded | accuracy=97.54% | "
+                    f"path={self.efficientnet_classifier.model_path.name}"
+                )
+            except Exception as exc:
+                self.logger.warning(
+                    f"Failed to load EfficientNet classifier: {exc}. Falling back to ResNet-18."
+                )
+
+        # ResNet-18 classifier (fallback when EfficientNet not available)
         self.resnet_classifier = None
-        if config.use_resnet_classifier:
+        if config.use_resnet_classifier and self.efficientnet_classifier is None:
             try:
                 resnet_path = config.resnet_model_path
                 if resnet_path is None:
@@ -207,10 +268,10 @@ class Stage3Extraction(BaseStage):
                 self.logger.info(f"ResNet-18 classifier loaded | accuracy=94.14% | path={resnet_path.name}")
             except Exception as e:
                 self.logger.warning(f"Failed to load ResNet-18 classifier: {e}. Will try ML classifier.")
-        
+
         # ML classifier fallback (Random Forest)
         self.ml_classifier = None
-        if config.use_ml_classifier and self.resnet_classifier is None:
+        if config.use_ml_classifier and self.resnet_classifier is None and self.efficientnet_classifier is None:
             try:
                 self.ml_classifier = MLChartClassifier()
                 self.logger.info("ML classifier (Random Forest) loaded as fallback")
@@ -218,6 +279,55 @@ class Stage3Extraction(BaseStage):
                 self.logger.warning(f"Failed to load ML classifier: {e}. Using rule-based.")
         
         self.logger.info("Stage3Extraction initialized")
+
+    # -------------------------------------------------------------------------
+    # PaddleOCR-VL helper
+    # -------------------------------------------------------------------------
+
+    def _call_paddlevl(self, image_bgr: np.ndarray, chart_id: str) -> Optional[str]:
+        """
+        Send chart image to paddle_server and return extracted table text.
+
+        Returns None silently if server is not running or any error occurs
+        (Stage 3 continues with heuristic CV results as fallback).
+
+        Args:
+            image_bgr: BGR image array from OpenCV
+            chart_id: For logging context
+
+        Returns:
+            Extracted text string, or None on failure
+        """
+        try:
+            import io
+            import httpx
+            from PIL import Image as PILImage
+
+            # BGR -> RGB -> PNG bytes
+            rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+            pil_img = PILImage.fromarray(rgb)
+            buf = io.BytesIO()
+            pil_img.save(buf, format="PNG")
+            buf.seek(0)
+
+            resp = httpx.post(
+                self.config.paddlevl_server_url,
+                files={"image": (f"{chart_id}.png", buf, "image/png")},
+                timeout=self.config.paddlevl_timeout,
+            )
+            resp.raise_for_status()
+            result = resp.json().get("extracted_data", "") or ""
+
+            self.logger.info(
+                f"PaddleVL extraction ok | chart_id={chart_id} | chars={len(result)}"
+            )
+            return result if result else None
+
+        except Exception as exc:
+            self.logger.warning(
+                f"PaddleVL extraction skipped | chart_id={chart_id} | error={exc}"
+            )
+            return None
     
     def process(self, input_data: Stage2Output) -> Stage3Output:
         """
@@ -373,9 +483,10 @@ class Stage3Extraction(BaseStage):
 
         # Calculate confidence
         classification_conf = 0.0
-        if self.resnet_classifier is not None and chart_type != ChartType.UNKNOWN:
+        active_clf = self.efficientnet_classifier or self.resnet_classifier
+        if active_clf is not None and chart_type != ChartType.UNKNOWN:
             try:
-                _, classification_conf = self.resnet_classifier.predict_with_confidence(image_bgr)
+                _, classification_conf = active_clf.predict_with_confidence(image_bgr)
             except Exception:
                 classification_conf = 0.9
 
@@ -650,6 +761,11 @@ class Stage3Extraction(BaseStage):
             axis_info=axis_info,
             confidence=confidence,
             warnings=warnings,
+            paddlevl_raw_text=(
+                self._call_paddlevl(image_bgr, chart_id)
+                if self.config.use_paddlevl
+                else None
+            ),
         )
     
     def _convert_elements(
@@ -733,9 +849,10 @@ class Stage3Extraction(BaseStage):
         Classify chart type using best available classifier.
 
         Priority order:
-        1. ResNet-18 (94.14% accuracy) -- returns (ChartType, confidence)
-        2. Random Forest ML classifier
-        3. ChartType.UNKNOWN with confidence=0.0 (rule-based handles in step 10)
+        1. EfficientNet-B0 (97.54% accuracy, 3-class) -- preferred
+        2. ResNet-18 (94.14% accuracy, 8-class) -- fallback
+        3. Random Forest ML classifier
+        4. ChartType.UNKNOWN with confidence=0.0 (rule-based handles in step 10)
 
         Args:
             image_bgr: BGR image array
@@ -746,7 +863,20 @@ class Stage3Extraction(BaseStage):
             When confidence < config.resnet_confidence_threshold, Step 10 will
             cross-check with the rule-based classifier using extracted geometry.
         """
-        # Try ResNet-18 first (best accuracy)
+        # --- EfficientNet-B0 (primary, 97.54% acc) ---
+        if self.efficientnet_classifier is not None:
+            try:
+                chart_type_str, confidence = self.efficientnet_classifier.predict_with_confidence(image_bgr)
+                chart_type = ChartType(chart_type_str)
+                self.logger.debug(
+                    f"EfficientNet classification | chart_id={chart_id} | "
+                    f"type={chart_type.value} | confidence={confidence:.2f}"
+                )
+                return chart_type, confidence
+            except Exception as exc:
+                self.logger.warning(f"EfficientNet classification failed: {exc}. Trying ResNet-18.")
+
+        # --- ResNet-18 (fallback, 94.14% acc) ---
         if self.resnet_classifier is not None:
             try:
                 chart_type_str, confidence = self.resnet_classifier.predict_with_confidence(image_bgr)

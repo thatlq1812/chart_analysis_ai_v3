@@ -232,6 +232,14 @@ class RawMetadata(BaseModel):
         default_factory=list,
         description="Extraction warnings (low confidence, missing data, etc.)"
     )
+    paddlevl_raw_text: Optional[str] = Field(
+        default=None,
+        description=(
+            "Raw structured text extracted by PaddleOCR-VL (Stage 3 optional). "
+            "Contains data table text when paddle_server is running. "
+            "Passed to Stage 4 as high-quality extraction context."
+        ),
+    )
 
 
 class Stage3Output(BaseModel):

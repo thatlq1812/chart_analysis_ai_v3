@@ -32,8 +32,9 @@ class TestTaskType:
         with pytest.raises(ValueError):
             TaskType("nonexistent_task")
 
-    def test_four_task_types_defined(self) -> None:
-        assert len(TaskType) == 4
+    def test_task_type_count(self) -> None:
+        # OCR_CORRECTION, VALUE_MAPPING, CHART_REASONING, DESCRIPTION, DATA_EXTRACTION
+        assert len(TaskType) == 5
 
     def test_str_subclass(self) -> None:
         # TaskType(str, Enum) can be used as plain str
