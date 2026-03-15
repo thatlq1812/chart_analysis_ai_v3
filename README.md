@@ -265,11 +265,11 @@ black src/ tests/
 | Layer | Technology | Purpose |
 | --- | --- | --- |
 | Detection | Ultralytics YOLO v8/v11 | Chart localization |
-| Classification | ResNet-18 (custom) | Chart type classification |
-| OCR | PaddleOCR | Text extraction |
-| Image Processing | OpenCV, scikit-image | Preprocessing, skeletonization |
-| Geometric | NumPy, SciPy | Pixel-to-value calculation |
+| Classification | EfficientNet-B0 (97.54%) | Chart type classification (bar/line/pie) |
+| VLM Extraction | DePlot / MatCha / PaddleOCR-VL | Chart-to-table derendering |
+| Image Processing | OpenCV, Pillow | Preprocessing |
 | AI Reasoning | Qwen-2.5 / Gemini / OpenAI | Multi-provider via AIRouter |
+| Microservice | FastAPI (paddle_server.py) | PaddleOCR-VL isolation (port 8001) |
 | Validation | Pydantic v2 | Schema enforcement |
 | Config | OmegaConf | Hierarchical ML config |
 | Training | PyTorch, PEFT, trl | LoRA fine-tuning |

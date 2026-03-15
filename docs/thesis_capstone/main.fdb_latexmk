@@ -2,17 +2,17 @@
 ["bibtex main"] 0 "main.aux" "main.bbl" "main" 0 -1
   "./elsarticle-num-names.bst" 1772345394 28896 7a30bf729a4503bf3d6be1e1e9480509 ""
   "./refs.bib" 1773296417 7262 93abc922a4b569d6e161e4be0618bc2b ""
-  "main.aux" 1773607802 20929 aa0848deb1ba1e1b22c6016612a118b7 "xelatex"
+  "main.aux" 1773607916 20929 aa0848deb1ba1e1b22c6016612a118b7 "xelatex"
   (generated)
   "main.bbl"
   "main.blg"
   (rewritten before read)
 ["xdvipdfmx"] 0 "main.xdv" "main.pdf" "main" 0 -1
-  "main.xdv" 1773607802 779940 0415efb2451681574547140651bf623d "xelatex"
+  "main.xdv" 1773607916 779940 419c8e60d202b23c3fe7a2a781df00eb "xelatex"
   (generated)
   "main.pdf"
   (rewritten before read)
-["xelatex"] 1773607800.58977 "d:/elix/chart_analysis_ai_v3/docs/thesis_capstone/main.tex" "main.xdv" "main" 1773607803.46765 2
+["xelatex"] 1773607914.37502 "d:/elix/chart_analysis_ai_v3/docs/thesis_capstone/main.tex" "main.xdv" "main" 1773607916.9894 2
   "C:/Program Files/MiKTeX/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1233951848 1004 54797486969f23fa377b128694d548df ""
   "C:/Program Files/MiKTeX/fonts/tfm/public/amsfonts/cmextra/cmex8.tfm" 1233951848 988 bdf658c3bfc2d96d3c8b02cfc1c94c20 ""
   "C:/Program Files/MiKTeX/fonts/tfm/public/amsfonts/symbols/msam10.tfm" 1233951854 916 f87d7c45f9c908e672703b83b72241a3 ""
@@ -183,12 +183,12 @@
   "figures/tikz/tikz_pipeline_architecture.tex" 1772380262 2193 e23316edbb29989316edb102b5898065 ""
   "figures/tikz/tikz_stage3_submodules.tex" 1773333821 2710 4a05681a04f990aea69c2c12caf422fa ""
   "fptlogo.png" 1772345394 23828 1f816994089de9ebcf1f5c39d85b751e ""
-  "main.aux" 1773607802 20929 aa0848deb1ba1e1b22c6016612a118b7 "xelatex"
+  "main.aux" 1773607916 20929 aa0848deb1ba1e1b22c6016612a118b7 "xelatex"
   "main.bbl" 1773607794 0 d41d8cd98f00b204e9800998ecf8427e "bibtex main"
-  "main.lof" 1773607802 1369 449f8a89478e86014fc5804a0f424294 "xelatex"
-  "main.lot" 1773607802 2556 935195e4276aa790974cedc9dc3d9d75 "xelatex"
+  "main.lof" 1773607916 1369 449f8a89478e86014fc5804a0f424294 "xelatex"
+  "main.lot" 1773607916 2556 935195e4276aa790974cedc9dc3d9d75 "xelatex"
   "main.tex" 1772716943 1593 d74bec6b5f7a5a89021a3eafe71459f1 ""
-  "main.toc" 1773607802 6068 c622904e0d8421a7b1a26db131917ef0 "xelatex"
+  "main.toc" 1773607916 6068 c622904e0d8421a7b1a26db131917ef0 "xelatex"
   (generated)
   "main.aux"
   "main.lof"
