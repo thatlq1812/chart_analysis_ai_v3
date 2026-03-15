@@ -2,10 +2,10 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 7.0.0 | 2026-03-15 | That Le | PaddleOCR-VL microservice, PaddleVLAdapter, Vintern model, full S1→S5 demo |
+| 6.0.0 | 2026-03-12 | That Le | Stage 3 VLM rewrite (DePlot/MatCha/Pix2Struct/SVLM), EfficientNet-B0 (97.54%), 299 tests |
 | 4.0.0 | 2026-03-02 | That Le | Full pipeline implemented, thesis complete (39 pages), 232 tests passing |
 | 3.3.0 | 2026-01-31 | That Le | Dataset v2 (32,445 images), ResNet-18 v2 (94.14% accuracy) |
-| 3.2.0 | 2026-01-26 | That Le | ResNet-18 classifier (94.66% accuracy) production-ready |
-| 3.1.0 | 2026-01-25 | That Le | Documentation restructured, Stage notebooks added |
 | 3.0.0 | 2026-01-19 | That Le | Chart Analysis AI V3 |
 
 ## Overview
@@ -15,8 +15,8 @@ A **hybrid AI system** for extracting structured data from chart images, combini
 | Component | Role | Technology |
 | --- | --- | --- |
 | **Computer Vision** | Chart detection and localization | YOLOv8/v11 |
-| **Geometric Analysis** | Precise value extraction | OpenCV + NumPy |
-| **AI Reasoning** | OCR correction and semantic reasoning | Multi-provider (Local SLM, Gemini, OpenAI) |
+| **VLM Extraction** | Chart-to-table derendering | DePlot / MatCha / PaddleOCR-VL (Vintern) |
+| **AI Reasoning** | Value mapping and semantic reasoning | Multi-provider (Local SLM, Gemini, OpenAI) |
 
 > **Core Philosophy**: Achieve higher accuracy than pure multimodal LLMs through hybrid neuro-symbolic approach, while maintaining local inference capability.
 
@@ -25,18 +25,19 @@ A **hybrid AI system** for extracting structured data from chart images, combini
 | Phase | Status | Description |
 | --- | --- | --- |
 | Phase 1: Foundation | [COMPLETED] | Dataset: 32,364 charts, 32,445 QA pairs |
-| Phase 2: Core Engine | [COMPLETED] | All 5 stages implemented, AI Router + Adapters wired |
+| Phase 2: Core Engine | [COMPLETED] | All 5 stages implemented, AI Router + 5 Adapters wired |
 | Phase 2b: Data Pipeline | [COMPLETED] | 268,799 SLM training samples (v3), 100% extraction |
-| Phase 3: SLM Training | [IN PROGRESS] | QLoRA fine-tuning on Qwen-2.5-1.5B |
-| Phase 4: Thesis | [COMPLETED] | 39-page LaTeX thesis, 0 compilation errors |
+| Phase 3: PaddleOCR-VL | [COMPLETED] | Vintern microservice + PaddleVLAdapter integrated |
+| Phase 4: SLM Training | [IN PROGRESS] | QLoRA fine-tuning on Llama-3.2-1B / Qwen-2.5-1.5B |
+| Phase 5: Thesis | [COMPLETED] | 39-page LaTeX thesis, 0 compilation errors |
 
 **Key Metrics:**
 
 | Metric | Value |
 | --- | --- |
-| Source Files | 47 Python modules (~18,900 LOC) |
-| Test Suite | 232 tests (21 test files) |
-| ResNet-18 Accuracy | 94.14% (8 chart classes) |
+| Source Files | 82 Python modules in src/ (68 core_engine) |
+| Test Suite | 299 tests (23 test files) |
+| EfficientNet-B0 Accuracy | 97.54% (3-class: bar/line/pie) |
 | YOLOv8m mAP@0.5 | 93.5% |
 | SLM Training Dataset | 268,799 samples (v3, all 8 types) |
 | Charts Extracted | 32,364 (100% success rate) |
@@ -76,12 +77,12 @@ pipeline = Pipeline()
 result = pipeline.run(Path("data/samples/chart.png"))
 
 # Or use individual stages
-from core_engine.stages.s3_extraction import Stage3Extraction
+from core_engine.stages.s3_extraction import Stage3Extraction, ExtractionConfig
 
-stage3 = Stage3Extraction()
+stage3 = Stage3Extraction(ExtractionConfig(extractor_backend="deplot"))
 raw_metadata = stage3.process_single_image(Path("data/samples/chart.png"))
 print(f"Chart type: {raw_metadata.chart_type}")
-print(f"Elements: {len(raw_metadata.elements)}")
+print(f"Table data: {raw_metadata.pix2struct_table.records}")
 ```
 
 ## Pipeline Architecture
@@ -101,8 +102,8 @@ Input (PDF/Image)
     |
     v
 +-------------------+
-| Stage 3: Extract  | --> OCR, Element Detection, Geometric Analysis
-+-------------------+
+| Stage 3: Extract  | --> VLM Extraction (DePlot / MatCha / PaddleOCR-VL)
++-------------------+   + EfficientNet-B0 Chart Type Classification
     |
     v
 +-------------------+
@@ -118,14 +119,29 @@ Input (PDF/Image)
 Output (JSON + Report)
 ```
 
-**AI Routing Layer** (between Stage 4 and AI providers):
+**AI Routing Layer** (5 providers, task-based fallback chains):
 
 ```
 AIRouter.resolve(task_type)
     |
-    +---> LocalSLMAdapter  (Qwen-2.5 + LoRA, offline, PRIMARY)
-    +---> GeminiAdapter    (gemini-2.0-flash, cloud FALLBACK 1)
-    +---> OpenAIAdapter    (gpt-4o-mini, cloud FALLBACK 2)
+    +---> LocalSLMAdapter   (Qwen-2.5/Llama-3.2 + LoRA, offline, PRIMARY)
+    +---> PaddleVLAdapter   (PaddleOCR-VL microservice, port 8001)
+    +---> GeminiAdapter     (gemini-2.5-flash, cloud FALLBACK 1)
+    +---> OpenAIAdapter     (gpt-4o-mini, cloud FALLBACK 2)
+
+Fallback chains by task:
+    DATA_EXTRACTION  : paddlevl → gemini
+    CHART_REASONING  : local_slm → gemini → openai
+    OCR_CORRECTION   : local_slm → gemini
+    DESCRIPTION_GEN  : local_slm → gemini → openai
+    DATA_VALIDATION  : gemini → openai
+```
+
+**PaddleOCR-VL Microservice** (separate venv, port 8001):
+
+```bash
+# Start PaddleOCR-VL server (activate paddle venv first)
+python paddle_server.py
 ```
 
 ## Project Structure
@@ -138,7 +154,7 @@ chart_analysis_ai_v3/
 +-- data/
 |   +-- academic_dataset/       # 32,364 Arxiv chart images + metadata
 |   +-- slm_training_v3/       # 268,799 SLM training samples
-|   +-- cache/                  # OCR cache (46,910 entries)
+|   +-- cache/                  # OCR cache (46,910 entries, historical)
 |   +-- samples/                # Demo/test samples
 +-- docs/
 |   +-- MASTER_CONTEXT.md       # Project overview and status tracker
@@ -147,22 +163,29 @@ chart_analysis_ai_v3/
 |   +-- guides/                 # How-to guides (5 docs)
 |   +-- reports/                # Technical reports
 +-- models/
-|   +-- weights/                # YOLO, ResNet-18 weights
-|   +-- onnx/                   # ONNX exports (ResNet-18: 42.64 MB)
-|   +-- slm/                    # SLM LoRA adapters
+|   +-- weights/                # YOLO, EfficientNet-B0 weights
+|   +-- onnx/                   # ONNX exports (EfficientNet-B0: 16.7 MB)
+|   +-- slm/                    # SLM LoRA adapters + vintern_finetuned/
+|   +-- paddleocr_vl/           # PaddleOCR-VL model (Vintern-1B, ~8GB)
 +-- notebooks/                  # 12 Jupyter notebooks (00-04 + 01a-01f)
-+-- src/core_engine/            # Core AI engine (47 Python files)
-|   +-- pipeline.py             # Main orchestrator (all 5 stages wired)
-|   +-- schemas/                # Pydantic models (6 files)
-|   +-- stages/                 # Pipeline stages (s1-s5)
-|   +-- ai/                     # AI Router + Adapters (8 files)
-|   +-- validators/             # Output validation
-|   +-- data_factory/           # QA data generation
-+-- tests/                      # 232 tests (21 files)
-|   +-- test_s3_extraction/     # Stage 3 tests (8 files)
-|   +-- test_s4_reasoning/      # Stage 4 tests (3 files)
-|   +-- test_ai/                # AI routing tests (5 files)
-+-- scripts/                    # Utility scripts (18 files)
++-- src/
+|   +-- core_engine/            # Core AI engine (68 Python files)
+|   |   +-- pipeline.py         # Main orchestrator (all 5 stages wired)
+|   |   +-- schemas/            # Pydantic models (6 files)
+|   |   +-- stages/             # Pipeline stages (s1-s5)
+|   |   |   +-- s3_extraction/  # VLM extraction (DePlot/MatCha/Pix2Struct/SVLM)
+|   |   |   +-- s2_detection/   # YOLO + adapter pattern
+|   |   +-- ai/                 # AI Router + 5 Adapters (gemini/openai/local_slm/paddlevl)
+|   |   +-- validators/         # Output validation
+|   |   +-- data_factory/       # QA data generation
+|   +-- api/                    # FastAPI server (10 files)
+|   +-- training/               # Training utilities (run_manager, experiment_tracker)
++-- tests/                      # 299 tests (23 files)
++-- scripts/                    # Utility scripts
+|   +-- pipeline/run_demo_s1_s5.py  # Full S1→S5 demo (EfficientNet-B0 + AIRouter)
+|   +-- training/               # SLM/YOLO/classifier training, data prep
+|   +-- evaluation/             # Model evaluation, ONNX export
++-- paddle_server.py            # PaddleOCR-VL microservice (port 8001, separate venv)
 ```
 
 ## Notebooks
@@ -213,12 +236,19 @@ Build: `cd docs/thesis_capstone && latexmk -xelatex main.tex`
 ## Development
 
 ```bash
-# Run all tests (232 tests)
-.venv/Scripts/python.exe -m pytest tests/ -v
+# Run all tests (299 tests)
+.venv\Scripts\python.exe -m pytest tests/ -v
 
 # Run specific test suites
-.venv/Scripts/python.exe -m pytest tests/test_s3_extraction/ -v
-.venv/Scripts/python.exe -m pytest tests/test_ai/ -v
+.venv\Scripts\python.exe -m pytest tests/test_s3_extraction/ -v
+.venv\Scripts\python.exe -m pytest tests/test_ai/ -v
+
+# Full pipeline demo (S1 → S5)
+.venv\Scripts\python.exe scripts/pipeline/run_demo_s1_s5.py
+.venv\Scripts\python.exe scripts/pipeline/run_demo_s1_s5.py --no-llm
+
+# Start PaddleOCR-VL server (separate paddle venv required)
+python paddle_server.py
 
 # Linting
 ruff check src/

@@ -81,103 +81,91 @@ orientation-sensitive) with mosaic, scale, HSV adjustments, and translation.
 \label{sec:system_s3}
 % ============================================================
 
-Stage~3 is the most complex component ($\sim$5,400 lines across 7 submodules). Its core
-design principle is to treat charts as \textbf{collections of geometric entities} rather
-than pixel patterns. \Cref{fig:s3_submodules} shows the submodule pipeline.
+Stage~3 converts cropped chart images directly to structured data tables using
+Vision-Language Models (VLMs). The initial geometry-based design (morphological
+skeletonization, RDP vectorization, RANSAC axis calibration, PaddleOCR text extraction)
+was replaced following a formal benchmark evaluation on 50 real-world academic charts
+with Gemini Vision ground truth. The evaluation confirmed fundamental limitations:
+axis detection succeeded on 0 of 40 non-pie charts (0\%), and OCR produced empty
+output across all 50 charts, disqualifying the geometry approach for production use.
+
+The redesigned Stage~3 implements a \textbf{pluggable VLM extractor} with four
+selectable backends, as illustrated in \Cref{fig:s3_submodules}. The architecture
+separates classification (EfficientNet-B0 CNN) from extraction (VLM chart derendering),
+enabling systematic ablation studies across extraction backends.
 
 \begin{figure}[htbp]
 \centering
 \input{figures/tikz/tikz_stage3_submodules}
-\caption{Stage~3 extraction pipeline: 7 submodules process the cropped chart image
-    sequentially. Each submodule has an independent configuration and can be toggled on/off.}
+\caption{Stage~3 extraction pipeline: EfficientNet-B0 classifies chart type, then the
+    selected VLM backend converts the chart image to a structured data table.
+    Four backends are available for ablation experiments.}
 \label{fig:s3_submodules}
 \end{figure}
 
-\subsubsection{Preprocessor}
+\subsubsection{EfficientNet-B0 Classifier}
 
-The preprocessor converts chart images to optimized binary masks. A key technique is the
-\textbf{negative image transform}: $I_{\text{neg}} = 255 - I$. This inversion aligns
-chart strokes (thin, dark lines) with morphological operations that expect bright
-foreground, improving skeleton quality by approximately 30\%. Adaptive Gaussian
-thresholding ($T(x,y) = \mu_G(x,y) - C$, block size 11, $C=2$) handles non-uniform
-lighting in scanned documents.
+The classifier component is retained from the initial design.
+EfficientNet-B0 \cite{tan2019efficientnet} operates on $224 \times 224$ RGB input,
+classifying charts into 3 types (bar, line, pie) with 97.54\% test accuracy
+(see \Cref{sec:results_classifier}). The confidence threshold is set at 0.70; images
+below this threshold are labelled \texttt{unknown}. Chart type metadata is passed
+to Stage~4 as reasoning context.
 
-\subsubsection{Skeletonizer}
+\subsubsection{VLM Extractor Backends}
 
-The Lee topology-preserving thinning algorithm \cite{lee1994skeleton} reduces thick
-strokes to 1-pixel width while maintaining 8-connectivity and homotopy (no holes or
-junctions are created or destroyed). Gap filling via morphological closing
-(\texttt{kernel=3$\times$3}) precedes skeletonization to repair small breaks in chart
-lines. Junction detection classifies skeleton pixels as endpoints (1~neighbor),
-junctions (3+ neighbors), or intermediate (2~neighbors).
+The \texttt{BaseChartExtractor} abstract base class defines a common interface:
+\texttt{extract(chart\_id, image, chart\_type)} returns a \texttt{TableData} object
+containing headers, rows, and structured records. Four backends are implemented:
 
-\subsubsection{Vectorizer}
+\begin{itemize}
+    \item \textbf{DeplotExtractor} (default): Google DePlot \cite{liu2023deplot},
+          a Pix2Struct \cite{lee2023pix2struct} model fine-tuned specifically for
+          chart-to-table derendering. Accepts chart images and outputs linearized table
+          text in the format
+          \texttt{<THEAD>col1 | col2 <TBODY>val1 | val2\textbackslash n}.
 
-The Ramer-Douglas-Peucker (RDP) algorithm \cite{douglas1973rdp, ramer1972rdp}
-recursively simplifies polylines by removing points within tolerance $\epsilon$.
-Geo-SLM uses an \textbf{adaptive epsilon}:
-\begin{equation}
-    \epsilon = \epsilon_{\text{base}} \cdot \sqrt{\frac{L}{L_{\text{ref}}}}
-\end{equation}
-where $L$ is the polyline length and $L_{\text{ref}}$ is a reference length. This
-prevents over-simplification of long curves and under-simplification of short ones.
-Sub-pixel refinement uses weighted centroids for fractional pixel positions.
+    \item \textbf{MatchaExtractor}: Google MatCha \cite{lee2023matcha}, a Pix2Struct
+          variant additionally fine-tuned on mathematical reasoning and chart QA tasks.
+          Produces the same linearization format as DePlot, enabling direct comparison.
 
-\subsubsection{OCR Engine}
+    \item \textbf{Pix2StructBaselineExtractor}: The base Pix2Struct model
+          (\texttt{google/pix2struct-base}) without chart-specific fine-tuning.
+          Included as an ablation baseline to quantify the contribution of chart-specific
+          pre-training in DePlot and MatCha.
 
-PaddleOCR \cite{du2020paddleocr} (with EasyOCR \cite{jaided2020easyocr} as fallback)
-extracts all text, which is then assigned spatial roles based on position: title
-(top 15\%), X-axis label (bottom 15\%), Y-axis label (left 15\%), legend
-(top-right corner), and data values (near elements). Content-aware keyword matching
-supplements positional heuristics.
+    \item \textbf{SVLMExtractor}: Qwen2-VL-2B-Instruct, a general-purpose visual SLM.
+          Uses a structured system prompt requesting table-format output; serves as a
+          zero-shot baseline to evaluate whether instruction-following capability alone,
+          without chart-specific training, suffices for chart data extraction.
+\end{itemize}
 
-\subsubsection{Element Detector}
+All four backends use the \texttt{transformers} library
+(\texttt{AutoProcessor} + \texttt{AutoModelForImageTextToText} or
+\texttt{AutoModelForVision2Seq}). The active backend is selected via
+\texttt{ExtractionConfig.extractor\_backend} (default: \texttt{deplot}).
 
-Three detection methods are combined for bar detection: watershed segmentation for
-touching bars, projection profile analysis for alignment, and morphological connected
-components. Scatter plot markers use Hough circle transform. Pie slices use contour
-analysis with arc fitting. Color clustering (K-means, $k=8$) identifies dominant
-colors per element.
+\subsubsection{Processing Flow}
 
-\subsubsection{Geometric Mapper}
-
-The geometric mapper calibrates axes and converts pixel coordinates to data values.
-The calibration pipeline:
+For each detected chart:
 
 \begin{enumerate}
-    \item Match OCR tick labels to detected tick positions along axes.
-    \item Build (pixel, value) correspondence pairs.
-    \item Fit a calibration model using RANSAC \cite{fischler1981ransac} (default),
-          which tolerates up to 40\% outlier rejection from OCR errors.
-    \item Compute $R^2$ as calibration confidence.
+    \item Load the cropped chart image.
+    \item Run EfficientNet-B0 classification to determine chart type.
+    \item Pass the image to the active VLM backend, which tokenizes the image as
+          flattened patches (\texttt{max\_patches=512}) and generates the table
+          linearization autoregressively (\texttt{max\_new\_tokens=512}).
+    \item Parse the linearized output: split by \texttt{<THEAD>} and \texttt{<TBODY>}
+          markers; tokenize on \texttt{|} and \texttt{\textbackslash n} delimiters;
+          build \texttt{TableData} with headers and row records.
+    \item Assemble a \texttt{RawMetadata} object containing chart type, table data,
+          model name, and extraction confidence.
 \end{enumerate}
 
-The linear mapping function (with Y-axis inversion for image coordinates):
-\begin{equation}
-    v_y = y_{\max} - \frac{p_y - p_{\text{top}}}{p_{\text{bottom}} - p_{\text{top}}}
-          \cdot (y_{\max} - y_{\min})
-\end{equation}
-Logarithmic scale is detected automatically when tick values follow a geometric
-progression.
-
-\subsubsection{Classifier}
-
-A cascade of three classifiers determines chart type:
-
-\begin{enumerate}
-    \item \textbf{EfficientNet-B0} \cite{tan2019efficientnet}: CNN on $224 \times 224$ RGB
-          input, 3 classes (bar, line, pie), 97.54\% test accuracy, 4.01\,M parameters.
-          Confidence threshold 0.70; images below threshold are labelled \texttt{unknown}.
-    \item \textbf{ML Classifier}: Random Forest on structural features ($\sim$70\% accuracy).
-    \item \textbf{Rule-based}: Heuristics (has bars? has slices?) as final fallback
-          ($\sim$50\% accuracy).
-\end{enumerate}
-
-The overall extraction confidence is a weighted average:
-\begin{equation}
-    C_{\text{overall}} = 0.3 \cdot C_{\text{class}} + 0.25 \cdot C_{\text{ocr}}
-                       + 0.25 \cdot C_{\text{axis}} + 0.2 \cdot C_{\text{elem}}
-\end{equation}
+The \texttt{RawMetadata.table\_data} field carries the structured table for downstream
+Stage~4 reasoning. The legacy geometry fields (\texttt{axis\_info}, \texttt{texts},
+\texttt{elements}) remain in the schema as empty for backward compatibility but are
+not populated by the VLM pipeline.
 
 % ============================================================
 \subsection{Stage 4: Semantic Reasoning}
@@ -186,18 +174,17 @@ The overall extraction confidence is a weighted average:
 Stage~4 refines raw extracted metadata using AI reasoning. The processing pipeline
 per chart consists of four steps:
 
-\textbf{Step 1: Geometric Value Mapping.}
-The \texttt{GeometricValueMapper} (764 lines) applies the calibration from Stage~3 to
-convert all pixel coordinates to data values. Confidence filtering ensures mapping is
-applied only when calibration confidence $\geq 0.3$. Value clamping restricts results
-to the detected axis range to prevent extrapolation errors.
+\textbf{Step 1: Value Mapping from VLM Table.}
+The \texttt{ValueMapper} (764 lines) parses the \texttt{TableData} produced by
+Stage~3 VLM extraction to convert table cells into typed numeric or categorical values.
+Confidence filtering ensures mapping is applied only when table output is non-empty and
+structurally valid. Value clamping restricts results to the detected data range.
 
 \textbf{Step 2: Prompt Construction.}
 The \texttt{GeminiPromptBuilder} (833 lines) constructs structured prompts with explicit
-sections: \textsc{Chart\_Metadata}, \textsc{OCR\_Texts}, \textsc{Elements},
-\textsc{Axis\_Info}, \textsc{Mapped\_Values}, and \textsc{Instructions}. Anti-hallucination
-rules are embedded: ``Only report values that appear in OCR\_TEXTS or MAPPED\_VALUES;
-if uncertain, report null rather than guess.''
+sections: \textsc{Chart\_Metadata}, \textsc{VLM\_Table}, \textsc{Mapped\_Values}, and
+\textsc{Instructions}. Anti-hallucination rules are embedded: ``Only report values that
+appear in VLM\_TABLE or MAPPED\_VALUES; if uncertain, report null rather than guess.''
 
 \textbf{Step 3: AI Routing.}
 The \texttt{AIRouterEngine} delegates to the AI Router (see \Cref{sec:ai_routing}).
@@ -322,15 +309,10 @@ analysis core -- is inherently language-agnostic.
 PDF Renderer           & S1 & Agnostic  & Pixel-level rendering, no text parsing \\
 Blur Detector          & S1 & Agnostic  & Laplacian variance is language-free \\
 YOLO Detector          & S2 & Agnostic  & Visual bounding box detection \\
-Preprocessor           & S3 & Agnostic  & Negative transform, thresholding \\
-Skeletonizer           & S3 & Agnostic  & Topology-preserving thinning \\
-Vectorizer (RDP)       & S3 & Agnostic  & Polyline simplification \\
-Element Detector       & S3 & Agnostic  & Watershed, Hough, contour analysis \\
-Geometric Mapper       & S3 & Agnostic  & Pixel-to-value calibration (numeric) \\
 EfficientNet-B0 Classifier & S3 & Agnostic  & Visual feature classification (3-class, 97.54\%) \\
+VLM Extractor (DePlot / MatCha) & S3 & \textbf{Partial}   & Trained on English chart data; output quality may decrease for non-Latin script axis labels \\
+VLM Extractor (SVLM / Qwen2-VL) & S3 & \textbf{Config}   & Configurable via system prompt; multilingual with appropriate prompt \\
 \midrule
-OCR Engine             & S3 & \textbf{Config}    & Language set via \texttt{config/models.yaml} \\
-OCR Role Classifier    & S3 & \textbf{Keywords}  & English keyword lists, needs Vietnamese extension \\
 Prompt Builder         & S4 & \textbf{Templates} & English prompts, needs Vietnamese variants \\
 AI Adapters            & S4 & Agnostic  & Pass-through interface, language in prompts \\
 AI Router              & S4 & Agnostic  & Provider selection, language-transparent \\
@@ -340,58 +322,33 @@ QA Generator           & Data & \textbf{Prompts}   & English generation instruct
 \end{tabular}
 \end{table}
 
-Out of 17 major components, only 4 require modification (OCR role classifier, prompt
-builder, insight generator, QA generator) and 1 requires configuration change (OCR
-engine). The remaining 12 components, including all geometric analysis modules, are
-fully language-agnostic.
+Out of 11 major pipeline components, only 3 require modification (VLM DePlot/MatCha
+prompt configuration, SVLM system prompt, Prompt Builder templates) and 2 require
+additive extension (Insight Generator, QA Generator). The remaining 6 components,
+including chart detection, classification, and AI routing, are fully language-agnostic.
 
-\subsubsection{OCR Engine: Vietnamese Configuration Path}
+\subsubsection{VLM Extractor: Vietnamese Configuration Path}
 
-The \texttt{OCRConfig} class defines a \texttt{languages} parameter (default:
-\texttt{["en"]}). Vietnamese support is activated through configuration without code
-changes:
+With the VLM-based Stage~3, the Vietnamese configuration path changes from OCR language
+setting to VLM backend selection:
 
-\begin{verbatim}
-# config/models.yaml -- Vietnamese configuration
-ocr:
-  paddleocr:
-    lang: "vi"          # Vietnamese recognition weights
-  easyocr:
-    languages: ["vi"]   # Multi-language support
-  tesseract:
-    lang: "vie"         # Tesseract Vietnamese tessdata
-\end{verbatim}
-
-The OCR engine initialization code (\texttt{ocr\_engine.py}) already supports this:
-PaddleOCR passes \texttt{lang=self.config.languages[0]}, and EasyOCR passes the full
-language list to \texttt{easyocr.Reader()}. For bilingual charts (mixed English and
-Vietnamese), the configuration \texttt{["en", "vi"]} enables simultaneous recognition.
-
-\subsubsection{Stage 3: Bilingual Role Classification}
-
-The \texttt{\_classify\_role()} method in the OCR engine uses keyword dictionaries for
-semantic role assignment. The Vietnamese extension adds parallel dictionaries:
+\begin{itemize}
+    \item \textbf{DePlot / MatCha backends}: These models were trained on English chart
+          data. For Vietnamese axis labels, the extracted table may contain transliterated
+          or imperfect text. Stage~4 SLM reasoning handles downstream normalization.
+    \item \textbf{SVLM backend (Qwen2-VL)}: Natively multilingual. Vietnamese output is
+          activated via \texttt{pipeline.yaml}:
+\end{itemize}
 
 \begin{verbatim}
-# Vietnamese axis label keywords (additive extension)
-axis_label_keywords_vi = [
-    'so luong', 'ty le', 'gia tri', 'doanh thu',
-    'thoi gian', 'nam', 'thang', 'ngay',
-    'gia', 'chi phi', 'loi nhuan', 'diem so',
-    'do chinh xac', 'sai so', 'mat mat',
-]
-
-# Vietnamese legend keywords
-legend_keywords_vi = [
-    'nhom', 'loai', 'phan loai', 'chuoi',
-    'huan luyen', 'kiem tra', 'du doan',
-    'mo hinh', 'phuong phap', 'thuat toan',
-]
+# pipeline.yaml -- Vietnamese extraction via SVLM
+extraction:
+  extractor_backend: "svlm"   # Qwen2-VL multilingual VLM
 \end{verbatim}
 
-The position-based fallback logic (assigning roles based on text position within the
-chart image -- top 15\% for titles, bottom 15\% for X-axis, etc.) remains effective
-regardless of language, providing a robust baseline when keyword matching fails.
+No code changes are required; backend selection is a single configuration line.
+The SVLM system prompt can additionally be configured to request Vietnamese table output
+by updating the prompt template \texttt{prompts/svlm\_system\_vi.txt}.
 
 \subsubsection{Stage 4: Vietnamese Prompt Architecture}
 

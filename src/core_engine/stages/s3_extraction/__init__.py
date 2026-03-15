@@ -1,56 +1,52 @@
 """
 Stage 3: Structural Analysis (Extraction)
 
-This module implements the Geo-SLM hybrid extraction approach:
-1. Negative Image Preprocessing - Enhance structural contrast
-2. Skeletonization - Topology-preserving thinning
-3. Vectorization - RDP algorithm for piecewise linear representation
-4. OCR Engine - Text extraction with role classification
-5. Geometric Mapper - Coordinate space transformation
-6. Element Detector - Bar, marker, pie slice detection
-7. Chart Classifier - Type classification from features
-8. ResNet18 Classifier - Deep learning based classification (94.66% accuracy)
+VLM-based pluggable chart-to-table extraction with four backends:
+    - DeplotExtractor          : google/deplot (recommended default)
+    - MatchaExtractor          : google/matcha-base (enhanced math reasoning)
+    - Pix2StructBaselineExtractor : google/pix2struct-base (ablation baseline)
+    - SVLMExtractor            : Qwen/Qwen2-VL-2B-Instruct (zero-shot large VLM)
 
-Reference: docs/instruction_p2_research.md
+Reference: docs/architecture/STAGE3_EXTRACTION.md
 """
 
-from .s3_extraction import Stage3Extraction, ExtractionConfig
-from .preprocessor import ImagePreprocessor, PreprocessConfig
-from .skeletonizer import Skeletonizer, SkeletonConfig
-from .vectorizer import Vectorizer, VectorizeConfig
-from .ocr_engine import OCREngine, OCRConfig
-from .geometric_mapper import GeometricMapper, MapperConfig
-from .element_detector import ElementDetector, ElementDetectorConfig
-from .classifier import ChartClassifier, ClassifierConfig
+from .s3_extraction import ExtractionConfig, Stage3Extraction
+from .extractors import (
+    BackendType,
+    BaseChartExtractor,
+    DeplotExtractor,
+    MatchaExtractor,
+    Pix2StructBaselineExtractor,
+    SVLMExtractor,
+    create_extractor,
+)
 from .resnet_classifier import (
-    ResNet18Classifier,
-    create_resnet_classifier,
     EfficientNetClassifier,
+    ResNet18Classifier,
     create_efficientnet_classifier,
+    create_resnet_classifier,
 )
 
+# Backward compatibility: Pix2StructExtractor is an alias for DeplotExtractor
+from .pix2struct_extractor import Pix2StructExtractor
+
 __all__ = [
-    # Main Stage
+    # Main stage
     "Stage3Extraction",
     "ExtractionConfig",
-    # Submodules
-    "ImagePreprocessor",
-    "PreprocessConfig",
-    "Skeletonizer",
-    "SkeletonConfig",
-    "Vectorizer",
-    "VectorizeConfig",
-    "OCREngine",
-    "OCRConfig",
-    "GeometricMapper",
-    "MapperConfig",
-    "ElementDetector",
-    "ElementDetectorConfig",
-    "ChartClassifier",
-    "ClassifierConfig",
-    # Deep Learning Classifiers
-    "ResNet18Classifier",
-    "create_resnet_classifier",
+    # Extractor backends
+    "BaseChartExtractor",
+    "BackendType",
+    "DeplotExtractor",
+    "MatchaExtractor",
+    "Pix2StructBaselineExtractor",
+    "SVLMExtractor",
+    "create_extractor",
+    # Deep learning classifiers
     "EfficientNetClassifier",
     "create_efficientnet_classifier",
+    "ResNet18Classifier",
+    "create_resnet_classifier",
+    # Backward compat
+    "Pix2StructExtractor",
 ]

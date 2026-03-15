@@ -2,73 +2,99 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 3.0.0 | 2026-03-12 | That Le | Updated for VLM-based Stage 3 (TableData input, no geometry) |
 | 2.0.0 | 2026-02-04 | That Le | Updated status, SLM plan |
 
 ## Status: IN PROGRESS
 
-Stage 4 reasoning implemented with Gemini API. Planning Qwen 2.5-1.5B integration for local inference.
+Stage 4 reasoning implemented with Gemini API and AI Router (multi-provider). Planning Qwen 2.5-1.5B LoRA local integration.
 
 ## 1. Overview
 
-Stage 4 receives raw metadata from Stage 3 and applies SLM-based reasoning to:
-- Correct OCR errors using semantic context
-- Map geometric values to actual data points
-- Associate legend items with chart elements
-- Generate human-readable descriptions
+Stage 4 receives `RawMetadata` (with `table_data` from VLM extraction) from Stage 3 and applies AI reasoning to:
+- Parse and validate the VLM-linearized table output into structured `DataSeries`
+- Correct any VLM misreads or inconsistent labels using semantic context
+- Associate legend items with data series
+- Generate human-readable chart descriptions
 
-## 2. Architecture (Planned)
+**Key change (v6.0.0)**: Stage 3 no longer produces OCR texts or geometric pixel coordinates.
+`RawMetadata.texts` and `RawMetadata.elements` are empty; `RawMetadata.table_data` holds a
+`TableData` object with `headers`, `rows`, and `records` from the VLM extractor.
+
+## 2. Architecture
 
 ```mermaid
 flowchart TD
     subgraph Input["Stage 3 Output"]
-        A[RawMetadata\n+ VectorizedChart]
+        A[RawMetadata\n+ TableData from VLM]
     end
-    
-    subgraph GeometricMapping["1. Geometric Value Mapping"]
-        B1[Axis Scale Calculation]
-        B2[Pixel to Value Conversion]
-        B3[Initial Value Estimates]
+
+    subgraph ValueMapping["1. Value Mapping from VLM Table"]
+        B1[Parse TableData headers/rows]
+        B2[Map column headers to DataSeries names]
+        B3[Parse row values into data points]
     end
-    
-    subgraph SLMProcessing["2. SLM Processing"]
-        C1[Build Context Prompt]
-        C2[Include OCR + Values]
-        C3[SLM Inference]
-        C4[Parse Response]
+
+    subgraph PromptConstruction["2. Prompt Building"]
+        C1[GeminiPromptBuilder]
+        C2[Build CanonicalContext\nchart_type + VLM table + series]
+        C3[Select prompt template\nreasoning / description / value]
     end
-    
-    subgraph Correction["3. Error Correction"]
-        D1[OCR Error Fixes]
-        D2[Value Refinement]
-        D3[Legend-Color Mapping]
+
+    subgraph EngineRouting["3. Engine Selection"]
+        D0{ReasoningConfig\n.engine}
+        D1[GeminiReasoningEngine]
+        D2[AIRouterEngine\nMulti-provider fallback]
+        D3[Rule-based fallback]
     end
-    
-    subgraph Description["4. Description Generation"]
-        E1[Generate Summary]
-        E2[Academic Style]
+
+    subgraph AIRouter["AI Router"]
+        E1[Resolve provider\nfor TaskType]
+        E2[Walk fallback chain\nlocal_slm -> gemini -> openai]
+        E3[Confidence check\nthreshold=0.7]
     end
-    
+
+    subgraph PostProcess["4. Post-Processing"]
+        F1[Validate series consistency]
+        F2[Refine values]
+        F3[Map legend to series]
+        F4[Generate description]
+    end
+
     subgraph Output["Stage 4 Output"]
-        F[RefinedChartData]
+        G[Stage4Output\nList of RefinedChartData]
     end
-    
+
     A --> B1 --> B2 --> B3
-    B3 --> C1 --> C2 --> C3 --> C4
-    C4 --> D1 --> D2 --> D3
-    D3 --> E1 --> E2 --> F
+    B3 --> C1 --> C2 --> C3
+
+    C3 --> D0
+    D0 -->|"gemini"| D1
+    D0 -->|"router"| D2
+    D0 -->|"rule_based"| D3
+
+    D2 --> E1 --> E2 --> E3
+
+    D1 --> F1
+    E3 --> F1
+    D3 --> F1
+
+    F1 --> F2 --> F3 --> F4 --> G
 ```
 
-## 3. Key Components (Planned)
+## 3. Key Components
 
-### 3.1. Geometric Value Mapper
+### 3.1. Value Mapper from VLM Table
 
-**Purpose**: Convert pixel coordinates to actual data values using axis calibration.
+**Purpose**: Convert `TableData` (VLM linearized output) into structured `DataSeries`.
 
 **Algorithm**:
-1. Extract Y-axis tick values from OCR
-2. Fit linear regression: `pixel_y = a * value + b`
-3. Invert to get: `value = (pixel_y - b) / a`
-4. Apply to all detected data points
+1. Read `table_data.headers` as series names
+2. Iterate `table_data.rows` as data points (first column = x-axis category or label)
+3. Parse numeric strings into float values (handle `%`, `,`, missing cells)
+4. Build `DataSeries(name=header, points=[DataPoint(x, y), ...])`
+
+This replaces the old pixel-to-value geometric calibration entirely.
 
 ### 3.2. SLM Engine
 
@@ -84,35 +110,36 @@ flowchart TD
 
 **Prompt Structure**:
 ```
-System: You are a chart analysis expert. Given raw OCR text and detected 
-        values, correct errors and generate structured output.
+System: You are a chart analysis expert. Given a structured table extracted
+        from a chart by a vision-language model, parse it into data series
+        and generate a structured JSON output.
 
 Context:
 - Chart Type: {type}
-- OCR Texts: {texts with bboxes}
-- Detected Values: {pixel coordinates and estimated values}
-- Legend Items: {colors and labels}
+- VLM Extracted Table:
+  Headers: {table_data.headers}
+  Rows:
+    {table_data.rows}
 
 Task:
-1. Fix OCR errors (e.g., "loo" -> "100", "O" -> "0")
-2. Map legend colors to data series
-3. Verify value consistency
+1. Parse each header as a data series name
+2. Parse each row's values as data points
+3. Verify value consistency (numeric types, units)
 4. Generate description
 ```
 
-### 3.3. Error Corrector
+### 3.3. Value Validator
 
-**Purpose**: Apply SLM corrections to raw metadata.
+**Purpose**: Apply SLM corrections to VLM-extracted table data.
 
-**Common OCR Errors**:
+**Common VLM Output Issues**:
 
-| Error | Correction | Rule |
+| Issue | Fix | Rule |
 | --- | --- | --- |
-| `loo` | `100` | Pattern match |
-| `O` | `0` | Numeric context |
-| `l` | `1` | Numeric context |
-| `S` | `5` | Numeric context |
-| `%` missing | Add `%` | Context from axis label |
+| Merged cell values | Split on `\|` | Table parse |
+| Percentage without `%` | Add `%` | Context from header |
+| Numeric string with comma | Strip `,` | `float(v.replace(',', ''))` |
+| Missing value cell | `None` | Empty string detection |
 
 ### 3.4. Description Generator
 
@@ -139,10 +166,19 @@ class Stage3Output(BaseModel):
 class RawMetadata(BaseModel):
     chart_id: str
     chart_type: ChartType
-    texts: List[OCRText]
-    elements: List[ChartElement]
-    axis_info: Optional[AxisInfo]
-    vectorized: Optional[VectorizedChart]
+    table_data: Optional[TableData]   # VLM extraction output (primary)
+    texts: List[OCRText]              # Always empty in v6.0.0+
+    elements: List[ChartElement]      # Always empty in v6.0.0+
+    axis_info: Optional[AxisInfo]     # Always None in v6.0.0+
+    vlm_model: Optional[str]          # e.g. "google/deplot"
+    vlm_raw_output: Optional[str]     # Raw linearized VLM string
+
+class TableData(BaseModel):
+    headers: List[str]                # Column names (= series names)
+    rows: List[List[str]]             # Data rows
+    records: List[Dict[str, str]]     # Dict view: {header: value}
+    model_name: str                   # e.g. "google/deplot"
+    raw_output: str                   # Full linearized string
 ```
 
 ### 4.2. Output
@@ -166,16 +202,16 @@ class RefinedChartData(BaseModel):
 
 ## 5. Implementation Status
 
-| Task | Status | Target |
+| Task | Status | Notes |
 | --- | --- | --- |
-| Design document | DONE | Week 3 |
-| Gemini API integration | DONE | Week 3 |
-| OCR error correction | DONE | Week 3 |
-| Description generator | DONE | Week 3 |
-| Rule-based fallback | DONE | Week 3 |
-| Local SLM integration | TODO | Week 4 |
-| Geometric value mapping | TODO | Week 4 |
-| Unit tests | PARTIAL | Week 4 |
+| Design document | DONE | v3.0.0 updated for VLM input |
+| Gemini API integration | DONE | GeminiReasoningEngine |
+| VLM table value mapping | DONE | value_mapper.py — TableData path |
+| Description generator | DONE | prompt_builder.py + templates |
+| Rule-based fallback | DONE | router_engine.py |
+| AI Router integration | DONE | AIRouterEngine (multi-provider) |
+| Local SLM integration | TODO | Qwen-2.5-1.5B LoRA (Phase 3) |
+| Unit tests | PARTIAL | tests/test_s4_reasoning/ (~40 tests) |
 
 ## 6. Implementation Details
 
@@ -184,13 +220,18 @@ class RefinedChartData(BaseModel):
 ```
 src/core_engine/stages/s4_reasoning/
     __init__.py
-    s4_reasoning.py          # Main orchestrator
-    reasoning_engine.py      # Abstract interface
-    gemini_engine.py         # Gemini API implementation
+    s4_reasoning.py          # Main orchestrator (479 lines)
+    value_mapper.py          # ValueMapper: TableData -> DataSeries (764 lines)
+    prompt_builder.py        # GeminiPromptBuilder (833 lines)
+    reasoning_engine.py      # ReasoningEngine ABC (185 lines)
+    gemini_engine.py         # Direct Gemini API engine (626 lines)
+    router_engine.py         # AIRouterEngine - multi-provider (410 lines)
     prompts/
-        ocr_correction.txt   # OCR error correction prompt
         description.txt      # Description generation prompt
-        value_mapping.txt    # Value extraction prompt
+        value_mapping.txt    # Value extraction prompt (VLM table input)
+        chart_reasoning.txt  # Full chart reasoning prompt
+        data_validation.txt  # Data validation prompt
+        system.md            # System prompt template
 ```
 
 ### 6.2. Usage Example

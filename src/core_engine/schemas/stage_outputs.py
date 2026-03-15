@@ -216,6 +216,47 @@ class ExtractionConfidence(BaseModel):
         )
 
 
+class Pix2StructResult(BaseModel):
+    """
+    Parsed chart-to-table output from Stage 3 VLM extraction.
+
+    Produced by any Stage 3 extractor backend (DeplotExtractor, MatchaExtractor,
+    Pix2StructBaselineExtractor, or SVLMExtractor) and stored in RawMetadata.
+    Stage 4 uses this table directly to produce DataSeries.
+    When extraction_confidence == 0, Stage 4 returns empty series.
+    """
+
+    headers: List[str] = Field(
+        default_factory=list,
+        description="Column headers from the HTML table (first = x-axis label)",
+    )
+    rows: List[List[str]] = Field(
+        default_factory=list,
+        description="Data rows as lists of string cell values",
+    )
+    records: List[Dict[str, str]] = Field(
+        default_factory=list,
+        description="Rows expressed as {header: value} dicts for easy lookup",
+    )
+    raw_html: str = Field(
+        default="",
+        description="Raw decoded output from the model (linearized table or JSON).",
+    )
+    model_name: str = Field(
+        default="",
+        description="HuggingFace model ID used for extraction",
+    )
+    extraction_confidence: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "1.0 when the VLM produced a non-empty table, 0.0 on empty or failed output. "
+            "Stage 4 returns empty series when confidence == 0."
+        ),
+    )
+
+
 class RawMetadata(BaseModel):
     """Raw extracted data from Stage 3."""
     
@@ -238,6 +279,15 @@ class RawMetadata(BaseModel):
             "Raw structured text extracted by PaddleOCR-VL (Stage 3 optional). "
             "Contains data table text when paddle_server is running. "
             "Passed to Stage 4 as high-quality extraction context."
+        ),
+    )
+    pix2struct_table: Optional[Pix2StructResult] = Field(
+        default=None,
+        description=(
+            "Structured data table extracted by the Stage 3 VLM extractor backend "
+            "(DeplotExtractor, MatchaExtractor, Pix2StructBaselineExtractor, or SVLMExtractor). "
+            "When present with extraction_confidence > 0, Stage 4 converts this table "
+            "directly to DataSeries. None when the extractor hard-failed."
         ),
     )
 

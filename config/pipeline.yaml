@@ -67,30 +67,28 @@ detection:
     
 # Stage 3: Extraction
 extraction:
-  # OCR settings
-  ocr:
-    min_confidence: 0.5
-    merge_nearby_text: true
-    merge_threshold: 20  # Pixels
-    
-  # Text role detection
-  role_detection:
-    title_region: [0, 0, 1, 0.15]      # Top 15%
-    xlabel_region: [0, 0.85, 1, 1]     # Bottom 15%
-    ylabel_region: [0, 0, 0.15, 1]     # Left 15%
-    legend_region: [0.7, 0, 1, 0.3]    # Top-right
-    
-  # Element detection
-  elements:
-    min_area: 100  # Minimum element area in pixels
-    color_clustering: true
-    n_colors: 8
-    
-  # Geometric analysis
-  geometric:
-    axis_detection: true
-    grid_detection: true
-    scale_estimation: true
+  # VLM extractor backend (pluggable for ablation experiments)
+  # Options:
+  #   deplot     - google/deplot (recommended, ~1.1 GB, fine-tuned chart-to-table)
+  #   pix2struct - google/pix2struct-base (ablation baseline, no derendering fine-tuning)
+  #   matcha     - google/matcha-base (enhanced math+chart reasoning)
+  #   svlm       - Qwen/Qwen2-VL-2B-Instruct (zero-shot large VLM, ~6 GB VRAM)
+  extractor_backend: deplot
+
+  # Override HuggingFace model ID (null = use backend default)
+  # Use for local model paths: /models/weights/my_finetuned_deplot
+  extractor_model: null
+
+  # Max image patches for Pix2Struct-family backends (deplot, matcha, pix2struct)
+  # Higher = better quality at cost of VRAM. 1024 recommended for 12 GB GPU.
+  extractor_max_patches: 1024
+
+  # Compute device: auto (cuda if available), cuda, cpu
+  extractor_device: auto
+
+  # Chart type classifier (EfficientNet-B0, 97.54% accuracy, 3-class: bar/line/pie)
+  use_efficientnet_classifier: true
+  efficientnet_confidence_threshold: 0.55
 
 # Stage 4: Reasoning
 reasoning:

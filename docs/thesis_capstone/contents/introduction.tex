@@ -50,10 +50,12 @@ complementary paradigms:
 \begin{enumerate}
     \item \textbf{Deep Learning for perception}: YOLOv8 \cite{jocher2023yolov8} for chart
           detection and ResNet-18 \cite{he2016resnet} for chart type classification.
-    \item \textbf{Classical geometry for precision}: RANSAC-based axis calibration
-          \cite{fischler1981ransac}, Ramer-Douglas-Peucker polyline simplification
-          \cite{douglas1973rdp, ramer1972rdp}, and skeleton-based structural analysis
-          \cite{lee1994skeleton} using OpenCV \cite{bradski2000opencv}.
+    \item \textbf{VLM Extraction for structured data}: Vision-Language Models
+          (DePlot \cite{liu2023deplot}, MatCha \cite{lee2023matcha}, Pix2Struct
+          \cite{lee2023pix2struct}) trained on chart-to-table derendering convert
+          chart pixels directly into structured tables, replacing the initial
+          geometry-based pipeline (which failed on 0/40 non-pie axis detections
+          in a 50-chart benchmark).
     \item \textbf{Small Language Model (SLM) for reasoning}: A fine-tuned Qwen-2.5-1.5B
           \cite{yang2024qwen2} using QLoRA \cite{dettmers2024qlora} for OCR correction,
           value validation, and natural language description generation.
@@ -66,9 +68,10 @@ The specific objectives are:
           with extraction confidence $> 90\%$.
     \item Build a large-scale training dataset ($> 200{,}000$ samples) from academic papers
           for SLM fine-tuning.
-    \item Demonstrate that the hybrid geometric-plus-AI approach outperforms pure end-to-end
-          methods in numerical accuracy while running locally on consumer hardware
-          (NVIDIA RTX 3060, 6~GB VRAM).
+    \item Demonstrate that the hybrid neural-VLM approach using chart-trained
+          VLM extraction outperforms both pure geometry-based and pure end-to-end
+          estimation methods in extraction reliability, while running locally on
+          consumer hardware (NVIDIA RTX 3060, 6~GB VRAM).
     \item Enable \textbf{Vietnamese-language chart question answering}: the system must
           process charts containing Vietnamese text and support interactive Q\&A in
           Vietnamese, leveraging the extensible pipeline architecture.
@@ -118,8 +121,9 @@ Given a document (PDF or image) containing one or more chart images, the system 
 \begin{itemize}
     \item The core training data is sourced from English academic publications; Vietnamese
           chart data is generated through the localization pipeline (see \Cref{sec:viet_loc}).
-    \item Axis calibration requires at least two readable numeric tick labels; charts
-          without visible axis numbers produce no calibrated values.
+    \item VLM extraction latency is 2--4~s per chart on GPU; charts requiring the
+          SVLM (Qwen2-VL) multilingual backend incur higher latency due to larger
+          model size ($\sim$2B parameters).
     \item The SLM fine-tuning is ongoing at the time of writing; final SLM evaluation
           results (both English and Vietnamese) will be supplemented upon completion.
     \item Vietnamese OCR accuracy depends on diacritical mark recognition quality,

@@ -2,6 +2,8 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 7.0.0 | 2026-03-15 | That Le | PaddleOCR-VL microservice (paddle_server.py), PaddleVLAdapter, Vintern fine-tuned model, full S1→S5 demo |
+| 6.0.0 | 2026-03-12 | That Le | Stage 3 VLM rewrite: 4-backend pluggable extraction (DePlot/MatCha/Pix2Struct/SVLM), geometry removed, 299 tests |
 | 5.0.0 | 2026-03-12 | That Le | EfficientNet-B0 3-class classifier (97.54%), unified training script, Stage 2 adapter architecture |
 | 4.4.0 | 2026-03-05 | That Le | Stage 3 benchmark with Gemini Vision GT, model upgrade to gemini-2.5-flash |
 | 4.2.0 | 2026-03-02 | That Le | Training postmortem, cloud GPU strategy, project cleanup (~1.5GB freed) |
@@ -28,13 +30,12 @@
 | **Project Name** | Chart Analysis AI v3 |
 | **Project Type** | AI Research / Thesis Project |
 | **Core Philosophy** | Hybrid Intelligence (Neural + Symbolic) |
-| **Primary Method** | YOLO Detection + Geometric Mapping + Multi-Provider AI Reasoning |
+| **Primary Method** | YOLO Detection + VLM Extraction (DePlot/MatCha/PaddleOCR-VL) + Multi-Provider SLM Reasoning |
 | **Language** | Python 3.12.10 |
-| **Current Phase** | Phase 3 - Classifier Complete, Pipeline Integration |
+| **Current Phase** | Phase 3 - PaddleOCR-VL integrated, SLM Training Pending |
 | **Target** | Academic Thesis + Research Paper |
-| **Source Files** | 48 Python modules (~19,800 LOC) |
-| **Tests** | 300 tests passing (23 test files) |
-| **OCR Cache** | 46,910 entries (~600MB) |
+| **Source Files** | 82 Python modules in src/ (68 core_engine) |
+| **Tests** | 299 tests passing (23 test files) |
 | **Instructions** | 13 files (3-tier hierarchy) |
 | **Stage3 Dataset** | 32,364 charts extracted (100%, 0% error) |
 | **SLM Train Dataset** | 268,799 samples (v3, all 8 types, ready) |
@@ -51,8 +52,8 @@ A **hybrid AI system** for extracting structured data from chart images with aca
 | Component | Role | Technology |
 | --- | --- | --- |
 | **Computer Vision** | Detect and localize charts | YOLOv8/v11 |
-| **Geometric Analysis** | Precise value extraction | OpenCV + NumPy |
-| **Small Language Model** | OCR correction + reasoning | Qwen-2.5 / Llama-3.2 |
+| **VLM Extraction** | Chart-to-table derendering | DePlot / MatCha / Pix2Struct / SVLM / PaddleOCR-VL |
+| **Small Language Model** | Value mapping + reasoning | Qwen-2.5 / Llama-3.2 |
 
 **Core Value Proposition:**
 > "Achieve higher accuracy than pure multimodal LLMs (GPT-4V) through hybrid neuro-symbolic approach, while maintaining local inference capability."
@@ -82,9 +83,9 @@ A **hybrid AI system** for extracting structured data from chart images with aca
 | --- | --- | --- | --- |
 | Language | Python | 3.11+ | AI/ML ecosystem |
 | Detection | Ultralytics YOLO | v8/v11 | SOTA object detection |
-| OCR | PaddleOCR | Latest | Best multi-language |
+| VLM Extraction | DePlot / MatCha / Pix2Struct / SVLM | Latest | Chart-to-table derendering |
+| Classification | EfficientNet-B0 | v1 (97.54%) | Chart type classifier |
 | Image Processing | OpenCV + Pillow | Latest | Industry standard |
-| Geometric | NumPy + SciPy | Latest | Precise calculations |
 | Validation | Pydantic | v2 | Schema enforcement |
 | Config | OmegaConf | Latest | Hierarchical config |
 
@@ -93,6 +94,7 @@ A **hybrid AI system** for extracting structured data from chart images with aca
 | Provider | Model | Purpose | Status |
 | --- | --- | --- | --- |
 | Local SLM | Qwen-2.5-1.5B + LoRA | Primary reasoning (offline) | TRAINING |
+| PaddleOCR-VL | Vintern-1B fine-tuned (port 8001) | Data extraction microservice | ACTIVE |
 | Gemini | gemini-2.5-flash | Cloud fallback (high accuracy) | ACTIVE |
 | OpenAI | gpt-4o-mini | Secondary fallback | OPTIONAL |
 
@@ -207,7 +209,7 @@ Input (PDF/Image)
     |
     v (Cropped Charts)
 +-------------------+
-| Stage 3: Extract  | --> OCR Text, Detect Elements, Geometric Analysis
+| Stage 3: Extract  | --> VLM Extraction (DePlot / MatCha / Pix2Struct / SVLM)
 +-------------------+
     |
     v (Raw Metadata)
@@ -299,7 +301,9 @@ chart_analysis_ai_v3/
 +-- models/
 |   +-- weights/                # Trained model files (YOLO, EfficientNet-B0)
 |   +-- onnx/                   # ONNX exports
-|   +-- slm/                    # SLM LoRA adapters
+|   +-- slm/                    # SLM LoRA adapters + Vintern fine-tuned
+|   |   +-- vintern_finetuned/  # Vintern-1B fine-tuned model files
+|   +-- paddleocr_vl/           # PaddleOCR-VL model (Vintern-1B, ~8GB)
 |   +-- evaluation/             # Model evaluation results
 |   +-- explainability/         # Grad-CAM visualizations
 |
@@ -323,7 +327,7 @@ chart_analysis_ai_v3/
 |   +-- prototypes/             # Quick tests
 |
 +-- src/
-|   +-- core_engine/            # Core AI engine (48 files, ~19,800 LOC)
+|   +-- core_engine/            # Core AI engine (68 files)
 |       +-- __init__.py
 |       +-- pipeline.py         # Main orchestrator (all 5 stages wired)
 |       +-- exceptions.py       # Custom exception hierarchy
@@ -332,25 +336,34 @@ chart_analysis_ai_v3/
 |       |   +-- stage_outputs.py, qa_schemas.py
 |       +-- stages/             # Pipeline stages
 |       |   +-- base.py         # BaseStage ABC
-|       |   +-- s1_ingestion.py # Stage 1: PDF/image loading
-|       |   +-- s2_detection.py # Stage 2: YOLO detection
-|       |   +-- s3_extraction/  # Stage 3: OCR + geometry (10 submodules)
+|       |   +-- s1_ingestion/   # Stage 1: PDF/image loading (8 files)
+|       |   +-- s2_detection/   # Stage 2: YOLO detection + adapter pattern (7 files)
+|       |   +-- s3_extraction/  # Stage 3: VLM extraction (4 backends: deplot/matcha/pix2struct/svlm)
+|       |   |   +-- s3_extraction.py  # Orchestrator (VLM + EfficientNet-B0)
+|       |   |   +-- extractors.py     # BaseChartExtractor + 4 backends + factory
+|       |   |   +-- resnet_classifier.py  # ResNet18Classifier + EfficientNetClassifier
+|       |   |   +-- pix2struct_extractor.py  # Backward-compat re-export
 |       |   +-- s4_reasoning/   # Stage 4: AI reasoning (6 submodules)
 |       |   +-- s5_reporting.py # Stage 5: Insights + reports
-|       +-- ai/                 # AI Routing Layer (8 files)
+|       +-- ai/                 # AI Routing Layer (9 files)
 |       |   +-- router.py       # Task-based routing with fallbacks
-|       |   +-- task_types.py   # TaskType enum
+|       |   +-- task_types.py   # TaskType enum (5 types incl. DATA_EXTRACTION)
 |       |   +-- prompts.py      # Shared prompt templates
 |       |   +-- exceptions.py   # AI-specific exceptions
-|       |   +-- adapters/       # Provider adapters
-|       |       +-- base.py         # BaseAIAdapter ABC + AIResponse
+|       |   +-- adapters/       # Provider adapters (6 files)
+|       |       +-- base.py             # BaseAIAdapter ABC + AIResponse
 |       |       +-- gemini_adapter.py   # Google Gemini SDK
 |       |       +-- openai_adapter.py   # OpenAI Chat Completions
 |       |       +-- local_slm_adapter.py # HuggingFace Transformers + LoRA
+|       |       +-- paddlevl_adapter.py # PaddleOCR-VL HTTP client (port 8001)
 |       +-- validators/         # Output validators
 |       +-- data_factory/       # QA data generation
+|   +-- api/                    # FastAPI server (10 files)
+|   +-- training/               # Training utilities (3 files, run_manager, experiment_tracker)
 |
-+-- tests/                      # 294 tests (23 files)
++-- paddle_server.py            # PaddleOCR-VL microservice (port 8001, separate venv)
+|
++-- tests/                      # 299 tests (23 files)
 |   +-- conftest.py             # Shared fixtures
 |   +-- test_schemas.py         # Schema validation tests
 |   +-- test_s3_extraction/     # Stage 3 tests (8 files, ~140 tests)
@@ -359,7 +372,7 @@ chart_analysis_ai_v3/
 |   +-- test_ai/                # AI routing tests (5 files, ~55 tests)
 |   +-- fixtures/               # Test data
 |
-+-- scripts/                    # Utility scripts (4 subdirs, 19 files)
++-- scripts/                    # Utility scripts (4 subdirs, 20+ files)
 |   +-- training/               # SLM/YOLO/classifier training, data prep
 |   |   +-- train_chart_classifier.py  # Unified (3class/4class/8class, 7 backbones)
 |   |   +-- train_slm_lora.py
@@ -374,6 +387,7 @@ chart_analysis_ai_v3/
 |   |   +-- evaluate_resnet18.py
 |   |   +-- export_resnet18_onnx.py
 |   +-- pipeline/               # Pipeline testing, demo, batch
+|   |   +-- run_demo_s1_s5.py   # Full S1→S5 demo (EfficientNet-B0 + AIRouter)
 |   |   +-- batch_stage3_parallel.py
 |   |   +-- demo_full_pipeline.py
 |   |   +-- test_*.py (5 files)
@@ -408,8 +422,8 @@ chart_analysis_ai_v3/
 
 | Task | Status | Notes |
 | --- | --- | --- |
-| Stage 3: Extraction | [DONE] | Geo-SLM hybrid approach implemented |
-| Stage 3 Testing | [DONE] | Tested on 800+ images (100% accuracy) |
+| Stage 3: Extraction | [DONE] | VLM-based 4-backend pluggable extraction (DePlot/MatCha/Pix2Struct/SVLM) |
+| Stage 3 Testing | [DONE] | 140 tests across 7 test modules, VLM + integration tests |
 | Stage 4: Reasoning | [DONE] | Core + RouterEngine + AI adapters |
 | Stage 5: Reporting | [DONE] | Insights, validation, JSON + text output |
 | AI Router + Adapters | [DONE] | 4 adapters, fallback chains, health checks |
@@ -419,7 +433,7 @@ chart_analysis_ai_v3/
 
 | Submodule | Status | Description |
 | --- | --- | --- |
-| GeometricValueMapper | [DONE] | Pixel-to-value conversion using AxisInfo calibration |
+| ValueMapper | [DONE] | Parse TableData (VLM) -> DataSeries (replaces GeometricValueMapper) |
 | GeminiPromptBuilder | [DONE] | Canonical Format prompts with anti-hallucination |
 | ReasoningEngine | [DONE] | Orchestrator integrating mapper + builder |
 | RouterEngine | [DONE] | AIRouter bridge implementing ReasoningEngine ABC |
@@ -432,18 +446,18 @@ chart_analysis_ai_v3/
 **Stage 4 Architecture:**
 
 ```
-Stage 3 Output (RawMetadata)
+Stage 3 Output (RawMetadata + TableData)
          |
          v
 +-----------------------------------+
-|    GeometricValueMapper           |
-|    - Calibrate axes from AxisInfo |
-|    - Convert pixel -> value       |
-|    - Handle linear/log scales     |
-|    - Y-axis inversion             |
+|    ValueMapper                    |
+|    - Parse TableData headers      |
+|    - Map columns -> DataSeries    |
+|    - Parse row values -> points   |
+|    - Handle %, commas, missing    |
 +-----------------------------------+
          |
-         v (MappingResult)
+         v (DataSeries list)
 +-----------------------------------+
 |    GeminiPromptBuilder            |
 |    - Build CanonicalContext       |
@@ -461,7 +475,7 @@ Stage 3 Output (RawMetadata)
          v (RefinedChartData)
 +-----------------------------------+
 |    Post-processing                |
-|    - Merge OCR + mapped values    |
+|    - Merge VLM table + series     |
 |    - Confidence scoring           |
 |    - Description generation       |
 +-----------------------------------+
@@ -470,21 +484,19 @@ Stage 3 Output (RawMetadata)
 Stage 5 Input (RefinedChartData)
 ```
 
-**Stage 3 Implementation Details:**
+**Stage 3 Implementation Details (v6.0.0 - VLM Rewrite):**
 
-| Submodule | Status | Description |
+| Component | Status | Description |
 | --- | --- | --- |
-| Preprocessor | [DONE] | Negative image + adaptive threshold |
-| Skeletonizer | [DONE] | Lee algorithm, keypoint detection |
-| Vectorizer | [DONE] | RDP algorithm, subpixel refinement |
-| OCR Engine | [DONE] | PaddleOCR with role classification |
-| Geometric Mapper | [DONE] | Axis calibration, pixel-to-value |
-| Element Detector | [DONE] | Bars, markers, pie slices |
-| Classifier | [UPGRADED] | EfficientNet-B0 v1 (97.54% accuracy, 3-class, 15,608 images) |
-| Unit Tests | [DONE] | 7 test modules, 129 test cases |
-| Documentation | [DONE] | STAGE3_EXTRACTION.md created |
-| Academic Dataset Test | [DONE] | 15/15 images processed successfully |
-| Production Integration | [DONE] | ClassifierModel (EfficientNet-B0) via train_chart_classifier.py |
+| DeplotExtractor | [DONE] | google/deplot - Pix2Struct fine-tuned on chart-to-table (primary backend) |
+| MatchaExtractor | [DONE] | google/matcha-base - enhanced math+chart reasoning (ablation backend) |
+| Pix2StructBaselineExtractor | [DONE] | google/pix2struct-base - no chart fine-tuning (ablation baseline) |
+| SVLMExtractor | [DONE] | Qwen/Qwen2-VL-2B-Instruct - zero-shot visual SLM (ablation baseline) |
+| EfficientNet-B0 Classifier | [DONE] | 3-class (bar/line/pie), 97.54% accuracy, 4.01M params |
+| extractors.py | [DONE] | BaseChartExtractor ABC + BackendType enum + create_extractor() factory |
+| s3_extraction.py | [DONE] | Stage3Extraction orchestrator (309 lines, replaces 1,109-line geometry version) |
+| Unit Tests | [DONE] | 7 test modules, ~140 test cases (VLM + integration) |
+| Documentation | [DONE] | STAGE3_EXTRACTION.md v3.1.0 |
 
 **EfficientNet-B0 Classifier (v1 - 2026-03-12):**
 
@@ -505,30 +517,20 @@ Stage 5 Input (RefinedChartData)
 | line | 97.9% | 96.6% | 97.2% |
 | pie | 93.9% | 93.2% | 93.5% |
 
-**Stage 3 Full Pipeline Test Results (2026-01-29):**
+**Stage 3 Geometry Pipeline Test Results (2026-01-29, pre-VLM):**
 
-| Metric | Value |
-| --- | --- |
-| Total Images Tested | 800+ (100 per type) |
-| Classification Accuracy | **100%** (all 8 types) |
-| OCR Confidence | **91.5%** (EasyOCR) |
-| Overall Confidence | **92.6%** |
-| Avg Processing Time | ~7.6s (improved from 14.6s) |
+| Metric | Value | Note |
+| --- | --- | --- |
+| Total Images Tested | 800+ (100 per type) | Geometry-era testing |
+| Classification Accuracy | **100%** (all 8 types) | EfficientNet-B0 |
+| OCR Confidence | **91.5%** (EasyOCR) | Geometry pipeline - now replaced by VLM |
+| Overall Confidence | **92.6%** | Geometry pipeline - now replaced by VLM |
+| Avg Processing Time | ~7.6s (improved from 14.6s) | Geometry pipeline |
 
-**Stage 3 Enhancements Implemented:**
+**Note**: The geometry pipeline was replaced (v6.0.0) after a 50-chart benchmark showed
+0% axis detection and empty OCR output on real academic charts. VLM extraction achieves
+100% success rate. See [CHANGELOG.md](CHANGELOG.md) [6.0.0] for full context.
 
-| Enhancement | Description |
-| --- | --- |
-| RANSAC Fitting | Robust axis calibration with outlier rejection |
-| Curve Fitting | Circle/arc/ellipse fitting for line charts |
-| OCR Post-processing | Error correction (O->0, l->1, etc.) |
-| Content-aware Role | Keyword-based text classification |
-| Confidence Scoring | Weighted overall from 4 components |
-| Gap Filling | Morphological closing in skeletonizer |
-
-Reports generated:
-- [STAGE3_COMPLETION_SUMMARY.md](reports/STAGE3_COMPLETION_SUMMARY.md)
-- [STAGE3_CLASSIFIED_TEST_REPORT.md](reports/STAGE3_CLASSIFIED_TEST_REPORT.md)
 
 ### 5.3. Phase 2b: Data Pipeline & SLM Dataset [COMPLETED - v3.0.0]
 
@@ -568,9 +570,9 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 
 | Task | Status | Notes |
 | --- | --- | --- |
-| AI Adapter Pattern design | [DONE] | BaseAIAdapter ABC, GeminiAdapter, LocalSLMAdapter, OpenAIAdapter |
+| AI Adapter Pattern design | [DONE] | BaseAIAdapter ABC, GeminiAdapter, LocalSLMAdapter, OpenAIAdapter, PaddleVLAdapter |
 | AI Router with fallback chains | [DONE] | Confidence-based routing, health checks, local-only policy |
-| AI Routing implementation | [DONE] | `src/core_engine/ai/` - 8 files fully implemented |
+| AI Routing implementation | [DONE] | `src/core_engine/ai/` - 9 files, 5 adapters, DATA_EXTRACTION task type |
 | AI Routing tests | [DONE] | `tests/test_ai/` - 55 unit tests, all mock-based |
 | SLM Training Framework design | [DONE] | Qwen-2.5-1.5B + LoRA, 4-stage curriculum |
 | Training scripts | [DONE] | train_slm_lora.py (320L), prepare_slm_training_v3.py |
@@ -610,7 +612,7 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 | Thesis structure design | [DONE] | 7 chapters, XeLaTeX build, FPT University template |
 | Chapter 1: Introduction | [DONE] | Problem statement, objectives, scope, Vietnamese integration |
 | Chapter 2: Literature Review | [DONE] | 21 references, related work comparison table |
-| Chapter 3: Methodology | [DONE] | Hybrid pipeline design, geometric analysis, AI routing |
+| Chapter 3: Methodology | [DONE] | Hybrid Neural-VLM pipeline design, multi-backend extraction, AI routing |
 | Chapter 4: System Design | [DONE] | Architecture, data flow, AI Router, database schema |
 | Chapter 5: Results | [DONE] | EfficientNet-B0 ablation, YOLO, dataset stats, feature quality analysis |
 | Chapter 6: Project Management | [DONE] | Timeline, Git statistics, resource allocation |
@@ -635,7 +637,7 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 
 | Phase | Focus | Timeline |
 | --- | --- | --- |
-| **Stage 3 Benchmark** | Evaluate geometric extraction accuracy on 50 real charts | DONE (v4.4.0) |
+| **Stage 3 Benchmark** | Evaluate geometry extraction accuracy on 50 real charts -> FAIL -> VLM rewrite | DONE (v4.4.0 benchmark, v6.0.0 VLM rewrite) |
 | **Model Selection** | Micro-train 2-4 models on mini-dataset, compare, pick winner | CURRENT |
 | **SLM Full Train** | Full 3-epoch QLoRA on 228k samples (cloud GPU) | After selection |
 | **Serving Layer** | FastAPI + Celery + Docker | After SLM |
@@ -709,39 +711,45 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 | Postmortem | See `docs/reports/SLM_TRAINING_POSTMORTEM_V1.md` |
 | Training Guide | See `docs/guides/TRAINING.md` v1.0.0 |
 
-### 5.6. OCR Cache Status (2026-02-04)
+### 5.6. OCR Cache Status (HISTORICAL - geometry pipeline removed in v6.0.0)
 
-| Metric | Value |
-| --- | --- |
-| Total Entries | 46,910 |
-| File Size | ~600MB |
-| File Location | `data/cache/ocr_cache.json` |
-| Key Format | `{chart_type}\{filename}` |
-| OCR Engine | PaddleOCR v2.9.1 |
+The OCR cache was used by the geometry-based Stage 3 (PaddleOCR extraction). Stage 3
+was rewritten to VLM-based extraction in v6.0.0; the OCR cache is no longer used by
+the production pipeline. The cache file (`data/cache/ocr_cache.json`, ~600MB, 46,910
+entries) is retained for historical reference and can be deleted to recover disk space.
 
-**Coverage by Chart Type:**
+### 5.7. PaddleOCR-VL Integration [COMPLETED - 2026-03-15]
 
-| Type | Cached | Notes |
+Added a 5th AI provider and standalone microservice for PaddleOCR-VL (Vintern-1B fine-tuned).
+
+| Component | Status | Description |
 | --- | --- | --- |
-| line | ~10,000 | Complete |
-| bar | ~9,000 | Complete |
-| scatter | ~5,000 | Complete |
-| box | ~5,000 | Complete |
-| pie | ~2,400 | Complete |
-| histogram | ~2,000 | Complete |
-| area | ~1,200 | Complete |
-| heatmap | ~700 | Complete |
+| `paddle_server.py` | [DONE] | FastAPI microservice (port 8001), loads models/paddleocr_vl/ at startup |
+| `paddlevl_adapter.py` | [DONE] | HTTP adapter in `src/core_engine/ai/adapters/`, health check + /extract |
+| `TaskType.DATA_EXTRACTION` | [DONE] | New task type, chain: paddlevl → gemini |
+| `models/paddleocr_vl/` | [DONE] | Vintern-1B fine-tuned model files (~8GB) |
+| `models/slm/vintern_finetuned/` | [DONE] | Vintern fine-tuned config files |
+| `run_demo_s1_s5.py` | [DONE] | Full S1→S5 demo script in `scripts/pipeline/` |
+| `EfficientNetClassifier` | [DONE] | Added to `resnet_classifier.py` alongside ResNet18Classifier |
 
-### 5.8. Test Coverage (2026-03-02)
+**Architecture note:** PaddleOCR-VL requires `transformers>=4.45` which conflicts with
+Vintern (`transformers==4.44.2`). The microservice pattern (separate venv + HTTP) resolves
+this dependency conflict cleanly.
+
+**Fallback chain for DATA_EXTRACTION:**
+- Default: `paddlevl → gemini` (Gemini vision fallback when server offline)
+- Local-only: `paddlevl` only (server must be running)
+
+### 5.8. Test Coverage (2026-03-15)
 
 | Test Suite | Tests | Files | Notes |
 | --- | --- | --- | --- |
 | Schemas | ~19 | 1 | Schema validation |
-| Stage 3 Extraction | ~140 | 8 | OCR, geometry, elements, integration |
+| Stage 3 Extraction | ~140 | 7 | VLM extractors, s3_extraction, integration |
 | Stage 4 Reasoning | ~36 | 3 | ValueMapper, PromptBuilder |
 | Stage 5 Reporting | ~62 | 2 | Insights, validation, output formats |
 | AI Routing | ~55 | 5 | Adapters, router, task types, prompts, exceptions |
-| **Total** | **294** | **23** | **All passing** |
+| **Total** | **299** | **23** | **All passing** |
 
 ### 5.8. Project Cleanup (2026-02-04)
 
@@ -808,15 +816,15 @@ Final Output (PipelineResult)
 | --- | --- | --- |
 | Use YOLO for detection | Fast inference, easy fine-tuning | 2026-01-19 |
 | PyMuPDF for PDF processing | Fastest, preserves text coordinates | 2026-01-19 |
-| PaddleOCR over Tesseract | Better accuracy for mixed languages | 2026-01-19 |
+| PaddleOCR over Tesseract | Better accuracy for mixed languages (used in v1-v5, geometry era) | 2026-01-19 |
 | Pydantic v2 for schemas | Type safety, validation, serialization | 2026-01-19 |
 | Local SLM over API | Offline capability, cost, privacy | 2026-01-19 |
 | Qwen-2.5 as default SLM | Best performance/size ratio | 2026-01-19 |
-| Negative image preprocessing | Better skeleton extraction from charts | 2026-01-25 |
-| RDP vectorization | Preserves data points, reduces noise | 2026-01-25 |
-| Spatial OCR role classification | Context-aware text extraction | 2026-01-25 |
-| Hybrid bar+line detection | Contours for bars, skeleton for lines | 2026-01-25 |
-| Stage 3 = Pure Geometry | Output toán học hóa, no LLM dependency | 2026-01-29 |
+| Negative image preprocessing | Better skeleton extraction from charts (geometry era, v1-v5) | 2026-01-25 |
+| RDP vectorization | Preserves data points, reduces noise (geometry era, v1-v5) | 2026-01-25 |
+| Spatial OCR role classification | Context-aware text extraction (geometry era, v1-v5) | 2026-01-25 |
+| Hybrid bar+line detection | Contours for bars, skeleton for lines (geometry era, v1-v5) | 2026-01-25 |
+| Stage 3 = Geometry (Initial) | Initial design: geometry-first for mathematical output | 2026-01-29 |
 | Stage 4 = Gemini prototype | Rapid iteration, then train local SLM | 2026-01-30 |
 | Canonical Format prompts | Anti-hallucination, structured output | 2026-01-30 |
 | Stage 5 = Parallel processing | Async insights for throughput | 2026-01-30 |
@@ -826,6 +834,7 @@ Final Output (PipelineResult)
 | 4-stage curriculum learning | Progressive difficulty for small dataset | 2026-02-28 |
 | Celery + Redis task queue | Async processing (from elix pattern) | 2026-02-28 |
 | 3-tier instruction hierarchy | Scalable AI agent guidance system | 2026-02-28 |
+| Stage 3 = VLM Extraction | Benchmark: geometry fails (0% axis detection, 0% OCR) on 50 real charts → VLM derendering replaces geometry | 2026-03-12 |
 | Cloud GPU for SLM training | Local 6GB too constrained for max_length=4096 | 2026-03-02 |
 | max_length=4096 for SFT | Ensure model sees full ground truth during training | 2026-03-02 |
 
@@ -836,7 +845,7 @@ Final Output (PipelineResult)
 | Area | Contribution Type | Papers to Reference |
 | --- | --- | --- |
 | Hybrid Detection | Novel Pipeline Design | YOLO, Faster R-CNN |
-| Geometric Mapping | Algorithm Design | Classical CV papers |
+| VLM Extraction | Multi-backend ablation design | DePlot, MatCha, Pix2Struct |
 | SLM Distillation | Knowledge Transfer | DistilBERT, TinyBERT |
 | Error Correction | Multi-stage Pipeline | Ensemble methods |
 
@@ -846,12 +855,14 @@ Final Output (PipelineResult)
 
 ### Research Papers
 - [YOLO: Real-Time Object Detection](https://arxiv.org/abs/1506.02640)
-- [PaddleOCR: A Practical Ultra Lightweight OCR System](https://arxiv.org/abs/2009.09941)
+- [DePlot: One-shot visual language reasoning by plot-to-table translation](https://arxiv.org/abs/2212.10505)
+- [MatCha: Enhancing Visual Language Pretraining with Math Reasoning](https://arxiv.org/abs/2212.09662)
+- [Pix2Struct: Screenshot Parsing as Pretraining for Visual Language Understanding](https://arxiv.org/abs/2210.03347)
 - [Knowledge Distillation: A Survey](https://arxiv.org/abs/2006.05525)
 
 ### Technical Documentation
 - [Ultralytics YOLOv8 Docs](https://docs.ultralytics.com/)
-- [PaddleOCR GitHub](https://github.com/PaddlePaddle/PaddleOCR)
+- [HuggingFace Transformers: Pix2Struct](https://huggingface.co/docs/transformers/model_doc/pix2struct)
 - [Pydantic v2 Documentation](https://docs.pydantic.dev/)
 
 ### Related Projects

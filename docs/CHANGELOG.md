@@ -6,6 +6,137 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [7.0.0] - 2026-03-15
+
+### PaddleOCR-VL Microservice + Vintern Integration
+
+Added a 5th AI provider (`paddlevl`) and a standalone PaddleOCR-VL extraction
+microservice. PaddleOCR-VL (Vintern-1B fine-tuned) is a Vietnamese-specialised
+Vision-Language Model that runs in a dedicated venv to isolate its
+`transformers>=4.45` dependency from the main environment
+(`transformers==4.44.2` required by Vintern).
+
+#### Added
+
+- **`paddle_server.py`** (130 lines) - Standalone FastAPI microservice (port 8001)
+  - Loads `models/paddleocr_vl/` at startup (PaddleOCR-VL, Vintern fine-tuned)
+  - Exposes `/extract` (POST, multipart image) and `/health` (GET)
+  - Prompt: `"Chart Recognition:"` — instructs model to return structured data table
+  - Separate venv required (`setup_paddle_env.sh`)
+
+- **`src/core_engine/ai/adapters/paddlevl_adapter.py`** (174 lines) - HTTP adapter
+  - `PaddleVLAdapter(BaseAIAdapter)` — provider_id `"paddlevl"`
+  - Forwards chart images to `paddle_server.py` via HTTP
+  - `health_check()` pings `GET /health`; returns False if server not running
+  - Router falls back to Gemini vision when server is offline
+
+- **`src/core_engine/ai/task_types.py`** — `TaskType.DATA_EXTRACTION` added
+  - Fallback chain: `paddlevl → gemini` (default), `paddlevl` (local-only mode)
+
+- **`src/core_engine/ai/router.py`** — `PaddleVLAdapter` registered, DATA_EXTRACTION chains wired
+
+- **`src/core_engine/stages/s3_extraction/resnet_classifier.py`** — `EfficientNetClassifier`
+  and `create_efficientnet_classifier()` factory added (alongside existing `ResNet18Classifier`)
+
+- **`scripts/pipeline/run_demo_s1_s5.py`** (522 lines) - Full pipeline demo S1→S5
+  - Runs on sample bar/line/pie images
+  - Stage 2: `yolo_chart_detector.pt`
+  - Stage 3: EfficientNet-B0 classifier + DePlot extractor
+  - Stage 4: AIRouter → Gemini / OpenAI fallback chain
+  - CLI flags: `--no-llm`, `--image <path>`
+
+- **`models/paddleocr_vl/`** - PaddleOCR-VL model (Vintern-1B fine-tuned, ~8GB)
+  - Includes PP-DocLayoutV2 layout model, tokenizer, custom modeling files
+
+- **`models/slm/vintern_finetuned/`** - Vintern fine-tuned model config files
+
+#### Changed
+
+- **`config/models.yaml`** — added `paddlevl` provider section (server_url, timeout, max_new_tokens)
+- **`src/core_engine/ai/adapters/__init__.py`** — exports `PaddleVLAdapter`
+- **`src/core_engine/stages/s3_extraction/__init__.py`** — exports `EfficientNetClassifier`, `create_efficientnet_classifier`
+- **`src/core_engine/schemas/stage_outputs.py`** — updated docstrings
+- **`notebooks/01d_chart_classification.ipynb`** — minor updates
+
+#### Architecture
+
+```
+AIRouter fallback chains (updated):
+    DATA_EXTRACTION  : ["paddlevl", "gemini"]     <- new task type
+    CHART_REASONING  : ["local_slm", "gemini", "openai"]
+    OCR_CORRECTION   : ["local_slm", "gemini"]
+    DESCRIPTION_GEN  : ["local_slm", "gemini", "openai"]
+    DATA_VALIDATION  : ["gemini", "openai"]
+
+PaddleOCR-VL deployment:
+    paddle_server.py  (port 8001, separate venv)
+         |  HTTP
+    paddlevl_adapter.py  (in main venv)
+         |  AIRouter
+    Stage 4 / Stage 3 extraction
+```
+
+#### Tests
+
+- 299/299 tests passing (no new tests added for HTTP adapter; integration tested via demo)
+
+---
+
+## [6.0.0] - 2026-03-12
+
+### Stage 3 Rewrite: VLM-Based Pluggable Extraction Architecture
+
+Stage 3 was completely rewritten from a 7-submodule geometry pipeline (OCR,
+skeletonization, RANSAC axis calibration) to a pluggable VLM extraction architecture.
+A benchmark evaluation on 50 real-world charts confirmed that the geometry approach
+fundamentally fails on production data (0% axis detection, empty OCR output for all
+50 charts), motivating the switch to end-to-end neural table extraction.
+
+#### Added
+- **`src/core_engine/stages/s3_extraction/extractors.py`** (430+ lines) - VLM extractor backends
+  - `BaseChartExtractor` ABC: unified interface for all backends
+  - `DeplotExtractor` - google/deplot (Pix2Struct fine-tuned on chart-to-table derendering)
+  - `MatchaExtractor` - google/matcha-base (enhanced math and chart reasoning)
+  - `Pix2StructBaselineExtractor` - google/pix2struct-base (ablation baseline)
+  - `SVLMExtractor` - Qwen/Qwen2-VL-2B-Instruct (zero-shot chat VLM)
+  - `create_extractor()` factory function
+  - `BackendType` enum: deplot | pix2struct | matcha | svlm
+
+#### Changed
+- **`src/core_engine/stages/s3_extraction/s3_extraction.py`** (1,109 -> 309 lines) - Complete rewrite
+  - New `ExtractionConfig` (Pydantic): VLM-only fields (extractor_backend, extractor_model, extractor_max_patches, extractor_device)
+  - `Stage3Extraction`: VLM extractor + EfficientNet-B0 chart type classifier
+  - All geometry processing removed; RawMetadata.texts=[], .elements=[], .axis_info=None
+- **`src/core_engine/stages/s3_extraction/pix2struct_extractor.py`** - Now backward-compat re-export wrapper
+  - `Pix2StructExtractor = DeplotExtractor` alias maintained for existing code
+- **`config/pipeline.yaml`** - New extraction section (extractor_backend: deplot)
+- **`src/core_engine/stages/s4_reasoning/value_mapper.py`** - Removed geometry fallback path from `map_metadata_to_series()`; VLM table only
+- **`src/core_engine/schemas/stage_outputs.py`** - Updated docstrings for VLM-based field semantics
+- **`src/core_engine/stages/__init__.py`** - Removed geometry imports, added extractor exports
+- **`src/core_engine/stages/s3_extraction/__init__.py`** - Removed geometry exports, added VLM extractor exports
+- **`docs/architecture/STAGE3_EXTRACTION.md`** - Rewritten to v3.1.0 VLM architecture
+- **`.github/instructions/module-extraction.instructions.md`** - Updated to v2.1.0
+
+#### Removed
+- `ImagePreprocessor`, `Skeletonizer`, `Vectorizer`, `OCREngine`, `ElementDetector`, `GeometricMapper` from pipeline exports (files kept on disk as legacy reference)
+- Geometry fallback path from `value_mapper.py::map_metadata_to_series()`
+- `get_vectorized_representation()` method from `Stage3Extraction`
+- `TestStage3VectorizedOutput` test class (geometry-specific)
+
+#### Tests
+- 299/299 tests passing (1 geometry-specific test removed)
+
+#### Architecture Decision
+
+The benchmark evaluation (50 charts, Gemini Vision ground truth) confirmed geometry failure:
+- Axis detection: 0/40 non-pie charts detected any axis range
+- OCR output: empty (texts=[]) for all 50 charts
+- Element count accuracy: max 50% (bar charts only)
+
+VLM extraction eliminates these failure modes through end-to-end neural table derendering.
+
+---
+
 ## [5.0.0] - 2026-03-12
 
 ### Classifier Upgrade: EfficientNet-B0 3-class + Stage 2 Adapter Architecture + Unified Training

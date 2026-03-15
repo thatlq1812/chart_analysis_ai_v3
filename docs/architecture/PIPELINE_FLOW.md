@@ -11,7 +11,7 @@
 | --- | --- | --- | --- |
 | Stage 1 | **Complete** | `Stage1Ingestion` | PDF/Image ingestion |
 | Stage 2 | **Complete** | `Stage2Detection` | YOLO 93.5% mAP@50 |
-| Stage 3 | **Complete** | `Stage3Extraction` (11 submodules) | OCR + Geometry + Classification |
+| Stage 3 | **Complete** | `Stage3Extraction` (VLM + EfficientNet-B0) | VLM extraction (DePlot/MatCha/Pix2Struct/SVLM) |
 | Stage 4 | **Complete** | `Stage4Reasoning` (6 submodules) | AI Router + 3 adapters |
 | Stage 5 | **Complete** | `Stage5Reporting` | Insights, validation, reports |
 | AI Router | **Complete** | `AIRouter` (8 files, 55 tests) | Multi-provider fallback |
@@ -238,27 +238,22 @@ class DetectedChart(BaseModel):
 
 ---
 
-## 4. Stage 3: Structural Analysis (Hybrid)
+## 4. Stage 3: Structural Analysis (VLM Extraction)
 
 ### 4.1. Purpose
 
-Extract raw metadata through parallel OCR, element detection, classification, and geometric analysis. This is the most complex stage with 11 submodules.
+Convert cropped chart images directly to structured data tables using Vision-Language Models (VLMs). This is a 2-component design: EfficientNet-B0 for chart-type classification, and a pluggable VLM extractor with 4 interchangeable backends.
 
-### 4.2. Submodule Architecture
+### 4.2. Backend Architecture
 
-| Submodule | File | Purpose |
-| --- | --- | --- |
-| `Stage3Extraction` | `s3_extraction.py` | Orchestrator |
-| `ResNetClassifier` | `resnet_classifier.py` | Chart type classification (94.14% acc) |
-| `MLClassifier` | `ml_classifier.py` | Fallback ML classifier |
-| `SimpleClassifier` | `simple_classifier.py` | Rule-based fallback |
-| `ElementDetector` | `element_detector.py` | Bar/point/slice/line detection |
-| `GeometricMapper` | `geometric_mapper.py` | Axis scale + value mapping |
-| `OCREngine` | `ocr_engine.py` | PaddleOCR text extraction |
-| `Preprocessor` | `preprocessor.py` | Image preprocessing |
-| `Skeletonizer` | `skeletonizer.py` | Morphological analysis |
-| `Vectorizer` | `vectorizer.py` | Contour vectorization |
-| `Classifier` | `classifier.py` | Classifier dispatcher |
+| Backend | File | Model | Purpose |
+| --- | --- | --- | --- |
+| `Stage3Extraction` | `s3_extraction.py` | Orchestrator | Config loading + EfficientNet + VLM |
+| `DeplotExtractor` | `extractors.py` | google/deplot | Primary: chart-to-table (Pix2Struct fine-tuned) |
+| `MatchaExtractor` | `extractors.py` | google/matcha-base | Ablation: math+chart reasoning |
+| `Pix2StructBaselineExtractor` | `extractors.py` | google/pix2struct-base | Ablation baseline: no chart fine-tuning |
+| `SVLMExtractor` | `extractors.py` | Qwen/Qwen2-VL-2B-Instruct | Zero-shot visual SLM baseline |
+| `EfficientNet-B0 Classifier` | `s3_extraction.py` | models/weights/ | Chart type classification (97.54%) |
 
 ### 4.3. Flow Diagram
 
@@ -268,80 +263,58 @@ flowchart TD
         A[DetectedChart\nCropped Image]
     end
 
-    subgraph Parallel["Parallel Processing"]
-        subgraph Classification["Chart Classification"]
-            B1[ResNet-18\n94.14% accuracy]
-            B2[Fallback: ML or Rule-based]
-        end
-
-        subgraph OCR["Text Extraction"]
-            C1[PaddleOCR]
-            C2[Text Detection]
-            C3[Role Assignment\ntitle/label/legend/value/tick]
-        end
-
-        subgraph Elements["Element Detection"]
-            D1[Color Analysis]
-            D2[Contour Detection]
-            D3[Element Classification\nbar/point/slice/line]
-        end
+    subgraph Classification["Chart Classification"]
+        B[EfficientNet-B0\n97.54% accuracy\nbar / line / pie]
     end
 
-    subgraph Geometric["Geometric Analysis"]
-        E1[Detect Axes]
-        E2[Extract Scale]
-        E3[Map Coordinates\nto Values]
+    subgraph VLMExtraction["VLM Extraction (selected backend)"]
+        C1[DeplotExtractor\ngoogle/deplot]
+        C2[MatchaExtractor\ngoogle/matcha-base]
+        C3[Pix2StructBaselineExtractor\ngoogle/pix2struct-base]
+        C4[SVLMExtractor\nQwen2-VL-2B]
     end
 
-    subgraph Assembly["Data Assembly"]
-        F[Combine into RawMetadata\nwith ExtractionConfidence]
+    subgraph Parsing["Table Parsing"]
+        D[Parse THEAD / TBODY markers\nSplit on pipe+newline delimiters\nBuild TableData records]
+    end
+
+    subgraph Assembly["Metadata Assembly"]
+        E[Build RawMetadata\nchart_type + table_data + confidence]
     end
 
     subgraph Output["Stage 3 Output"]
-        G[Stage3Output\nList of RawMetadata]
+        F[Stage3Output\nList of RawMetadata]
     end
 
-    A --> B1
-    B1 -->|low conf| B2
-    A --> C1 --> C2 --> C3
-    A --> D1 --> D2 --> D3
+    A --> B
+    A --> C1
+    A --> C2
+    A --> C3
+    A --> C4
 
-    B1 --> E1
-    B2 --> E1
-    C3 --> E1
-    D3 --> E1
+    B --> E
+    C1 --> D
+    C2 --> D
+    C3 --> D
+    C4 --> D
 
-    E1 --> E2 --> E3 --> F --> G
+    D --> E --> F
 ```
 
-### 4.4. OCR Text Role Detection
+### 4.4. Extraction Backend Selection
 
-Roles are defined in the `TextRole` enum:
+The active backend is set via `pipeline.yaml`:
 
-```mermaid
-flowchart TB
-    subgraph Chart["Chart Image Regions"]
-        A[Top: TITLE / SUBTITLE]
-        B[Left: Y_AXIS_LABEL / Y_TICK]
-        C[Bottom: X_AXIS_LABEL / X_TICK]
-        D[Corner: LEGEND / LEGEND_ITEM]
-        E[On elements: DATA_LABEL]
-        F[Other: ANNOTATION]
-    end
-
-    subgraph Roles["TextRole Enum"]
-        R1[TITLE]
-        R2[SUBTITLE]
-        R3[X_AXIS_LABEL]
-        R4[Y_AXIS_LABEL]
-        R5[X_TICK]
-        R6[Y_TICK]
-        R7[LEGEND]
-        R8[DATA_LABEL]
-        R9[ANNOTATION]
-        R10[UNKNOWN]
-    end
+```yaml
+extraction:
+  extractor_backend: "deplot"   # options: deplot | matcha | pix2struct | svlm
+  extractor_model: null         # null = use default hub model for each backend
+  extractor_device: "cuda"      # cuda | cpu | mps
+  max_new_tokens: 512
+  max_patches: 512
 ```
+
+All backends share the `BaseChartExtractor` interface and return the same `TableData` schema, making backend switching transparent to downstream stages.
 
 ### 4.5. Input/Output Schema
 
@@ -353,24 +326,19 @@ class Stage3Output(BaseModel):
 
 class RawMetadata(BaseModel):
     chart_id: str
-    chart_type: ChartType        # 12 types in enum
-    texts: List[OCRText]
-    elements: List[ChartElement]
-    axis_info: Optional[AxisInfo]
+    chart_type: ChartType        # 3-class from EfficientNet-B0
+    table_data: Optional[TableData]   # VLM-extracted table
+    texts: List[OCRText]         # empty [] in VLM pipeline
+    elements: List[ChartElement] # empty [] in VLM pipeline
+    axis_info: Optional[AxisInfo]    # None in VLM pipeline
     confidence: ExtractionConfidence
 
-class OCRText(BaseModel):
-    text: str
-    bbox: BoundingBox
-    confidence: float
-    role: Optional[str]          # TextRole value
-
-class ChartElement(BaseModel):
-    element_type: str            # ElementType value
-    bbox: BoundingBox
-    center: Point
-    color: Optional[Color]
-    area_pixels: Optional[int]
+class TableData(BaseModel):
+    headers: List[str]           # Column headers from THEAD
+    rows: List[List[str]]        # Data rows from TBODY
+    records: List[Dict[str, str]] # headers zipped with each row
+    model_name: str              # e.g. "google/deplot"
+    raw_output: str              # Full linearized VLM output
 ```
 
 ---
@@ -386,7 +354,7 @@ Apply AI reasoning to correct OCR errors, map geometric values, and generate des
 | Component | File | Purpose |
 | --- | --- | --- |
 | `Stage4Reasoning` | `s4_reasoning.py` (479 lines) | Orchestrator |
-| `GeometricValueMapper` | `value_mapper.py` (764 lines) | Pixel-to-value mapping |
+| `ValueMapper` | `value_mapper.py` (764 lines) | TableData -> DataSeries |
 | `GeminiPromptBuilder` | `prompt_builder.py` (833 lines) | Structured prompt construction |
 | `ReasoningEngine` | `reasoning_engine.py` (185 lines) | Abstract base for engines |
 | `GeminiReasoningEngine` | `gemini_engine.py` (626 lines) | Direct Gemini API engine |
@@ -398,19 +366,19 @@ Apply AI reasoning to correct OCR errors, map geometric values, and generate des
 ```mermaid
 flowchart TD
     subgraph Input["Stage 3 Output"]
-        A[RawMetadata\nOCR + Elements + Geometry]
+        A[RawMetadata\n+ TableData from VLM]
     end
 
-    subgraph GeometricMapping["Geometric Value Mapping"]
-        B1[Calculate Axis Scale\nlinear/log]
-        B2[Map Pixel to Value\ninverted Y-axis]
-        B3[Initial Value Estimates\nwith confidence scores]
+    subgraph ValueMapping["1. Value Mapping from VLM Table"]
+        B1[Parse TableData headers]
+        B2[Map columns to DataSeries names]
+        B3[Parse row values into DataPoints]
     end
 
     subgraph PromptConstruction["Prompt Building"]
         C1[GeminiPromptBuilder]
-        C2[Build CanonicalContext\nchart_type + OCR texts + values]
-        C3[Select prompt template\nreasoning/ocr/description/value]
+        C2[Build CanonicalContext\nchart_type + VLM table + series]
+        C3[Select prompt template\nreasoning/description/value]
     end
 
     subgraph EngineRouting["Engine Selection"]
@@ -427,9 +395,9 @@ flowchart TD
     end
 
     subgraph PostProcess["Post-Processing"]
-        F1[Apply OCR corrections\nloo -> 100]
+        F1[Validate series consistency]
         F2[Refine values]
-        F3[Map legend to colors]
+        F3[Map legend to series]
         F4[Generate description]
     end
 
@@ -458,8 +426,8 @@ flowchart TD
 
 ```python
 class TaskType(str, Enum):
-    CHART_REASONING = "chart_reasoning"     # Full analysis: OCR + values + description
-    OCR_CORRECTION = "ocr_correction"       # Fix OCR misreads
+    CHART_REASONING = "chart_reasoning"     # Full analysis: VLM table + description
+    OCR_CORRECTION = "ocr_correction"       # Fix VLM table misreads
     DESCRIPTION_GEN = "description_gen"     # Academic-style description
     DATA_VALIDATION = "data_validation"     # Validate extracted data
 ```
@@ -663,25 +631,21 @@ sequenceDiagram
     Note over Pipeline,S3: Stage 3: Extraction
     Pipeline->>S3: process(Stage2Output)
     loop For each chart
-        par Parallel Analysis
-            S3->>S3: ResNet-18 classify (94.14%)
-            S3->>OCR: PaddleOCR extract
-            OCR-->>S3: texts + roles
-            S3->>S3: Element detection
-        end
-        S3->>S3: Geometric value mapping
+        S3->>S3: EfficientNet-B0 classify (97.54%)
+        S3->>S3: VLM extract (DePlot/MatCha/Pix2Struct/SVLM)
+        S3->>S3: Parse linearized table -> TableData
     end
     S3-->>Pipeline: Stage3Output
 
     Note over Pipeline,S4: Stage 4: Reasoning
     Pipeline->>S4: process(Stage3Output)
     loop For each metadata
-        S4->>S4: GeometricValueMapper
+        S4->>S4: ValueMapper (TableData -> DataSeries)
         S4->>S4: GeminiPromptBuilder
         S4->>Router: resolve(CHART_REASONING)
         Router->>Router: Walk chain: local_slm -> gemini -> openai
         Router-->>S4: AIResponse
-        S4->>S4: Apply corrections
+        S4->>S4: Apply corrections + generate description
     end
     S4-->>Pipeline: Stage4Output
 

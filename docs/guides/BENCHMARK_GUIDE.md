@@ -1,18 +1,28 @@
-# Stage 3 Benchmark - Ceiling Experiment
+# Stage 3 Benchmark - Historical Ceiling Experiment
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 1.1.0 | 2026-03-12 | That Le | Marked historical; result = FAIL -> VLM rewrite (v6.0.0) |
 | 1.0.0 | 2026-03-04 | That Le | Initial benchmark infrastructure |
+
+> **STATUS: COMPLETED (HISTORICAL)** — This benchmark evaluated the geometry-based Stage 3 pipeline.
+> Result: **FAIL** (0/40 axis detection, 0 OCR output on 50 real-world charts).
+> This result directly motivated the VLM rewrite in v6.0.0.
+> The current Stage 3 uses DePlot/MatCha/Pix2Struct/SVLM VLM backends.
 
 ## 1. Purpose
 
-This benchmark measures the **geometric ceiling** of Stage 3 (Extraction) -- the maximum
-accuracy achievable by the current computer vision + geometry pipeline BEFORE AI reasoning
-(Stage 4) corrects errors.
+This benchmark measured the **geometric ceiling** of the original Stage 3 -- the maximum
+accuracy achievable by the computer vision + geometry pipeline (pre-v6.0.0) BEFORE AI reasoning
+(Stage 4) corrected errors.
 
-**Key question**: Can the geometric approach achieve >= 80% accuracy on core metrics?
+**Key question asked**: Can the geometric approach achieve >= 80% accuracy on core metrics?
 - If YES: Focus on SLM training to fix remaining errors
 - If NO: Redesign Stage 3 components before investing in SLM
+
+**Answer**: NO (FAIL) — the benchmark revealed that geometry fundamentally fails on real-world
+academic charts. OCR produced zero output (`texts: []`) for all 50 charts, and axis detection
+achieved 0/40 (0%) accuracy on non-pie charts. See CHANGELOG [6.0.0] for full details.
 
 ## 2. Benchmark Composition
 
@@ -208,17 +218,15 @@ Open each chart image alongside its annotation JSON and correct:
 
 ## 7. Interpretation Guide
 
-### What "PASS" means
-The geometric pipeline alone can extract reasonably accurate data from charts.
-SLM training should focus on error correction (OCR cleanup, value mapping).
+### What "PASS" means (historical)
+The geometry pipeline alone could extract reasonably accurate data from charts.
+SLM training would focus on error correction (OCR cleanup, value mapping).
 
-### What "PARTIAL" means
-Some chart types or components need targeted fixes. Check the per-type breakdown
-to identify which types fail and why.
+### What "PARTIAL" means (historical)
+Some chart types or components needed targeted fixes.
 
-### What "FAIL" means
-The geometric approach has fundamental limitations for certain chart types.
-Consider:
-- Replacing rule-based OCR role classification with ML
-- Adding specialized detectors for specific chart types
-- Using vision-language models for direct extraction
+### What "FAIL" means (historical)
+The geometry approach had fundamental limitations. This is the result that was observed:
+- OCR produced 0 output texts for all 50 charts
+- Axis detection achieved 0% on 40 non-pie charts
+- **Action taken**: Stage 3 was rewritten using VLM extraction (v6.0.0)

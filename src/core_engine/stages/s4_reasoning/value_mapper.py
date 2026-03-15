@@ -582,35 +582,91 @@ class GeometricValueMapper:
         Returns:
             List of DataSeries with mapped values
         """
-        # Calibrate if axis_info available
-        if metadata.axis_info and not self._is_calibrated:
-            self.calibrate_from_axis_info(
-                metadata.axis_info,
-                image_width,
-                image_height,
-            )
-        
-        # Fallback: calibrate from OCR texts
-        if not self._is_calibrated and metadata.texts:
-            self.calibrate_from_tick_labels(
-                metadata.texts,
-                image_width or 500,
-                image_height or 400,
-            )
-        
-        # Extract X labels from OCR
-        x_labels = self._extract_x_labels(metadata.texts)
-        
-        return self.map_elements_to_series(
-            metadata.elements,
-            metadata.chart_type,
-            x_labels,
+        # VLM table — direct structured extraction, no geometric calibration needed.
+        # Stage 3 always runs with a VLM extractor backend (deplot / matcha / pix2struct / svlm).
+        # When the model produced a valid table (extraction_confidence > 0), use it directly.
+        if (
+            metadata.pix2struct_table is not None
+            and metadata.pix2struct_table.extraction_confidence > 0
+        ):
+            series = self._pix2struct_to_series(metadata.pix2struct_table)
+            if series:
+                self.logger.debug(
+                    f"map_metadata_to_series: VLM table ok | "
+                    f"chart_id={metadata.chart_id} | series={len(series)}"
+                )
+                return series
+
+        # VLM returned empty or failed — no geometry fallback available.
+        self.logger.warning(
+            f"map_metadata_to_series: VLM extraction empty or unavailable | "
+            f"chart_id={metadata.chart_id} | returning empty series"
         )
-    
-    # =========================================================================
-    # Private Methods
-    # =========================================================================
-    
+        return []
+
+    def _pix2struct_to_series(
+        self,
+        table: Any,
+    ) -> List[DataSeries]:
+        """
+        Convert a Pix2StructResult table to DataSeries.
+
+        Convention used by Pix2Struct derendering output:
+            headers[0]    = x-axis / category label column
+            headers[1..N] = series names (one series per remaining column)
+
+        Example table:
+            headers = ["Year", "Model A", "Model B"]
+            rows    = [["2020", "0.82", "0.79"],
+                       ["2021", "0.85", "0.81"]]
+        Produces:
+            Series "Model A": [("2020", 0.82), ("2021", 0.85)]
+            Series "Model B": [("2020", 0.79), ("2021", 0.81)]
+
+        Args:
+            table: Pix2StructResult from Stage 3
+
+        Returns:
+            List of DataSeries with confidence=0.95 (direct from model)
+        """
+        headers: List[str] = table.headers
+        rows: List[List[str]] = table.rows
+
+        if not headers or not rows:
+            return []
+
+        # Single-column table: treat entire column as one series
+        if len(headers) == 1:
+            series_names = [headers[0]]
+            label_col_idx = None
+        else:
+            label_col_idx = 0
+            series_names = headers[1:]
+
+        series_list: List[DataSeries] = []
+
+        for s_idx, series_name in enumerate(series_names):
+            col_idx = s_idx if label_col_idx is None else s_idx + 1
+            points: List[DataPoint] = []
+
+            for row_idx, row in enumerate(rows):
+                if label_col_idx is not None and len(row) > label_col_idx:
+                    label = str(row[label_col_idx]).strip()
+                else:
+                    label = str(row_idx + 1)
+
+                val_str = row[col_idx] if len(row) > col_idx else ""
+                value = self._parse_numeric(val_str.strip())
+                if value is None:
+                    continue
+
+                points.append(DataPoint(label=label, value=value, confidence=0.95))
+
+            if points:
+                series_list.append(DataSeries(name=series_name, points=points))
+
+        return series_list
+
     def _map_pixel_to_value(
         self,
         pixel: float,

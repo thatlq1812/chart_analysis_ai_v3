@@ -242,17 +242,8 @@ INPUT C:\Program Files\MiKTeX\fonts\tfm\public\amsfonts\symbols\msbm10.tfm
 INPUT C:\Program Files\MiKTeX\fonts\tfm\public\amsfonts\symbols\msbm10.tfm
 INPUT C:\Program Files\MiKTeX\fonts\tfm\public\amsfonts\symbols\msbm7.tfm
 OUTPUT main.xdv
-INPUT .\main.toc
-INPUT .\main.toc
-INPUT main.toc
 OUTPUT main.toc
-INPUT .\main.lof
-INPUT .\main.lof
-INPUT main.lof
 OUTPUT main.lof
-INPUT .\main.lot
-INPUT .\main.lot
-INPUT main.lot
 OUTPUT main.lot
 INPUT .\contents\introduction.tex
 INPUT .\contents\introduction.tex
@@ -380,9 +371,6 @@ INPUT .\figures\tables\tab_stage3_feature_quality.tex
 INPUT .\figures\tables\tab_stage3_feature_quality.tex
 INPUT .\figures\tables\tab_stage3_feature_quality.tex
 INPUT figures\tables\tab_stage3_feature_quality.tex
-INPUT .\figures\fig_feature_quality_by_type.pdf
-INPUT .\figures\fig_feature_quality_by_type.pdf
-INPUT .\figures\fig_feature_quality_by_type.pdf
 INPUT .\figures\fig_processing_time_breakdown.pdf
 INPUT .\figures\fig_processing_time_breakdown.pdf
 INPUT .\figures\fig_processing_time_breakdown.pdf

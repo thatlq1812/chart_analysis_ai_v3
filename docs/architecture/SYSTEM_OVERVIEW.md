@@ -97,21 +97,13 @@ src/core_engine/
         base.py                     # BaseStage[InputT, OutputT] ABC
         s1_ingestion.py             # PDF/DOCX/Image -> CleanImage
         s2_detection.py             # YOLO detection -> DetectedChart
-        s3_extraction/              # 11 submodules (OCR + Geometry + Classification)
-            s3_extraction.py
-            classifier.py
-            simple_classifier.py
-            ml_classifier.py
-            resnet_classifier.py    # ResNet-18 (94.14% accuracy)
-            element_detector.py
-            geometric_mapper.py
-            ocr_engine.py           # PaddleOCR
-            preprocessor.py
-            skeletonizer.py
-            vectorizer.py
+        s3_extraction/              # VLM extraction (4 backends: deplot/matcha/pix2struct/svlm)
+            s3_extraction.py        # Stage orchestrator (309 lines) + ExtractionConfig
+            extractors.py           # BaseChartExtractor ABC + 4 backends (430+ lines)
+            pix2struct_extractor.py # Backward-compat re-export (DeplotExtractor alias)
         s4_reasoning/               # 6 submodules (AI reasoning)
             s4_reasoning.py         # Stage orchestrator (479 lines)
-            value_mapper.py         # GeometricValueMapper (764 lines)
+            value_mapper.py          # ValueMapper: TableData -> DataSeries (764 lines)
             prompt_builder.py       # GeminiPromptBuilder (833 lines)
             reasoning_engine.py     # ReasoningEngine ABC (185 lines)
             gemini_engine.py        # Direct Gemini API engine (626 lines)
@@ -178,7 +170,7 @@ flowchart TB
         subgraph Stages["5 Processing Stages"]
             S1[S1: Ingestion\nPyMuPDF + Pillow]
             S2[S2: Detection\nYOLO]
-            S3[S3: Extraction\n11 submodules]
+            S3[S3: Extraction\nVLM + EfficientNet-B0]
             S4[S4: Reasoning\n6 submodules]
             S5[S5: Reporting\n939 lines]
         end
@@ -220,7 +212,7 @@ flowchart TB
     S4 --> S5
 
     S2 -.-> |YOLO| Weights
-    S3 -.-> |PaddleOCR + ResNet-18| Weights
+    S3 -.-> |EfficientNet-B0 + DePlot/MatCha| Weights
     S4 --> Router
     Router --> SLM
     Router --> Gemini
@@ -272,12 +264,13 @@ sequenceDiagram
 
     Pipeline->>S3: process(Stage2Output)
     S3->>S3: ResNet-18 classify (94.14%)
-    S3->>S3: PaddleOCR + role assignment
-    S3->>S3: Element detection + geometric mapping
+    S3->>S3: EfficientNet-B0 classify (97.54%)
+    S3->>S3: VLM extract (DePlot/MatCha/Pix2Struct/SVLM)
+    S3->>S3: Parse linearized table -> TableData
     S3-->>Pipeline: Stage3Output
 
     Pipeline->>S4: process(Stage3Output)
-    S4->>S4: GeometricValueMapper
+    S4->>S4: ValueMapper (TableData -> DataSeries)
     S4->>S4: GeminiPromptBuilder
     S4->>Router: resolve(CHART_REASONING)
     Router-->>S4: AIResponse (corrections + description)
@@ -463,11 +456,11 @@ def from_config(config_dir: Path = Path("config")) -> "ChartAnalysisPipeline":
 | Directory | Tests | Coverage |
 | --- | --- | --- |
 | `tests/test_ai/` | 55 functions (5 files) | AIRouter, adapters, task_types, prompts, exceptions |
-| `tests/test_s3_extraction/` | ~170 functions (8 files) | All S3 submodules |
+| `tests/test_s3_extraction/` | ~174 functions (8 files) | VLM extractors, orchestrator |
 | `tests/test_s4_reasoning/` | ~40 functions (2 files) | PromptBuilder, ValueMapper |
 | `tests/test_s5_reporting/` | ~20 functions (1 file) | Stage5Reporting |
 | `tests/test_schemas.py` | ~10 functions | Schema validation |
-| **Total** | **~295 test functions** | **17 test files** |
+| **Total** | **299 test functions** | **17 test files** |
 
 ---
 
@@ -482,11 +475,10 @@ def from_config(config_dir: Path = Path("config")) -> "ChartAnalysisPipeline":
 
 ### 8.2. Adding New Chart Types
 
-1. Add to `ChartType` enum in `src/core_engine/schemas/enums.py`
-2. Add classifier logic in `stages/s3_extraction/resnet_classifier.py`
-3. Add element detection rules in `stages/s3_extraction/element_detector.py`
-4. Add prompt template adjustments in `stages/s4_reasoning/prompts/`
-5. Add tests
+1. Create `src/core_engine/stages/s3_extraction/extractors.py` subclass implementing `BaseChartExtractor`
+2. Register in `ExtractionConfig.backend` choices
+3. Add config toggle in `config/pipeline.yaml`
+4. Add tests in `tests/test_s3_extraction/`
 
 ### 8.3. Adding New Output Formats
 
@@ -511,7 +503,7 @@ def from_config(config_dir: Path = Path("config")) -> "ChartAnalysisPipeline":
 | Large images | Process in chunks, stream to disk |
 | Model loading | Singleton pattern, lazy loading |
 | YOLO inference | GPU with fallback to CPU |
-| OCR cache | 589MB JSON cache (`data/cache/ocr_cache.json`) |
+| OCR cache | N/A (removed in v6.0.0, was 589MB; geometry pipeline removed) |
 | SLM inference | 4-bit quantization (NF4), ~2GB VRAM |
 
 ### 9.2. Caching Strategy
@@ -519,7 +511,7 @@ def from_config(config_dir: Path = Path("config")) -> "ChartAnalysisPipeline":
 | Cache Level | Content | TTL |
 | --- | --- | --- |
 | L1: Memory | Loaded models (YOLO, ResNet-18, OCR) | Session lifetime |
-| L2: Disk | OCR results (46,910 entries cached) | Permanent (manual clear) |
+| L2: Disk | VLM model weights (loaded on first use) | Session lifetime |
 | L3: File | Pipeline session outputs | Permanent |
 
 ---

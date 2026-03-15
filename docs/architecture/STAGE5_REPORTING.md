@@ -134,7 +134,7 @@ class AnomalyInsight(BaseModel):
   "processing_time_seconds": 12.5,
   "model_versions": {
     "yolo": "v8n-chart-1.0",
-    "ocr": "paddleocr-2.7",
+    "vlm": "google/deplot",
     "slm": "qwen2.5-1.5b"
   }
 }

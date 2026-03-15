@@ -156,8 +156,8 @@ pipeline:
       
     extraction:
       enabled: true
-      ocr_engine: "paddleocr"
-      apply_negative: true
+      backend: "deplot"     # Options: deplot | matcha | pix2struct | svlm
+      device: "auto"        # auto | cpu | cuda
 ```
 
 ### 5.2. Model Configuration
@@ -170,9 +170,10 @@ models:
     path: "models/weights/chart_detector.pt"
     device: "auto"
     
-  ocr:
-    engine: "paddleocr"
-    languages: ["en"]
+  extraction:
+    backend: "deplot"               # Default VLM backend
+    model_id: "google/deplot"       # HuggingFace model ID
+    device: "auto"
 ```
 
 ## 6. Running Examples
@@ -180,15 +181,15 @@ models:
 ### 6.1. Stage 3 Test Script
 
 ```bash
-# Test Stage 3 on academic dataset
-python scripts/test_stage3_academic_dataset.py
+# Test Stage 3 VLM extraction
+.venv/Scripts/python.exe scripts/pipeline/test_stage3.py
 ```
 
 ### 6.2. Generate Reports
 
 ```bash
-# Generate visualization report
-python scripts/generate_stage3_report.py
+# Run full pipeline demo
+.venv/Scripts/python.exe scripts/pipeline/demo.py
 ```
 
 ### 6.3. Jupyter Notebooks
@@ -206,9 +207,9 @@ jupyter lab
 
 | Issue | Solution |
 | --- | --- |
-| PaddleOCR import error | `pip install paddlepaddle paddleocr` |
-| CUDA out of memory | Set `device: "cpu"` in config |
-| Model not found | Run `python scripts/download_models.py` |
+| VLM model not downloaded | First run downloads from HuggingFace automatically |
+| CUDA out of memory | Set `device: "cpu"` in config or use `backend: "deplot"` (smaller) |
+| Model not found (YOLO) | Run `.venv/Scripts/python.exe scripts/utils/download_models.py` |
 | Permission denied | Check file permissions, run as admin |
 
 ### 7.2. Debug Mode

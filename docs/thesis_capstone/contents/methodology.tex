@@ -55,10 +55,12 @@ filtering low-confidence detections and duplicates, 32,364 verified charts remai
 \end{table}
 
 \textbf{Step 4: Feature Extraction.}
-The Stage~3 extraction pipeline (see \Cref{sec:system_s3}) processes all 32,364 charts
-using parallel batch execution. The extraction achieves 100\% success rate with 0\%
-data corruption, producing structured feature JSONs containing axis calibration,
-OCR text with spatial roles, detected elements, and confidence scores.
+The Stage~3 extraction pipeline (see \Cref{sec:system_s3}) processes all 32,364 charts.
+For the initial training dataset (v3), the batch extraction was executed with the geometry-based
+Stage~3 implementation, achieving 100\% success rate with 0\% data corruption. The VLM-based
+Stage~3 redesign produces structured table representations (headers, rows, records) for
+downstream reasoning; reprocessing the full dataset with VLM backends is planned for
+future training data improvement.
 
 \textbf{Step 5: QA Generation.}
 The \texttt{data\_factory} tool uses Gemini 2.0 Flash API to generate 10 questions per
@@ -118,19 +120,23 @@ labels, (2) value extraction and OCR correction, (3) trends and comparisons, and
 \subsection{Approach}
 % ============================================================
 
-\subsubsection{Hybrid Neuro-Symbolic Design}
+\subsubsection{Hybrid Neural-VLM Design}
 
-The core hypothesis of Geo-SLM is that treating charts as \textbf{geometric entities}
-rather than pixel patterns yields higher extraction accuracy than pure end-to-end
-multimodal approaches. The system combines three complementary paradigms:
+The core design of Geo-SLM combines three complementary paradigms:
 
 \begin{itemize}
     \item \textbf{Deep Learning} for perception: detecting chart regions (YOLOv8) and
-          classifying chart types (ResNet-18).
-    \item \textbf{Symbolic/Geometric Analysis} for precision: calibrating axes (RANSAC),
-          simplifying curves (RDP), and mapping pixel coordinates to data values.
-    \item \textbf{Language Model Reasoning} for understanding: correcting OCR errors,
-          validating extracted data, and generating natural language descriptions.
+          classifying chart types (EfficientNet-B0, 97.54\% accuracy).
+    \item \textbf{VLM Extraction} for chart derendering: converting chart images
+          directly to structured data tables using Vision-Language Models (DePlot,
+          MatCha). A formal benchmark evaluation on 50 real-world academic charts
+          confirmed that the initial geometry-based approach (OCR, skeletonization,
+          RANSAC axis calibration) is unsuitable for production use -- axis detection
+          succeeded on 0 of 40 non-pie charts -- motivating the switch to end-to-end
+          neural derendering.
+    \item \textbf{Language Model Reasoning} for understanding: validating extracted
+          data, correcting extraction errors, and generating natural language descriptions
+          using fine-tuned Small Language Models (Qwen-2.5-1.5B / Llama-3.2-1B).
 \end{itemize}
 
 \Cref{fig:approach_cmp} contrasts the traditional end-to-end approach with the Geo-SLM
@@ -221,10 +227,9 @@ remains entirely language-agnostic:
 \toprule
 \textbf{Stage} & \textbf{Component} & \textbf{Change Required} & \textbf{Core Modified?} \\
 \midrule
-S3 & OCR Engine config & Set language to \texttt{"vi"} or \texttt{["en","vi"]} & No (config only) \\
-S3 & OCR role keywords & Add Vietnamese keywords (e.g., ``trục tung'') & Additive only \\
-S3 & Geometric Mapper & No change (operates on pixel coordinates) & No \\
-S3 & Classifier & No change (visual features, language-agnostic) & No \\
+S3 & EfficientNet-B0 Classifier & No change (visual features, language-agnostic) & No \\
+S3 & VLM Extractor (DePlot/MatCha) & No code change; model output quality may decrease for non-Latin labels & No (inherent model limitation) \\
+S3 & VLM Extractor (SVLM/Qwen2-VL) & Configure system prompt for Vietnamese output & Config only \\
 S4 & Prompt templates & Create Vietnamese prompt variants (\texttt{*\_vi.txt}) & No (new files) \\
 S4 & \texttt{output\_language} & Wire existing config field into prompt builder & Minimal \\
 S4 & AI Router/Adapters & No change (language-transparent interface) & No \\
@@ -235,54 +240,45 @@ Data & SLM training data & Generate 5,000--10,000 Vietnamese QA samples & New da
 \end{tabular}
 \end{table}
 
-\subsubsection{OCR for Vietnamese Diacritical Marks}
+\subsubsection{Vietnamese Chart Labels and VLM Output}
 
 Vietnamese uses Latin script with an extensive diacritical system (6~tone marks $\times$
-12~vowel variants), making accurate OCR critical. The current OCR engine
-(\texttt{ocr\_engine.py}) supports language switching through configuration:
+12~vowel variants). In the VLM-based Stage~3, axis label text is extracted as part of
+the chart-to-table derendering output rather than through a standalone OCR engine.
+This changes the Vietnamese support profile:
 
 \begin{itemize}
-    \item \textbf{PaddleOCR}: Natively supports Vietnamese (\texttt{lang="vi"}) with
-          dedicated recognition weights trained on Vietnamese text corpora.
-    \item \textbf{EasyOCR}: Supports Vietnamese (\texttt{languages=["vi"]}) with
-          multi-language simultaneous recognition.
-    \item \textbf{Tesseract}: Supports Vietnamese via \texttt{lang="vie"} tessdata files.
+    \item \textbf{DePlot / MatCha}: These models were pre-trained on English chart data.
+          Vietnamese text in axis labels may be transcribed with diacritic errors.
+          Stage~4 SLM correction handles downstream normalization.
+    \item \textbf{SVLM (Qwen2-VL)}: Natively multilingual; handles Vietnamese
+          diacritics through the base model's multilingual pre-training without
+          additional OCR configuration.
 \end{itemize}
 
-The configuration change is a single YAML update in \texttt{config/models.yaml}:
-\texttt{ocr.paddleocr.lang: "vi"} (or \texttt{["en", "vi"]} for bilingual charts).
-No Python code changes are required in the OCR engine itself.
+Vietnamese diacritical challenges (character confusion between ``O'' vs.\ ``\^{O}'',
+``a'' vs.\ ``\u{a}'') are mitigated by the SLM reasoning stage, where
+Vietnamese-specific correction patterns supplement the existing English correction table.
 
-However, Vietnamese diacritical marks introduce specific OCR challenges: confusion
-between visually similar characters (e.g., ``O'' vs.\ ``\^{O}'',
-``a'' vs.\ ``ă''), incorrect tone mark placement,
-and merging of diacritics with nearby chart elements. These errors are addressed through
-the SLM reasoning stage (Stage~4), where Vietnamese-specific OCR correction patterns
-supplement the existing English correction table.
+\subsubsection{VLM Extraction and Vietnamese Chart Labels}
 
-\subsubsection{Vietnamese Keyword Mapping for Role Classification}
-
-The OCR role classifier in Stage~3 assigns spatial roles (title, axis label, legend,
-value) to extracted text using a combination of positional heuristics and keyword matching.
-The English keyword lists (e.g., ``count'', ``percentage'', ``legend'') must be extended
-with Vietnamese equivalents:
+With the VLM-based Stage~3, extraction no longer relies on OCR or keyword-based role
+classification. The DePlot and MatCha backends were trained primarily on English chart
+data; performance may decrease for charts with Vietnamese axis labels or legends. Two
+mitigation strategies are available:
 
 \begin{itemize}
-    \item \textbf{Axis labels}: ``số lượng'',
-          ``tỷ lệ'',
-          ``giá trị'',
-          ``doanh thu'',
-          ``thời gian'',
-          ``năm''
-    \item \textbf{Legend}: ``chú giải'',
-          ``nhóm'',
-          ``loại''
-    \item \textbf{Title}: ``biểu đồ'',
-          ``hình''
+    \item \textbf{SVLM backend}: The Qwen2-VL extractor supports multilingual output
+          through system prompt configuration. Setting the system prompt to request
+          Vietnamese table output enables direct Vietnamese extraction.
+    \item \textbf{Stage~4 correction}: The SLM reasoning stage receives both the VLM
+          table output and chart type metadata, and can apply Vietnamese-specific
+          correction patterns independently of the extraction backend.
 \end{itemize}
 
-This is implemented as an additive extension to the existing keyword dictionaries,
-preserving English support while enabling bilingual role detection.
+The configuration change for Vietnamese extraction is limited to
+\texttt{pipeline.yaml: extraction.extractor\_backend: "svlm"} and updating the
+Stage~4 system prompt language parameter, with no core pipeline code modification.
 
 \subsubsection{Vietnamese Prompt Templates and QA Generation}
 

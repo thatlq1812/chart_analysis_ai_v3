@@ -1,54 +1,86 @@
 #!/usr/bin/env python3
 """
-Download SLM models for Chart Analysis.
+Model Downloader - Geo-SLM Chart Analysis
 
-Downloads supported Small Language Models to models/slm/ directory.
-Supports: Qwen2.5-0.5B, Qwen2.5-1.5B, Llama-3.2-1B, Llama-3.2-3B.
+Downloads all models required for Stage 3 (VLM Extraction), Stage 4 (SLM
+Reasoning/Training), and Stage 5 (Reporting) to the local models/ directory.
 
-Usage:
-    # Interactive menu:
-    python scripts/utils/download_models.py
+Uses huggingface_hub.snapshot_download() with resume support.
+Models already on disk are detected automatically and skipped.
 
-    # Download specific model:
-    python scripts/utils/download_models.py --model qwen-1.5b
-    python scripts/utils/download_models.py --model qwen-0.5b
-    python scripts/utils/download_models.py --model llama-1b
-    python scripts/utils/download_models.py --model llama-3b
+=============================================================================
+MODEL INVENTORY
+=============================================================================
 
-    # List available models:
-    python scripts/utils/download_models.py --list
+GROUP: vlm  -- Stage 3 chart-to-table extraction (Pix2Struct family)
+  google/deplot                     ~1.5 GB   Primary chart derendering
+  google/matcha-base                ~1.1 GB   Math+chart reasoning base
+  google/matcha-chartqa             ~1.1 GB   MatCha fine-tuned on ChartQA
+  google/pix2struct-base            ~1.1 GB   Baseline (no chart fine-tuning)
+  google/pix2struct-chartqa-large   ~3.1 GB   Pix2Struct fine-tuned on ChartQA
+  Qwen/Qwen2-VL-2B-Instruct        ~4.5 GB   SVLM zero-shot backend
 
-    # Download all:
-    python scripts/utils/download_models.py --all
+GROUP: slm  -- Stage 4 reasoning + fine-tuning base models
+  Qwen/Qwen2.5-7B-Instruct         ~15 GB    PRIMARY QLoRA training target (v4)
+  meta-llama/Llama-3.2-3B-Instruct  ~6 GB    Ablation comparison (3B class)
 
-Requirements:
-    pip install huggingface_hub transformers
+ALREADY ON DISK (auto-skipped):
+  models/slm/llama-3.2-1b-instruct/     Llama-3.2-1B-Instruct
+  models/slm/qwen2.5-0.5b-instruct/     Qwen2.5-0.5B-Instruct
+  models/slm/qwen2.5-1.5b-instruct/     Qwen2.5-1.5B-Instruct
+  models/paddleocr_vl/                   PaddleOCR-VL
+  models/slm/vintern_finetuned/          Vintern-1B-v3.5
 
-Notes:
-    - Qwen models are public (no token required).
-    - Llama-3.2 models require:
-        1. A HuggingFace account with HF_TOKEN set or `huggingface-cli login` run
-        2. License accepted at https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct
-        Requests are processed hourly by Meta.
-    - Llama 4 (Scout 17B / Maverick 17B) is too large for 6GB VRAM training.
-      Use Llama-3.2-1B or 3B for local SLM fine-tuning on RTX 3060/3070/4060.
-    - VRAM requirement with 4-bit quantization:
-        qwen-0.5b:   ~0.5 GB  (comfortable on 4 GB)
-        qwen-1.5b:   ~1.5 GB  (comfortable on 6 GB)
-        llama-1b:    ~0.8 GB  (comfortable on 4 GB)
-        llama-3b:    ~2.5 GB  (comfortable on 6 GB)
+=============================================================================
+AUTH REQUIREMENTS
+=============================================================================
+Llama models require accepting Meta's license:
+  1. Visit https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct
+  2. Accept the license (processed hourly by Meta)
+  3. Set HF_TOKEN env variable or run: huggingface-cli login
+
+=============================================================================
+USAGE
+=============================================================================
+  # Preview what would be downloaded (no actual download)
+  .venv/Scripts/python.exe scripts/utils/download_models.py --dry-run
+
+  # Download VLM models only (Stage 3) ~12 GB
+  .venv/Scripts/python.exe scripts/utils/download_models.py --group vlm
+
+  # Download SLM models only (Stage 4) ~21 GB
+  .venv/Scripts/python.exe scripts/utils/download_models.py --group slm
+
+  # Download everything
+  .venv/Scripts/python.exe scripts/utils/download_models.py --group all
+
+  # Skip models >7 GB (quick Stage 3 setup without 7B)
+  .venv/Scripts/python.exe scripts/utils/download_models.py --group vlm --skip-large
+
+  # Download a specific HuggingFace model by ID
+  .venv/Scripts/python.exe scripts/utils/download_models.py --hf-id google/deplot
+
+  # List all models with status
+  .venv/Scripts/python.exe scripts/utils/download_models.py --list
+
+LEGACY: old SLM-only shortcuts still work
+  --model qwen-0.5b | qwen-1.5b | llama-1b | llama-3b | qwen-7b
 """
+
+# NOTE: This file replaces the old SLM-only downloader (v1).
+# v2 adds: VLM group (Stage 3), Qwen2.5-7B, Qwen2-VL-2B, dry-run, skip-large.
 
 import argparse
 import logging
 import os
 import sys
+import time
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
-# Project root
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 logging.basicConfig(
     level=logging.INFO,
@@ -58,292 +90,391 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Supported models catalog
-# ─────────────────────────────────────────────────────────────────────────────
-MODELS: Dict[str, Dict] = {
-    "qwen-0.5b": {
-        "repo_id": "Qwen/Qwen2.5-0.5B-Instruct",
-        "local_name": "qwen2.5-0.5b-instruct",
-        "vram_gb_int4": 0.5,
-        "description": "Qwen2.5 0.5B - Fastest, minimal VRAM",
-        "recommended_for": "Smoke-test, CPU inference",
-        "trust_remote_code": True,
-        "requires_token": False,
-    },
-    "qwen-1.5b": {
-        "repo_id": "Qwen/Qwen2.5-1.5B-Instruct",
-        "local_name": "qwen2.5-1.5b-instruct",
-        "vram_gb_int4": 1.5,
-        "description": "Qwen2.5 1.5B - Primary training target",
-        "recommended_for": "Production SLM for chart QA",
-        "trust_remote_code": True,
-        "requires_token": False,
-    },
-    "llama-1b": {
-        "repo_id": "meta-llama/Llama-3.2-1B-Instruct",
-        "local_name": "llama-3.2-1b-instruct",
-        "vram_gb_int4": 0.8,
-        "description": "Llama 3.2 1B - Meta's compact model",
-        "recommended_for": "Comparison with Qwen, competitive accuracy",
-        "trust_remote_code": False,
-        "requires_token": True,
-        "license_url": "https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct",
-    },
-    "llama-3b": {
-        "repo_id": "meta-llama/Llama-3.2-3B-Instruct",
-        "local_name": "llama-3.2-3b-instruct",
-        "vram_gb_int4": 2.5,
-        "description": "Llama 3.2 3B - Higher capacity",
-        "recommended_for": "Better accuracy on complex chart reasoning",
-        "trust_remote_code": False,
-        "requires_token": True,
-        "license_url": "https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct",
-    },
+# =============================================================================
+# Model Registry
+# =============================================================================
+
+
+@dataclass
+class ModelSpec:
+    """Specification for a single model download."""
+
+    hf_id: str
+    local_path: str               # Relative to PROJECT_ROOT
+    group: str                    # "vlm" | "slm"
+    size_gb: float                # Disk space estimate
+    description: str
+    short_key: str = ""           # Legacy short key (e.g. "qwen-1.5b")
+    requires_auth: bool = False   # True for gated models (Llama)
+    large: bool = False           # True if >7 GB
+    priority: int = 1             # Lower = higher priority (downloaded first)
+    ignore_patterns: List[str] = field(default_factory=list)
+
+
+MODEL_REGISTRY: List[ModelSpec] = [
+    # -------------------------------------------------------------------------
+    # GROUP: vlm -- Stage 3 chart-to-table VLM extraction
+    # -------------------------------------------------------------------------
+    ModelSpec(
+        hf_id="google/deplot",
+        local_path="models/vlm/deplot",
+        group="vlm",
+        size_gb=1.5,
+        description="DePlot: chart derendering -> linearized table (primary Stage 3 backend)",
+        priority=1,
+    ),
+    ModelSpec(
+        hf_id="google/matcha-base",
+        local_path="models/vlm/matcha-base",
+        group="vlm",
+        size_gb=1.1,
+        description="MatCha-base: math+chart reasoning pre-trained",
+        priority=2,
+    ),
+    ModelSpec(
+        hf_id="google/matcha-chartqa",
+        local_path="models/vlm/matcha-chartqa",
+        group="vlm",
+        size_gb=1.1,
+        description="MatCha fine-tuned on ChartQA benchmark",
+        priority=3,
+    ),
+    ModelSpec(
+        hf_id="google/pix2struct-base",
+        local_path="models/vlm/pix2struct-base",
+        group="vlm",
+        size_gb=1.1,
+        description="Pix2Struct-base: screenshot understanding (ablation baseline)",
+        priority=4,
+    ),
+    ModelSpec(
+        hf_id="google/pix2struct-large",
+        local_path="models/vlm/pix2struct-large",
+        group="vlm",
+        size_gb=3.1,
+        description="Pix2Struct-large: large base model (stronger than pix2struct-base)",
+        priority=5,
+        ignore_patterns=["pytorch_model.bin"],
+    ),
+    ModelSpec(
+        hf_id="Qwen/Qwen2-VL-2B-Instruct",
+        local_path="models/vlm/qwen2-vl-2b",
+        group="vlm",
+        size_gb=4.5,
+        description="Qwen2-VL-2B: zero-shot SVLM backend for Stage 3",
+        priority=6,
+    ),
+    # -------------------------------------------------------------------------
+    # GROUP: slm -- Stage 4 reasoning + QLoRA fine-tuning candidates
+    # -------------------------------------------------------------------------
+    ModelSpec(
+        hf_id="Qwen/Qwen2.5-0.5B-Instruct",
+        local_path="models/slm/qwen2.5-0.5b-instruct",
+        group="slm",
+        size_gb=1.0,
+        description="Qwen2.5-0.5B: smoke-test / CPU inference (already on disk)",
+        short_key="qwen-0.5b",
+        priority=1,
+    ),
+    ModelSpec(
+        hf_id="Qwen/Qwen2.5-1.5B-Instruct",
+        local_path="models/slm/qwen2.5-1.5b-instruct",
+        group="slm",
+        size_gb=3.1,
+        description="Qwen2.5-1.5B: previous training target (already on disk)",
+        short_key="qwen-1.5b",
+        priority=2,
+    ),
+    ModelSpec(
+        hf_id="Qwen/Qwen2.5-7B-Instruct",
+        local_path="models/slm/qwen2.5-7b-instruct",
+        group="slm",
+        size_gb=15.0,
+        description="Qwen2.5-7B: PRIMARY QLoRA training target for dataset v4",
+        short_key="qwen-7b",
+        large=True,
+        priority=3,
+    ),
+    ModelSpec(
+        hf_id="meta-llama/Llama-3.2-1B-Instruct",
+        local_path="models/slm/llama-3.2-1b-instruct",
+        group="slm",
+        size_gb=2.5,
+        description="Llama-3.2-1B: ablation 1B model (already on disk)",
+        short_key="llama-1b",
+        requires_auth=True,
+        priority=4,
+    ),
+    ModelSpec(
+        hf_id="meta-llama/Llama-3.2-3B-Instruct",
+        local_path="models/slm/llama-3.2-3b-instruct",
+        group="slm",
+        size_gb=6.0,
+        description="Llama-3.2-3B: 3B ablation comparison (requires HF token)",
+        short_key="llama-3b",
+        requires_auth=True,
+        priority=5,
+    ),
+]
+
+# Build lookup maps
+_BY_HF_ID: Dict[str, ModelSpec] = {m.hf_id: m for m in MODEL_REGISTRY}
+_BY_SHORT_KEY: Dict[str, ModelSpec] = {
+    m.short_key: m for m in MODEL_REGISTRY if m.short_key
 }
 
-MODELS_DIR = PROJECT_ROOT / "models" / "slm"
+
+# =============================================================================
+# Download helpers
+# =============================================================================
+
+_SENTINEL_FILES = ["config.json", "model.safetensors", "pytorch_model.bin"]
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Core download logic
-# ─────────────────────────────────────────────────────────────────────────────
+def _is_downloaded(local_path: Path) -> bool:
+    """Return True if model directory has sentinel weight/config files."""
+    if not local_path.exists():
+        return False
+    for name in _SENTINEL_FILES:
+        if (local_path / name).exists():
+            return True
+    return len(list(local_path.glob("model-*-of-*.safetensors"))) > 0
 
-def check_hf_token() -> Optional[str]:
-    """
-    Check for HuggingFace token in environment or .env file.
 
-    Returns:
-        Token string if found, None otherwise.
-    """
-    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+def _get_token() -> Optional[str]:
+    """Return HF token from env or cached huggingface-cli login."""
+    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN")
     if token:
         return token
-
-    # Check HuggingFace cached login (set by huggingface_hub.login())
-    hf_cache_token = Path.home() / ".cache" / "huggingface" / "token"
-    if hf_cache_token.exists():
-        stored = hf_cache_token.read_text().strip()
+    hf_cache = Path.home() / ".cache" / "huggingface" / "token"
+    if hf_cache.exists():
+        stored = hf_cache.read_text().strip()
         if stored:
             return stored
-
-    # Check .env file
     env_file = PROJECT_ROOT / "config" / "secrets" / ".env"
     if not env_file.exists():
         env_file = PROJECT_ROOT / ".env"
-
     if env_file.exists():
-        with open(env_file, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith("HF_TOKEN="):
-                    return line.split("=", 1)[1].strip().strip('"').strip("'")
-
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            if line.startswith("HF_TOKEN="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
     return None
 
 
-def download_model(model_key: str, force: bool = False) -> Path:
+def download_model(spec: ModelSpec, dry_run: bool = False, force: bool = False) -> bool:
     """
-    Download a model from HuggingFace Hub to models/slm/.
+    Download a single model via huggingface_hub.snapshot_download().
 
     Args:
-        model_key: Key from MODELS dict (e.g. "qwen-1.5b")
-        force: Re-download even if already present
+        spec: ModelSpec to download
+        dry_run: Print action without downloading
+        force: Re-download even if model already exists on disk
 
     Returns:
-        Path to the downloaded model directory
-
-    Raises:
-        KeyError: If model_key is not in MODELS
-        RuntimeError: If download fails
+        True on success / already-present, False on error
     """
-    if model_key not in MODELS:
-        raise KeyError(f"Unknown model '{model_key}'. Use --list to see available models.")
+    local_path = PROJECT_ROOT / spec.local_path
+    tag = "[DRY-RUN] " if dry_run else ""
 
-    info = MODELS[model_key]
-    local_dir = MODELS_DIR / info["local_name"]
+    if not force and _is_downloaded(local_path):
+        logger.info(f"{tag}SKIP (already on disk) | {spec.hf_id}")
+        return True
 
-    # Check if already downloaded
-    config_file = local_dir / "config.json"
-    if config_file.exists() and not force:
-        logger.info(f"Model already downloaded | key={model_key} | path={local_dir}")
-        return local_dir
+    auth_note = " [requires HF_TOKEN]" if spec.requires_auth else ""
+    logger.info(f"{tag}DOWNLOAD | {spec.hf_id} (~{spec.size_gb:.1f} GB){auth_note}")
+    logger.info(f"          -> {local_path}")
 
-    local_dir.mkdir(parents=True, exist_ok=True)
+    if dry_run:
+        return True
 
-    # Check token requirements
-    token = check_hf_token()
-
-    logger.info(f"Downloading model | repo={info['repo_id']} | dest={local_dir}")
-    logger.info(f"Description: {info['description']}")
-    logger.info(f"VRAM (4-bit): ~{info['vram_gb_int4']} GB")
+    token = _get_token()
+    if spec.requires_auth and not token:
+        logger.error(
+            f"MISSING HF_TOKEN for gated model {spec.hf_id}.\n"
+            "  1. Accept the license at huggingface.co\n"
+            "  2. export HF_TOKEN=hf_... and retry\n"
+            "  Skipping."
+        )
+        return False
 
     try:
         from huggingface_hub import snapshot_download
 
+        local_path.mkdir(parents=True, exist_ok=True)
+        t0 = time.time()
+
         snapshot_download(
-            repo_id=info["repo_id"],
-            local_dir=str(local_dir),
+            repo_id=spec.hf_id,
+            local_dir=str(local_path),
+            ignore_patterns=spec.ignore_patterns + [
+                "*.msgpack",
+                "flax_model*",
+                "tf_model*",
+                "rust_model.ot",
+                # Skip legacy pytorch checkpoints when safetensors are available
+                # NOTE: pix2struct-base and matcha only have pytorch_model.bin,
+                # so we don't add it to the global ignore. Use per-model ignore_patterns.
+            ],
             token=token,
-            ignore_patterns=["*.safetensors.index.json", "original/**"],
+            resume_download=True,
         )
 
-        logger.info(f"Download complete | path={local_dir}")
-        return local_dir
-
-    except Exception as e:
-        error_msg = str(e)
-        if "403" in error_msg or "GatedRepo" in error_msg or "Access to model" in error_msg:
-            license_url = info.get("license_url", f"https://huggingface.co/{info['repo_id']}")
-            logger.error(
-                f"License not accepted for {info['repo_id']}.\n"
-                f"  1. Visit: {license_url}\n"
-                "  2. Click 'Expand to review and access' and accept the Meta license.\n"
-                "  3. Requests are processed hourly. Re-run this script after approval.\n"
-                "  (Your HF token is valid — only the license acceptance is missing.)"
-            )
-        elif "401" in error_msg or "gated" in error_msg.lower() or "token" in error_msg.lower():
-            logger.error(
-                f"Authentication required for {info['repo_id']}.\n"
-                "Set HF_TOKEN in config/secrets/.env or environment variable:\n"
-                "  export HF_TOKEN=hf_your_token_here\n"
-                "Or run: python -c \"from huggingface_hub import login; login()\"\n"
-                "Get token at: https://huggingface.co/settings/tokens"
-            )
-        else:
-            logger.error(f"Download failed | repo={info['repo_id']} | error={e}")
-        raise RuntimeError(f"Download failed: {e}") from e
-
-
-def verify_model(model_key: str) -> bool:
-    """
-    Verify a downloaded model can be loaded.
-
-    Args:
-        model_key: Key from MODELS dict
-
-    Returns:
-        True if model loads successfully
-    """
-    info = MODELS[model_key]
-    local_dir = MODELS_DIR / info["local_name"]
-
-    if not (local_dir / "config.json").exists():
-        logger.warning(f"Model not downloaded | key={model_key} | run download first")
-        return False
-
-    logger.info(f"Verifying model | key={model_key}")
-
-    try:
-        from transformers import AutoTokenizer
-
-        tokenizer = AutoTokenizer.from_pretrained(
-            str(local_dir),
-            trust_remote_code=info["trust_remote_code"],
-        )
-        tokens = tokenizer.encode("Hello, chart analysis!")
-        logger.info(
-            f"Tokenizer OK | vocab_size={tokenizer.vocab_size} | "
-            f"sample_tokens={len(tokens)}"
-        )
+        elapsed = time.time() - t0
+        logger.info(f"DONE | {spec.hf_id} | {elapsed/60:.1f} min | {local_path}")
         return True
 
-    except Exception as e:
-        logger.error(f"Verification failed | key={model_key} | error={e}")
+    except Exception as exc:
+        msg = str(exc)
+        if "403" in msg or "GatedRepo" in msg or "Access to model" in msg:
+            logger.error(
+                f"License not accepted for {spec.hf_id}.\n"
+                "  Visit the model page, accept the license, wait ~1 hour, then retry."
+            )
+        elif "401" in msg or "token" in msg.lower():
+            logger.error(
+                f"Auth error for {spec.hf_id}. Set HF_TOKEN or run: huggingface-cli login"
+            )
+        else:
+            logger.error(f"FAILED | {spec.hf_id} | {exc}")
         return False
 
 
-def list_models() -> None:
-    """Print catalog of downloadable models with status."""
-    print("\nAvailable models for SLM training:")
-    print("=" * 72)
-    print(f"{'Key':<14} {'Model':<30} {'VRAM 4-bit':<12} {'Downloaded'}")
-    print("-" * 72)
-
-    for key, info in MODELS.items():
-        local_dir = MODELS_DIR / info["local_name"]
-        downloaded = "YES" if (local_dir / "config.json").exists() else "no"
-        vram_str = f"~{info['vram_gb_int4']} GB"
-        model_short = info["repo_id"].split("/")[-1]
-        print(f"{key:<14} {model_short:<30} {vram_str:<12} {downloaded}")
-
-    print("=" * 72)
-    print(f"\nDownload destination: {MODELS_DIR}")
-    print("\nRecommended for 6 GB VRAM (RTX 3060):")
-    print("  Training:  qwen-1.5b  (primary),  llama-3b  (comparison)")
-    print("  Smoke-test: qwen-0.5b or llama-1b (fast, uses ~1 GB)")
+# =============================================================================
+# Table display
+# =============================================================================
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CLI entry point
-# ─────────────────────────────────────────────────────────────────────────────
+def print_model_table() -> None:
+    print(f"\n{'='*78}")
+    print(f"  Model Registry - Geo-SLM Chart Analysis (Stage 3-5)")
+    print(f"{'='*78}")
+    print(f"  {'HF Model ID':<42} {'GRP':<4} {'SIZE':>6}  {'KEY':<12}  STATUS")
+    print(f"  {'-'*42} {'-'*4} {'-'*6}  {'-'*12}  {'-'*14}")
+    for spec in MODEL_REGISTRY:
+        status = "ON DISK" if _is_downloaded(PROJECT_ROOT / spec.local_path) else "not downloaded"
+        auth = "*" if spec.requires_auth else " "
+        key = spec.short_key or "-"
+        print(
+            f"  {spec.hf_id:<42} {spec.group:<4} {spec.size_gb:>5.1f}GB{auth} {key:<12}  {status}"
+        )
+    print(f"\n  * = requires HF_TOKEN (gated Llama models)")
+    print(f"  Models root: {PROJECT_ROOT / 'models'}")
+    print(f"{'='*78}\n")
 
-def main() -> None:
+
+# =============================================================================
+# CLI
+# =============================================================================
+
+
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Download SLM models for Geo-SLM Chart Analysis",
+        description="Download Stage 3-5 models for Geo-SLM Chart Analysis",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
     parser.add_argument(
+        "--group",
+        choices=["vlm", "slm", "all"],
+        default=None,
+        help="Model group: vlm=Stage3 extractors, slm=Stage4 SLMs, all=both",
+    )
+    parser.add_argument(
+        "--hf-id",
+        default=None,
+        help="Download a single model by HuggingFace repo ID (e.g. google/deplot)",
+    )
+    # Legacy short-key compat
+    parser.add_argument(
         "--model",
-        choices=list(MODELS.keys()),
-        help="Model to download",
+        choices=list(_BY_SHORT_KEY.keys()),
+        default=None,
+        help="[Legacy] Short model key: qwen-0.5b | qwen-1.5b | qwen-7b | llama-1b | llama-3b",
     )
+    # Legacy --all compat
+    parser.add_argument("--all", action="store_true", help="[Legacy] Download all SLM models")
+    # Legacy --list compat
+    parser.add_argument("--list", action="store_true", help="List models with status and exit")
+    parser.add_argument("--dry-run", action="store_true", help="Print plan without downloading")
+    parser.add_argument("--force", action="store_true", help="Re-download if already on disk")
     parser.add_argument(
-        "--all",
+        "--skip-large",
         action="store_true",
-        help="Download all models",
+        help="Skip models >7 GB (e.g. Qwen2.5-7B) for quick setup",
     )
-    parser.add_argument(
-        "--list",
-        action="store_true",
-        help="List available models and download status",
-    )
-    parser.add_argument(
-        "--verify",
-        action="store_true",
-        help="Verify downloaded model(s) can be loaded",
-    )
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Re-download even if already present",
-    )
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
 
     if args.list:
-        list_models()
+        print_model_table()
         return
 
-    if args.all:
-        targets = list(MODELS.keys())
-    elif args.model:
-        targets = [args.model]
-    else:
-        # Interactive menu
-        list_models()
-        print("\nWhich model to download? (e.g. qwen-1.5b): ", end="")
-        choice = input().strip()
-        if choice not in MODELS:
-            print(f"Unknown model '{choice}'. Exiting.")
+    # -- Resolve model list --
+    specs: List[ModelSpec] = []
+
+    if args.hf_id:
+        if args.hf_id not in _BY_HF_ID:
+            logger.error(f"Unknown HF ID '{args.hf_id}'. Use --list to see registered models.")
             sys.exit(1)
-        targets = [choice]
+        specs = [_BY_HF_ID[args.hf_id]]
+    elif args.model:
+        specs = [_BY_SHORT_KEY[args.model]]
+    elif args.all:
+        # Legacy --all: download all SLM models (backward compat)
+        specs = [m for m in MODEL_REGISTRY if m.group == "slm"]
+    elif args.group:
+        specs = MODEL_REGISTRY[:] if args.group == "all" else [m for m in MODEL_REGISTRY if m.group == args.group]
+    else:
+        # Default: show table and prompt
+        print_model_table()
+        print("No action requested. Use --group vlm|slm|all or --hf-id. See --help.")
+        sys.exit(0)
 
-    # Download
-    failed = []
-    for key in targets:
-        try:
-            local_dir = download_model(key, force=args.force)
-            if args.verify:
-                verify_model(key)
-        except RuntimeError:
-            failed.append(key)
+    if args.skip_large:
+        skipped = [m.hf_id for m in specs if m.large]
+        specs = [m for m in specs if not m.large]
+        if skipped:
+            logger.info(f"--skip-large: skipping {skipped}")
 
-    if failed:
-        logger.error(f"Failed downloads: {failed}")
+    if not specs:
+        logger.info("No models to download.")
+        return
+
+    specs.sort(key=lambda m: m.priority)
+
+    # -- Summary --
+    to_dl = [m for m in specs if not _is_downloaded(PROJECT_ROOT / m.local_path)]
+    total_gb = sum(m.size_gb for m in to_dl)
+    print(f"\n{'='*60}")
+    print(f"  Download Plan")
+    print(f"{'='*60}")
+    print(f"  Total in scope   : {len(specs)}")
+    print(f"  Already on disk  : {len(specs) - len(to_dl)}")
+    print(f"  To download      : {len(to_dl)}")
+    print(f"  Estimated size   : {total_gb:.1f} GB")
+    print(f"  Dry run          : {args.dry_run}")
+    print(f"{'='*60}\n")
+
+    # -- Run --
+    failed: List[str] = []
+    for spec in specs:
+        ok = download_model(spec, dry_run=args.dry_run, force=args.force)
+        if not ok:
+            failed.append(spec.hf_id)
+
+    print(f"\n{'='*60}")
+    if args.dry_run:
+        print("  Dry run complete. Remove --dry-run to start downloads.")
+    elif failed:
+        logger.error(f"Failed: {failed}")
         sys.exit(1)
     else:
-        logger.info("All downloads complete.")
+        print("  All downloads complete.")
+        print(f"  Models: {PROJECT_ROOT / 'models'}")
+    print(f"{'='*60}\n")
 
 
 if __name__ == "__main__":

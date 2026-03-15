@@ -1,4 +1,4 @@
-% TikZ: Stage 3 Extraction Submodules
+% TikZ: Stage 3 Extraction - VLM Pipeline (v6.0.0)
 % Usage: \input{figures/tikz/tikz_stage3_submodules.tex}
 % Requires: \usepackage{tikz} \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds}
 
@@ -13,50 +13,60 @@
     label/.style={font=\tiny\itshape, text=black!50, align=center},
     io/.style={
         rectangle, rounded corners=2pt, draw=black!40,
-        minimum width=2.2cm, minimum height=0.6cm,
+        minimum width=3.2cm, minimum height=0.6cm,
         fill=black!5, font=\scriptsize, align=center
+    },
+    decision/.style={
+        diamond, draw=black!60, thick, fill=yellow!15,
+        font=\scriptsize\bfseries, align=center,
+        minimum width=2.2cm, minimum height=0.8cm
     }
 ]
 
 % Input
 \node[io] (input) {Cropped Chart Image};
 
-% Row 1: Preprocessing
-\node[module=blue, below=0.5cm of input] (prep) {Preprocessor};
-\node[label, right=0.05cm of prep] {Negative transform\\Adaptive threshold};
+% Step 1: EfficientNet-B0 Classifier
+\node[module=blue, below=0.5cm of input] (cls) {EfficientNet-B0\\Classifier};
+\node[label, right=0.1cm of cls] {3-class: bar / line / pie\\97.54\% accuracy};
 
-% Row 2: Skeleton + OCR (parallel)
-\node[module=teal, below left=0.6cm and 0.3cm of prep] (skel) {Skeletonizer};
-\node[module=orange, below right=0.6cm and 0.3cm of prep] (ocr) {OCR Engine};
-\node[label, left=0.05cm of skel] {Lee algorithm\\Keypoint detection};
-\node[label, right=0.05cm of ocr] {EasyOCR\\Role classification};
+% Step 2: Backend Selection
+\node[decision, below=0.6cm of cls] (sel) {Backend\\Selection};
+\node[label, right=0.1cm of sel] {pipeline.yaml:\\backend: deplot};
 
-% Row 3: Vectorizer + Elements
-\node[module=purple, below=0.6cm of skel] (vec) {Vectorizer};
-\node[module=red, below=0.6cm of ocr] (elem) {Element Detector};
-\node[label, left=0.05cm of vec] {Adaptive RDP\\Subpixel refinement};
-\node[label, right=0.05cm of elem] {Bars, markers\\Pie slices};
+% Step 3: VLM Extractors (parallel options)
+\node[module=teal, below left=0.7cm and 1.8cm of sel] (dep) {DePlot};
+\node[label, below=0.05cm of dep] {google/deplot\\(default)};
 
-% Row 4: Geometric Mapper + Classifier (merge)
-\node[module=teal, below=0.8cm of vec, xshift=1.8cm] (geo) {Geometric Mapper};
-\node[module=blue, right=0.4cm of geo] (cls) {ResNet-18\\Classifier};
-\node[label, below=0.05cm of geo] {RANSAC calibration\\Pixel-to-value mapping};
-\node[label, below=0.05cm of cls] {8 chart types\\94.14\% accuracy};
+\node[module=teal, below left=0.7cm and 0.0cm of sel] (mat) {MatCha};
+\node[label, below=0.05cm of mat] {google/matcha\\(ablation)};
+
+\node[module=orange, below right=0.7cm and 0.0cm of sel] (p2s) {Pix2Struct};
+\node[label, below=0.05cm of p2s] {pix2struct-base\\(baseline)};
+
+\node[module=purple, below right=0.7cm and 1.8cm of sel] (svlm) {SVLM};
+\node[label, below=0.05cm of svlm] {Qwen2-VL-2B\\(multilingual)};
+
+% Step 4: TableData parsing
+\node[module=blue, below=1.4cm of sel] (parse) {TableData Parser};
+\node[label, right=0.1cm of parse] {headers / rows / records\\linearized table -> struct};
 
 % Output
-\node[io, below=0.8cm of geo, xshift=1.2cm] (output) {RawMetadata (Stage3Output)};
+\node[io, below=0.6cm of parse] (output) {RawMetadata + TableData (Stage3Output)};
 
 % Arrows
-\draw[arrow] (input) -- (prep);
-\draw[arrow] (prep) -| (skel);
-\draw[arrow] (prep) -| (ocr);
-\draw[arrow] (skel) -- (vec);
-\draw[arrow] (ocr) -- (elem);
-\draw[arrow] (vec) |- (geo);
-\draw[arrow] (elem) |- (geo);
-\draw[arrow] (ocr) |- (geo);
-\draw[arrow] (prep) -| (cls);
-\draw[arrow] (geo) -- (output);
-\draw[arrow] (cls) |- (output);
+\draw[arrow] (input) -- (cls);
+\draw[arrow] (cls) -- (sel);
+\draw[arrow] (sel) -| (dep);
+\draw[arrow] (sel) -| (mat);
+\draw[arrow] (sel) -| (p2s);
+\draw[arrow] (sel) -| (svlm);
+\draw[arrow] (dep) |- (parse);
+\draw[arrow] (mat) |- (parse);
+\draw[arrow] (p2s) |- (parse);
+\draw[arrow] (svlm) |- (parse);
+\draw[arrow] (parse) -- (output);
+
+\end{tikzpicture}
 
 \end{tikzpicture}

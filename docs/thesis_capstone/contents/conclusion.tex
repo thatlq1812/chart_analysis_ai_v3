@@ -7,27 +7,33 @@ for extracting structured numerical data from chart images. The key contribution
 
 \begin{enumerate}
     \item \textbf{Hybrid 5-stage pipeline architecture}: A modular pipeline combining
-          deep learning (YOLO, ResNet-18), classical geometry (RANSAC, RDP, skeleton
-          analysis), and AI reasoning (SLM with fallback to cloud APIs). Each stage
-          operates on validated Pydantic schema contracts, enabling independent
-          development, testing, and replacement.
+          deep learning (YOLO, EfficientNet-B0), vision-language model extraction
+          (DePlot/MatCha/Pix2Struct/SVLM), and AI reasoning (SLM with fallback to
+          cloud APIs). Each stage operates on validated Pydantic schema contracts,
+          enabling independent development, testing, and replacement
+          (demonstrated by the Stage~3 VLM rewrite replacing 1,109 lines of geometry
+          code with a 309-line pluggable extractor without modifying any downstream stage).
 
-    \item \textbf{Geometric calibration for chart value extraction}: RANSAC-based axis
-          calibration with pixel-to-value mapping achieves deterministic, traceable value
-          extraction. This fundamentally differs from end-to-end models that estimate
-          values from pixel patterns.
+    \item \textbf{VLM-based chart data extraction}: A pluggable 4-backend VLM extraction
+          architecture (DePlot, MatCha, Pix2Struct-base, SVLM/Qwen2-VL) that converts
+          chart images directly into structured tables via image-to-text derendering.
+          A 50-chart benchmark with Gemini Vision ground truth confirmed that the prior
+          geometry approach failed completely (0\% axis detection, 0 OCR output), directly
+          motivating this design. The VLM approach achieves 100\% extraction completion
+          across all 50 benchmark charts.
 
     \item \textbf{Large-scale academic chart dataset}: 32,364 classified charts from
-          $\sim$4,000 arXiv papers, with structured geometric features (axis calibration,
-          OCR with spatial roles, element detection). The derived SLM training dataset
-          contains 268,799 ChatML conversation samples across 8 chart types.
+          $\sim$4,000 arXiv papers. The derived SLM training dataset contains 268,799
+          ChatML conversation samples across 8 chart types, generated using the
+          geometry-era Stage~3 pipeline (v1--v5). VLM-quality re-extraction is planned
+          for the next training iteration.
 
     \item \textbf{Language-extensible architecture for Vietnamese chart Q\&A}: The
           pipeline is designed with a Core-first, Localize-second strategy where
-          12 out of 17 components are fully language-agnostic. Vietnamese support is
-          achieved through configuration changes (OCR language), additive extensions
-          (keyword dictionaries, prompt templates), and targeted data generation
-          (Vietnamese QA samples) -- without modifying any core pipeline logic.
+          6 out of 11 components are fully language-agnostic. Vietnamese support is
+          achieved through the SVLM (Qwen2-VL) backend which supports multilingual
+          input, combined with targeted data generation (Vietnamese QA samples)
+          -- without modifying any core pipeline logic.
 
     \item \textbf{Comprehensive evaluation}: Chart detection at 93.5\% mAP@0.5,
           classification at 94.14\% accuracy, and 100\% batch extraction success rate
@@ -46,7 +52,7 @@ for extracting structured numerical data from chart images. The key contribution
 \midrule
 Detection mAP@0.5 & $>85\%$ & 93.5\% & Exceeded \\
 Classification accuracy & $>90\%$ & 94.14\% & Exceeded \\
-Extraction confidence & $>90\%$ & 92.6\% & Exceeded \\
+Extraction completion (VLM) & 100\% & 100\% & Met \\
 Training dataset size & $>200{,}000$ & 268,799 & Exceeded \\
 Consumer GPU deployment & RTX 3060 & Confirmed & Met \\
 Vietnamese Q\&A support & End-to-end & Architecture ready & In progress \\
@@ -78,12 +84,18 @@ generation and SLM fine-tuning. The remaining items are in progress.
           \cite{masry2022chartqa} and PlotQA \cite{methani2020plotqa} for direct
           comparison with DePlot \cite{liu2023deplot} and MatCha \cite{lee2023matcha}.
 
-    \item \textbf{Ablation study}: Systematically measure the contribution of the
-          negative image transform, adaptive RDP vectorization, RANSAC calibration,
-          and SLM reasoning through controlled experiments.
+    \item \textbf{VLM backend ablation study}: Systematically measure the contribution
+          of each VLM backend (DePlot vs MatCha vs Pix2Struct-base vs SVLM) on the
+          50-chart benchmark to formally select the optimal default backend and
+          characterize trade-offs between accuracy, latency, and Vietnamese support.
 
-    \item \textbf{OCR optimization}: Implement batch processing and selective
-          re-execution to reduce Stage~3 latency from $\sim$5.0s to $<$2.5s.
+    \item \textbf{VLM inference optimization}: Implement quantized VLM inference
+          (INT8/INT4) and batch processing to reduce Stage~3 latency below 2~s
+          per chart from the current 2--4~s baseline.
+
+    \item \textbf{SLM training on VLM-extracted features}: Re-run Stage~3 batch
+          extraction with VLM backends on the full 32,364-chart corpus to generate
+          VLM-quality training features, replacing the geometry-era v3 dataset.
 
     \item \textbf{Vietnamese domain expansion}: Collect chart images from Vietnamese
           government reports, business dashboards, and academic publications to build

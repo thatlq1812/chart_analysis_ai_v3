@@ -6,7 +6,7 @@ Each stage is a self-contained processor that transforms input to output.
 Core Pipeline Stages (runtime):
 - Stage1Ingestion: PDF/Image -> Normalized Images
 - Stage2Detection: Images -> Detected Chart Regions (YOLO)
-- Stage3Extraction: Chart Images -> Raw Metadata (OCR + Geometry + Vectorization)
+- Stage3Extraction: Chart Images -> Raw Metadata (VLM extraction + chart type classification)
 - Stage4Reasoning: Raw Metadata -> Refined Data (SLM)
 
 Note: QA Generation is NOT a pipeline stage. It's a data factory tool
@@ -19,20 +19,15 @@ from .s2_detection import Stage2Detection, DetectionConfig
 from .s3_extraction import (
     Stage3Extraction,
     ExtractionConfig,
-    ImagePreprocessor,
-    PreprocessConfig,
-    Skeletonizer,
-    SkeletonConfig,
-    Vectorizer,
-    VectorizeConfig,
-    OCREngine,
-    OCRConfig,
-    GeometricMapper,
-    MapperConfig,
-    ElementDetector,
-    ElementDetectorConfig,
-    ChartClassifier,
-    ClassifierConfig,
+    BaseChartExtractor,
+    BackendType,
+    DeplotExtractor,
+    MatchaExtractor,
+    Pix2StructBaselineExtractor,
+    SVLMExtractor,
+    create_extractor,
+    EfficientNetClassifier,
+    create_efficientnet_classifier,
 )
 from .s4_reasoning import (
     Stage4Reasoning,
@@ -55,20 +50,15 @@ __all__ = [
     # Stage 3: Extraction
     "Stage3Extraction",
     "ExtractionConfig",
-    "ImagePreprocessor",
-    "PreprocessConfig",
-    "Skeletonizer",
-    "SkeletonConfig",
-    "Vectorizer",
-    "VectorizeConfig",
-    "OCREngine",
-    "OCRConfig",
-    "GeometricMapper",
-    "MapperConfig",
-    "ElementDetector",
-    "ElementDetectorConfig",
-    "ChartClassifier",
-    "ClassifierConfig",
+    "BaseChartExtractor",
+    "BackendType",
+    "DeplotExtractor",
+    "MatchaExtractor",
+    "Pix2StructBaselineExtractor",
+    "SVLMExtractor",
+    "create_extractor",
+    "EfficientNetClassifier",
+    "create_efficientnet_classifier",
     # Stage 4: Reasoning
     "Stage4Reasoning",
     "ReasoningConfig",
