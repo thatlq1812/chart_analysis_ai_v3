@@ -3,5 +3,6 @@
 \contentsline {figure}{\numberline {3}{\ignorespaces Comparison of traditional end-to-end approach (top) vs.\ Geo-SLM hybrid neuro-symbolic approach (bottom). Geo-SLM uses geometric measurement for precision and SLM reasoning for semantic understanding.}}{11}{}%
 \contentsline {figure}{\numberline {4}{\ignorespaces Geo-SLM 5-stage pipeline architecture with input/output types and representative technologies at each stage.}}{12}{}%
 \contentsline {figure}{\numberline {5}{\ignorespaces Geo-SLM 5-layer system architecture. Each layer depends only on layers below it. The Core Engine is independent of the serving layer.}}{16}{}%
-\contentsline {figure}{\numberline {6}{\ignorespaces AI Router with Adapter Pattern and per-task fallback chains. Each provider implements the common \texttt {BaseAIAdapter} interface.}}{20}{}%
-\contentsline {figure}{\numberline {7}{\ignorespaces Estimated processing time per chart by pipeline stage. VLM inference in Stage~3 (DePlot) accounts for the majority of total time.}}{26}{}%
+\contentsline {figure}{\numberline {6}{\ignorespaces Stage~3 extraction pipeline: EfficientNet-B0 classifies chart type, then the selected VLM backend converts the chart image to a structured data table. Four backends are available for ablation experiments.}}{18}{}%
+\contentsline {figure}{\numberline {7}{\ignorespaces AI Router with Adapter Pattern and per-task fallback chains. Each provider implements the common \texttt {BaseAIAdapter} interface.}}{20}{}%
+\contentsline {figure}{\numberline {8}{\ignorespaces Estimated processing time per chart by pipeline stage. VLM inference in Stage~3 (DePlot) accounts for the majority of total time.}}{26}{}%

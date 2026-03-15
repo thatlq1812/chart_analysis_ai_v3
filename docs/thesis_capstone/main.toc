@@ -1,5 +1,5 @@
-\contentsline {section}{List of Figures}{ii}{}%
-\contentsline {section}{List of Tables}{iii}{}%
+\contentsline {section}{List of Figures}{iii}{}%
+\contentsline {section}{List of Tables}{iv}{}%
 \contentsline {section}{\numberline {1}Introduction}{1}{}%
 \contentsline {subsection}{\numberline {1.1}Background}{1}{}%
 \contentsline {subsection}{\numberline {1.2}Objective}{1}{}%
@@ -48,7 +48,7 @@
 \contentsline {subsubsection}{\numberline {5.9.1}Language-Agnostic vs.\ Language-Dependent Components}{21}{}%
 \contentsline {subsubsection}{\numberline {5.9.2}VLM Extractor: Vietnamese Configuration Path}{21}{}%
 \contentsline {subsubsection}{\numberline {5.9.3}Stage 4: Vietnamese Prompt Architecture}{22}{}%
-\contentsline {subsubsection}{\numberline {5.9.4}Data Factory: Vietnamese QA Generation}{22}{}%
+\contentsline {subsubsection}{\numberline {5.9.4}Data Factory: Vietnamese QA Generation}{23}{}%
 \contentsline {section}{\numberline {6}Results and Discussion}{24}{}%
 \contentsline {subsection}{\numberline {6.1}Results and Analysis}{24}{}%
 \contentsline {subsubsection}{\numberline {6.1.1}Stage 2: Chart Detection (YOLOv8m)}{24}{}%
@@ -75,3 +75,4 @@
 \contentsline {subsection}{\numberline {7.1}Summary of Contributions}{32}{}%
 \contentsline {subsection}{\numberline {7.2}Achievement of Objectives}{32}{}%
 \contentsline {subsection}{\numberline {7.3}Future Work}{33}{}%
+\contentsline {section}{References}{34}{}%
