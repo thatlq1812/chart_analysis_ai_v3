@@ -93,6 +93,7 @@ models/weights/*.pth
 models/weights/*.onnx
 models/weights/*.bin
 !models/weights/.gitkeep
+models/
 
 # ============================================================================
 # Output Directories
