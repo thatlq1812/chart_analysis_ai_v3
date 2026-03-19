@@ -1,0 +1,32 @@
+# GCP Vertex AI Custom Training Job Configuration
+#
+# Submit with:
+#   gcloud ai custom-jobs create \
+#     --region=asia-southeast1 \
+#     --display-name=slm-training-$(date +%Y%m%d) \
+#     --config=config/gcp/training_job.yaml
+#
+# Or use: make gcp-train
+
+workerPoolSpecs:
+  - machineSpec:
+      machineType: n1-standard-8
+      acceleratorType: NVIDIA_TESLA_T4
+      acceleratorCount: 1
+    replicaCount: 1
+    containerSpec:
+      imageUri: gcr.io/PROJECT_ID/chart-analysis-trainer:latest
+      args:
+        - "--config=config/training.yaml"
+        - "--tracker=json"
+      env:
+        - name: HF_HOME
+          value: /app/models/hub
+        - name: TRANSFORMERS_CACHE
+          value: /app/models/hub
+
+scheduling:
+  timeout: 14400s  # 4 hours max
+
+baseOutputDirectory:
+  outputUriPrefix: gs://BUCKET_NAME/training-outputs/

@@ -2,6 +2,7 @@
 
 | Version | Date | Author | Description |
 | --- | --- | --- | --- |
+| 8.0.0 | 2026-03-16 | That Le | Upgrade: Docker OCR, 7 benchmark suites, 404 tests, CI/CD, Gradio demo, GCP automation, thesis pipeline |
 | 7.0.0 | 2026-03-15 | That Le | PaddleOCR-VL microservice (paddle_server.py), PaddleVLAdapter, Vintern fine-tuned model, full S1→S5 demo |
 | 6.0.0 | 2026-03-12 | That Le | Stage 3 VLM rewrite: 4-backend pluggable extraction (DePlot/MatCha/Pix2Struct/SVLM), geometry removed, 299 tests |
 | 5.0.0 | 2026-03-12 | That Le | EfficientNet-B0 3-class classifier (97.54%), unified training script, Stage 2 adapter architecture |
@@ -35,7 +36,7 @@
 | **Current Phase** | Phase 3 - PaddleOCR-VL integrated, SLM Training Pending |
 | **Target** | Academic Thesis + Research Paper |
 | **Source Files** | 82 Python modules in src/ (68 core_engine) |
-| **Tests** | 299 tests passing (23 test files) |
+| **Tests** | 404 tests passing (29+ test files) |
 | **Instructions** | 13 files (3-tier hierarchy) |
 | **Stage3 Dataset** | 32,364 charts extracted (100%, 0% error) |
 | **SLM Train Dataset** | 268,799 samples (v3, all 8 types, ready) |
@@ -643,6 +644,23 @@ Added 2026-02-28. Architecture upgrade based on gap analysis with elixverse-plat
 | **Serving Layer** | FastAPI + Celery + Docker | After SLM |
 | **Benchmarking** | Model comparison experiment (thesis contrib.) | Final |
 | **Optimization** | Performance tuning, demo interface (Streamlit) | Final |
+
+### 5.6b. System Upgrade v8.0.0 [COMPLETED - 2026-03-16]
+
+Comprehensive upgrade covering infrastructure, testing, benchmarks, and developer experience.
+
+| Task | Status | Notes |
+| --- | --- | --- |
+| PaddleOCR Docker isolation | [DONE] | `services/ocr/` with Dockerfile, docker-compose.yml, Makefile targets |
+| Benchmark framework (7 suites) | [DONE] | vlm_extraction, ocr_quality, classifier, slm_reasoning, baseline_vlm, e2e_pipeline, ablation |
+| Notebook upgrade (5 notebooks) | [DONE] | 3 new (benchmark, error analysis, demo) + 2 updated (VLM architecture cells) |
+| Data audit manifest | [DONE] | `scripts/data_management/audit.py`, output: `output/data_manifest.json` |
+| Test coverage expansion | [DONE] | 404 tests (29+ files), 105 new tests across all stages |
+| Gradio web demo | [DONE] | `interface/demo_app.py` with backend selector, tabbed output |
+| GCP training automation | [DONE] | `config/gcp/training_job.yaml`, `services/trainer/Dockerfile`, Makefile targets |
+| Thesis docs pipeline | [DONE] | 15 LaTeX tables + 10 figures (12 static + 3 dynamic benchmark loaders each) |
+| CI/CD pipeline | [DONE] | `.github/workflows/ci.yml` (lint + test on push/PR) |
+| Code cleanup | [DONE] | s2_detection_legacy.py deprecated, MASTER_CONTEXT updated |
 
 ### 5.7. Stage 3 Benchmark Evaluation [COMPLETED - 2026-03-05]
 

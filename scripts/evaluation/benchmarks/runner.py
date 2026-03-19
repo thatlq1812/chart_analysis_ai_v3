@@ -34,6 +34,9 @@ from .suites import vlm_extraction  # noqa: F401
 from .suites import ocr_quality     # noqa: F401
 from .suites import classifier      # noqa: F401
 from .suites import slm_reasoning   # noqa: F401
+from .suites import baseline_vlm    # noqa: F401
+from .suites import e2e_pipeline    # noqa: F401
+from .suites import ablation        # noqa: F401
 
 logger = logging.getLogger(__name__)
 

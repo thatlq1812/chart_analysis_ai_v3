@@ -5,17 +5,20 @@ Generates all LaTeX table code for inclusion in thesis .tex files.
 Output: docs/thesis_capstone/figures/tables/ (one .tex file per table)
 
 Usage:
-    .venv/Scripts/python.exe scripts/generate_thesis_tables.py
+    .venv/Scripts/python.exe scripts/utils/generate_thesis_tables.py
 """
 
+import json
 import logging
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 TABLES_DIR = PROJECT_ROOT / "docs" / "thesis_capstone" / "figures" / "tables"
 TABLES_DIR.mkdir(parents=True, exist_ok=True)
+BENCHMARK_RUNS_DIR = PROJECT_ROOT / "data" / "benchmark" / "results" / "runs"
 
 
 # ---------------------------------------------------------------------------
@@ -305,6 +308,179 @@ Stage 4  &  18 & 0 &  18 \\
 
 
 # ---------------------------------------------------------------------------
+# Benchmark Result Loader
+# ---------------------------------------------------------------------------
+
+def _load_latest_run(suite_prefix: str) -> Optional[Dict[str, Any]]:
+    """Load results.json from the most recent run matching suite_prefix."""
+    if not BENCHMARK_RUNS_DIR.exists():
+        logger.warning(f"Benchmark runs directory not found: {BENCHMARK_RUNS_DIR}")
+        return None
+    matching = sorted(
+        [d for d in BENCHMARK_RUNS_DIR.iterdir()
+         if d.is_dir() and d.name.startswith(suite_prefix)],
+        key=lambda d: d.name,
+        reverse=True,
+    )
+    if not matching:
+        logger.warning(f"No runs found for suite prefix: {suite_prefix}")
+        return None
+    results_file = matching[0] / "results.json"
+    if not results_file.exists():
+        logger.warning(f"No results.json in {matching[0]}")
+        return None
+    logger.info(f"Loading benchmark: {results_file}")
+    return json.loads(results_file.read_text(encoding="utf-8"))
+
+
+def _escape_latex(s: str) -> str:
+    """Escape special LaTeX characters in a string."""
+    return s.replace("_", r"\_").replace("%", r"\%").replace("&", r"\&")
+
+
+def tab_benchmark_vlm_comparison() -> None:
+    """VLM extraction benchmark -- per-model scores from vlm_extraction suite."""
+    data = _load_latest_run("vlm_extraction")
+    if not data:
+        logger.info("Skipping tab_benchmark_vlm_comparison (no data)")
+        return
+
+    # Aggregate scores per model from per_chart results
+    model_scores: Dict[str, Dict[str, List[float]]] = {}
+    for chart in data.get("per_chart", []):
+        details = chart.get("details", {})
+        for model_name, model_detail in details.items():
+            if model_name not in model_scores:
+                model_scores[model_name] = {}
+            scores = model_detail if isinstance(model_detail, dict) else {}
+            for metric, val in scores.items():
+                if isinstance(val, (int, float)):
+                    model_scores[model_name].setdefault(metric, []).append(float(val))
+
+    if not model_scores:
+        logger.info("Skipping tab_benchmark_vlm_comparison (no model scores)")
+        return
+
+    # Build LaTeX rows
+    metrics = ["value_recall", "text_recall", "anls_title", "overall"]
+    header_cols = " & ".join([r"\textbf{" + _escape_latex(m) + "}" for m in metrics])
+
+    rows = []
+    for model_name in sorted(model_scores.keys()):
+        cols = []
+        for m in metrics:
+            vals = model_scores[model_name].get(m, [])
+            avg = sum(vals) / len(vals) if vals else 0.0
+            cols.append(f"{avg:.3f}")
+        rows.append(f"    {_escape_latex(model_name)} & " + " & ".join(cols) + r" \\")
+
+    n_charts = len(data.get("per_chart", []))
+    body = "\n".join(rows)
+    n_cols = "l" + "r" * len(metrics)
+
+    content = rf"""
+\begin{{table}}[htbp]
+\centering
+\caption{{VLM Extraction Benchmark Results (N={n_charts} charts)}}
+\label{{tab:benchmark-vlm}}
+\begin{{tabular}}{{@{{}}{n_cols}@{{}}}}
+\toprule
+\textbf{{Model}} & {header_cols} \\
+\midrule
+{body}
+\bottomrule
+\end{{tabular}}
+\end{{table}}
+""".strip()
+    _write("tab_benchmark_vlm_comparison", content)
+
+
+def tab_benchmark_e2e() -> None:
+    """End-to-end pipeline benchmark from e2e_pipeline suite."""
+    data = _load_latest_run("e2e_pipeline")
+    if not data:
+        logger.info("Skipping tab_benchmark_e2e (no data)")
+        return
+
+    agg = data.get("aggregate", {})
+    if not agg:
+        logger.info("Skipping tab_benchmark_e2e (no aggregate)")
+        return
+
+    rows = []
+    for metric, val in sorted(agg.items()):
+        rows.append(f"    {_escape_latex(metric)} & {val:.4f} \\\\")
+    body = "\n".join(rows)
+
+    content = rf"""
+\begin{{table}}[htbp]
+\centering
+\caption{{End-to-End Pipeline Benchmark}}
+\label{{tab:benchmark-e2e}}
+\begin{{tabular}}{{@{{}}lr@{{}}}}
+\toprule
+\textbf{{Metric}} & \textbf{{Score}} \\
+\midrule
+{body}
+\bottomrule
+\end{{tabular}}
+\end{{table}}
+""".strip()
+    _write("tab_benchmark_e2e", content)
+
+
+def tab_benchmark_ablation() -> None:
+    """Ablation study results from ablation suite."""
+    data = _load_latest_run("ablation")
+    if not data:
+        logger.info("Skipping tab_benchmark_ablation (no data)")
+        return
+
+    # Ablation results are in per_chart with chart_id as config name
+    configs: Dict[str, Dict[str, float]] = {}
+    for chart in data.get("per_chart", []):
+        config_name = chart.get("chart_id", "unknown")
+        configs[config_name] = chart.get("scores", {})
+
+    if not configs:
+        logger.info("Skipping tab_benchmark_ablation (no configs)")
+        return
+
+    all_metrics = set()
+    for scores in configs.values():
+        all_metrics.update(k for k, v in scores.items() if isinstance(v, (int, float)))
+    metrics = sorted(all_metrics)[:5]  # Limit to top 5 metrics for table width
+
+    header_cols = " & ".join([r"\textbf{" + _escape_latex(m) + "}" for m in metrics])
+    rows = []
+    for config_name in sorted(configs.keys()):
+        cols = []
+        for m in metrics:
+            val = configs[config_name].get(m, 0.0)
+            cols.append(f"{val:.3f}" if isinstance(val, float) else str(val))
+        rows.append(f"    {_escape_latex(config_name)} & " + " & ".join(cols) + r" \\")
+
+    body = "\n".join(rows)
+    n_cols = "l" + "r" * len(metrics)
+
+    content = rf"""
+\begin{{table}}[htbp]
+\centering
+\caption{{Ablation Study: Component Impact on Pipeline Accuracy}}
+\label{{tab:benchmark-ablation}}
+\begin{{tabular}}{{@{{}}{n_cols}@{{}}}}
+\toprule
+\textbf{{Configuration}} & {header_cols} \\
+\midrule
+{body}
+\bottomrule
+\end{{tabular}}
+\end{{table}}
+""".strip()
+    _write("tab_benchmark_ablation", content)
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -321,6 +497,10 @@ ALL_TABLES = [
     ("tab_data_pipeline_scale", tab_data_pipeline_scale),
     ("tab_slm_training_config", tab_slm_training_config),
     ("tab_test_suite", tab_test_suite),
+    # Dynamic tables (loaded from benchmark results)
+    ("tab_benchmark_vlm_comparison", tab_benchmark_vlm_comparison),
+    ("tab_benchmark_e2e", tab_benchmark_e2e),
+    ("tab_benchmark_ablation", tab_benchmark_ablation),
 ]
 
 

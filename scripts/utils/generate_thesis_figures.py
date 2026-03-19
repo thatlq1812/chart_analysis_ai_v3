@@ -5,11 +5,13 @@ Generates all matplotlib/seaborn figures for the thesis report.
 Output: docs/thesis_capstone/figures/ (PDF format, 300dpi for raster elements)
 
 Usage:
-    .venv/Scripts/python.exe scripts/generate_thesis_figures.py
+    .venv/Scripts/python.exe scripts/utils/generate_thesis_figures.py
 """
 
+import json
 import logging
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 import matplotlib
 matplotlib.use("pgf")  # LaTeX-compatible backend
@@ -27,6 +29,7 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 FIGURES_DIR = PROJECT_ROOT / "docs" / "thesis_capstone" / "figures"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+BENCHMARK_RUNS_DIR = PROJECT_ROOT / "data" / "benchmark" / "results" / "runs"
 
 # Global matplotlib settings for academic figures
 plt.rcParams.update({
@@ -384,6 +387,198 @@ def fig_dataset_v2_vs_v3() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Benchmark Figure Generators (dynamic, loaded from results)
+# ---------------------------------------------------------------------------
+
+def _load_latest_run(suite_prefix: str) -> Optional[Dict[str, Any]]:
+    """Load results.json from the most recent run matching suite_prefix."""
+    if not BENCHMARK_RUNS_DIR.exists():
+        return None
+    matching = sorted(
+        [d for d in BENCHMARK_RUNS_DIR.iterdir()
+         if d.is_dir() and d.name.startswith(suite_prefix)],
+        key=lambda d: d.name,
+        reverse=True,
+    )
+    if not matching:
+        return None
+    results_file = matching[0] / "results.json"
+    if not results_file.exists():
+        return None
+    return json.loads(results_file.read_text(encoding="utf-8"))
+
+
+def fig_benchmark_vlm_radar() -> None:
+    """Radar chart comparing VLM models across metrics."""
+    data = _load_latest_run("vlm_extraction")
+    if not data:
+        logger.info("Skipping fig_benchmark_vlm_radar (no data)")
+        return
+
+    # Aggregate per-model scores
+    model_avg: Dict[str, Dict[str, float]] = {}
+    for chart in data.get("per_chart", []):
+        for model_name, model_detail in chart.get("details", {}).items():
+            if not isinstance(model_detail, dict):
+                continue
+            if model_name not in model_avg:
+                model_avg[model_name] = {}
+            for metric, val in model_detail.items():
+                if isinstance(val, (int, float)):
+                    model_avg[model_name].setdefault(metric, []).append(float(val))
+
+    if not model_avg:
+        logger.info("Skipping fig_benchmark_vlm_radar (no scores)")
+        return
+
+    # Average the lists
+    for m in model_avg:
+        model_avg[m] = {k: sum(v) / len(v) for k, v in model_avg[m].items()}
+
+    # Select common numeric metrics
+    target_metrics = ["value_recall", "text_recall", "anls_title", "overall"]
+    metrics = [m for m in target_metrics if any(m in model_avg[mdl] for mdl in model_avg)]
+    if len(metrics) < 3:
+        logger.info("Skipping fig_benchmark_vlm_radar (insufficient metrics)")
+        return
+
+    n_metrics = len(metrics)
+    angles = np.linspace(0, 2 * np.pi, n_metrics, endpoint=False).tolist()
+    angles += angles[:1]  # Close the polygon
+
+    fig, ax = plt.subplots(figsize=(5, 5), subplot_kw=dict(polar=True))
+    palette = list(CHART_TYPE_COLORS.values())
+
+    for i, (model_name, scores) in enumerate(sorted(model_avg.items())):
+        values = [scores.get(m, 0.0) for m in metrics]
+        values += values[:1]
+        color = palette[i % len(palette)]
+        ax.plot(angles, values, "o-", linewidth=1.5, label=model_name.replace("_", " "),
+                color=color, markersize=4)
+        ax.fill(angles, values, alpha=0.1, color=color)
+
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels([m.replace("_", "\n") for m in metrics], fontsize=8)
+    ax.set_ylim(0, 1.0)
+    ax.set_title("VLM Model Comparison", pad=20)
+    ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1.1), fontsize=7)
+
+    out = FIGURES_DIR / "fig_benchmark_vlm_radar.pdf"
+    fig.savefig(out)
+    plt.close(fig)
+    logger.info(f"Saved: {out}")
+
+
+def fig_benchmark_vlm_bar() -> None:
+    """Grouped bar chart comparing VLM models on key metrics."""
+    data = _load_latest_run("vlm_extraction")
+    if not data:
+        logger.info("Skipping fig_benchmark_vlm_bar (no data)")
+        return
+
+    model_avg: Dict[str, Dict[str, float]] = {}
+    for chart in data.get("per_chart", []):
+        for model_name, model_detail in chart.get("details", {}).items():
+            if not isinstance(model_detail, dict):
+                continue
+            if model_name not in model_avg:
+                model_avg[model_name] = {}
+            for metric, val in model_detail.items():
+                if isinstance(val, (int, float)):
+                    model_avg[model_name].setdefault(metric, []).append(float(val))
+
+    if not model_avg:
+        logger.info("Skipping fig_benchmark_vlm_bar (no scores)")
+        return
+
+    for m in model_avg:
+        model_avg[m] = {k: sum(v) / len(v) for k, v in model_avg[m].items()}
+
+    target_metrics = ["value_recall", "text_recall", "overall"]
+    metrics = [m for m in target_metrics if any(m in model_avg[mdl] for mdl in model_avg)]
+    models = sorted(model_avg.keys())
+
+    x = np.arange(len(models))
+    width = 0.8 / max(len(metrics), 1)
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    palette = [COLORS["accent1"], COLORS["secondary"], COLORS["accent2"],
+               COLORS["accent3"], COLORS["accent4"]]
+
+    for i, metric in enumerate(metrics):
+        values = [model_avg[m].get(metric, 0.0) for m in models]
+        ax.bar(x + i * width, values, width, label=metric.replace("_", " "),
+               color=palette[i % len(palette)], edgecolor="white")
+
+    ax.set_xlabel("Model")
+    ax.set_ylabel("Score")
+    ax.set_title("VLM Extraction: Model Comparison")
+    ax.set_xticks(x + width * (len(metrics) - 1) / 2)
+    ax.set_xticklabels([m.replace("_", "\n") for m in models], rotation=30, ha="right", fontsize=8)
+    ax.set_ylim(0, 1.1)
+    ax.legend(loc="upper right", fontsize=8)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    out = FIGURES_DIR / "fig_benchmark_vlm_bar.pdf"
+    fig.savefig(out)
+    plt.close(fig)
+    logger.info(f"Saved: {out}")
+
+
+def fig_benchmark_ablation() -> None:
+    """Bar chart showing ablation study impact per configuration."""
+    data = _load_latest_run("ablation")
+    if not data:
+        logger.info("Skipping fig_benchmark_ablation (no data)")
+        return
+
+    configs: Dict[str, Dict[str, float]] = {}
+    for chart in data.get("per_chart", []):
+        config_name = chart.get("chart_id", "unknown")
+        scores = chart.get("scores", {})
+        configs[config_name] = {k: v for k, v in scores.items() if isinstance(v, (int, float))}
+
+    if not configs:
+        logger.info("Skipping fig_benchmark_ablation (no configs)")
+        return
+
+    # Use "overall" or first available metric
+    metric_key = "overall"
+    if not any(metric_key in s for s in configs.values()):
+        # Fallback to first common metric
+        all_keys = set()
+        for s in configs.values():
+            all_keys.update(s.keys())
+        metric_key = sorted(all_keys)[0] if all_keys else None
+
+    if not metric_key:
+        return
+
+    config_names = sorted(configs.keys())
+    values = [configs[c].get(metric_key, 0.0) for c in config_names]
+
+    fig, ax = plt.subplots(figsize=(7, 3.5))
+    colors = [COLORS["accent1"] if c == "full_pipeline" else COLORS["gray"] for c in config_names]
+    bars = ax.barh(config_names, values, color=colors, edgecolor="white", height=0.5)
+
+    for bar_item, val in zip(bars, values):
+        ax.text(bar_item.get_width() + 0.01, bar_item.get_y() + bar_item.get_height() / 2,
+                f"{val:.3f}", va="center", fontsize=8)
+
+    ax.set_xlabel(f"Score ({metric_key.replace('_', ' ')})")
+    ax.set_title("Ablation Study: Component Impact")
+    ax.invert_yaxis()
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    out = FIGURES_DIR / "fig_benchmark_ablation.pdf"
+    fig.savefig(out)
+    plt.close(fig)
+    logger.info(f"Saved: {out}")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -395,6 +590,10 @@ ALL_FIGURES = [
     ("fig_data_pipeline_funnel", fig_data_pipeline_funnel),
     ("fig_resnet_per_class_accuracy", fig_resnet_per_class),
     ("fig_dataset_v2_vs_v3", fig_dataset_v2_vs_v3),
+    # Dynamic figures (loaded from benchmark results)
+    ("fig_benchmark_vlm_radar", fig_benchmark_vlm_radar),
+    ("fig_benchmark_vlm_bar", fig_benchmark_vlm_bar),
+    ("fig_benchmark_ablation", fig_benchmark_ablation),
 ]
 
 

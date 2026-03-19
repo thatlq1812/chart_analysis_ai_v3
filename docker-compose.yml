@@ -1,0 +1,20 @@
+# Docker Compose - Geo-SLM Chart Analysis Services
+# Usage: docker compose up -d
+
+services:
+  ocr-service:
+    build: ./services/ocr
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./models/paddleocr_vl:/app/models/paddleocr_vl:ro
+    environment:
+      - PADDLE_DEVICE=cpu
+      - MODEL_PATH=/app/models/paddleocr_vl
+      - MAX_NEW_TOKENS=512
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped

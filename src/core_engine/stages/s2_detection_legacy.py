@@ -1,9 +1,14 @@
 """
-Stage 2: Detection & Localization
+[DEPRECATED] Legacy Stage 2: Detection & Localization
 
-Detect and crop chart regions from document images using trained YOLO model.
+This module is superseded by s2_detection.py which uses the updated
+detection pipeline with improved NMS, multi-chart support, and
+integration with the VLM extraction backend.
 
-Responsibilities:
+Retained for backward compatibility with older scripts and tests.
+Do NOT use in new code.
+
+Original responsibilities:
 - Load trained YOLO model
 - Run inference on clean images from Stage 1
 - Filter detections by confidence threshold

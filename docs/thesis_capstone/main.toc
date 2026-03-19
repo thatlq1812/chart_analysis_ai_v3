@@ -15,64 +15,64 @@
 \contentsline {subsection}{\numberline {3.4}OCR and Text Extraction}{6}{}%
 \contentsline {subsection}{\numberline {3.5}Small Language Models and Parameter-Efficient Fine-Tuning}{6}{}%
 \contentsline {subsection}{\numberline {3.6}Summary and Research Gap}{6}{}%
-\contentsline {section}{\numberline {4}Methodology}{8}{}%
-\contentsline {subsection}{\numberline {4.1}Data}{8}{}%
-\contentsline {subsubsection}{\numberline {4.1.1}Data Collection Pipeline}{8}{}%
-\contentsline {subsubsection}{\numberline {4.1.2}SLM Training Dataset}{9}{}%
-\contentsline {subsubsection}{\numberline {4.1.3}SLM Fine-Tuning Configuration}{9}{}%
-\contentsline {subsection}{\numberline {4.2}Approach}{11}{}%
-\contentsline {subsubsection}{\numberline {4.2.1}Hybrid Neural-VLM Design}{11}{}%
-\contentsline {subsubsection}{\numberline {4.2.2}5-Stage Pipeline Architecture}{11}{}%
-\contentsline {subsubsection}{\numberline {4.2.3}AI Routing with Fallback Chains}{12}{}%
-\contentsline {subsubsection}{\numberline {4.2.4}Configuration-Driven Design}{12}{}%
-\contentsline {subsection}{\numberline {4.3}Vietnamese Language Integration Strategy}{12}{}%
-\contentsline {subsubsection}{\numberline {4.3.1}Localization Architecture}{13}{}%
-\contentsline {subsubsection}{\numberline {4.3.2}Vietnamese Chart Labels and VLM Output}{13}{}%
-\contentsline {subsubsection}{\numberline {4.3.3}VLM Extraction and Vietnamese Chart Labels}{13}{}%
-\contentsline {subsubsection}{\numberline {4.3.4}Vietnamese Prompt Templates and QA Generation}{14}{}%
-\contentsline {subsubsection}{\numberline {4.3.5}SLM Base Model Selection for Vietnamese}{14}{}%
-\contentsline {subsubsection}{\numberline {4.3.6}Deployment Plan for Vietnamese Integration}{14}{}%
-\contentsline {section}{\numberline {5}System Design and Implementation}{16}{}%
-\contentsline {subsection}{\numberline {5.1}Layered Architecture}{16}{}%
-\contentsline {subsection}{\numberline {5.2}Stage 1: Ingestion and Sanitation}{16}{}%
-\contentsline {subsection}{\numberline {5.3}Stage 2: Detection and Localization}{17}{}%
-\contentsline {subsection}{\numberline {5.4}Stage 3: Structural Analysis (Extraction)}{17}{}%
-\contentsline {subsubsection}{\numberline {5.4.1}EfficientNet-B0 Classifier}{18}{}%
-\contentsline {subsubsection}{\numberline {5.4.2}VLM Extractor Backends}{18}{}%
-\contentsline {subsubsection}{\numberline {5.4.3}Processing Flow}{19}{}%
-\contentsline {subsection}{\numberline {5.5}Stage 4: Semantic Reasoning}{19}{}%
-\contentsline {subsection}{\numberline {5.6}Stage 5: Insight and Reporting}{19}{}%
-\contentsline {subsection}{\numberline {5.7}AI Routing Layer}{20}{}%
-\contentsline {subsection}{\numberline {5.8}Error Handling and Extensibility}{21}{}%
-\contentsline {subsection}{\numberline {5.9}Vietnamese Language Implementation}{21}{}%
-\contentsline {subsubsection}{\numberline {5.9.1}Language-Agnostic vs.\ Language-Dependent Components}{21}{}%
-\contentsline {subsubsection}{\numberline {5.9.2}VLM Extractor: Vietnamese Configuration Path}{21}{}%
-\contentsline {subsubsection}{\numberline {5.9.3}Stage 4: Vietnamese Prompt Architecture}{22}{}%
-\contentsline {subsubsection}{\numberline {5.9.4}Data Factory: Vietnamese QA Generation}{23}{}%
-\contentsline {section}{\numberline {6}Results and Discussion}{24}{}%
-\contentsline {subsection}{\numberline {6.1}Results and Analysis}{24}{}%
-\contentsline {subsubsection}{\numberline {6.1.1}Stage 2: Chart Detection (YOLOv8m)}{24}{}%
-\contentsline {subsubsection}{\numberline {6.1.2}Stage 2b: Chart Type Classification (Ablation Study)}{24}{}%
-\contentsline {subsubsection}{\numberline {6.1.3}Stage 3: Structural Extraction}{25}{}%
-\contentsline {subsubsection}{\numberline {6.1.4}End-to-End Pipeline Performance}{26}{}%
-\contentsline {subsubsection}{\numberline {6.1.5}Stage 4: SLM Hyperparameter Ablation Study}{26}{}%
-\contentsline {paragraph}{Token length analysis.}{26}{}%
-\contentsline {paragraph}{Micro dataset.}{27}{}%
-\contentsline {paragraph}{Ablation configurations.}{27}{}%
-\contentsline {paragraph}{Results.}{27}{}%
-\contentsline {paragraph}{Analysis.}{27}{}%
-\contentsline {paragraph}{Pipeline validation.}{27}{}%
-\contentsline {paragraph}{Recommended configuration.}{28}{}%
-\contentsline {subsubsection}{\numberline {6.1.6}Code Quality}{28}{}%
-\contentsline {subsection}{\numberline {6.2}Discussion}{28}{}%
-\contentsline {subsubsection}{\numberline {6.2.1}Hybrid Architecture Validates Core Hypothesis}{28}{}%
-\contentsline {subsubsection}{\numberline {6.2.2}Comparison with Related Work}{29}{}%
-\contentsline {subsubsection}{\numberline {6.2.3}Modularity Enables Iterative Improvement}{29}{}%
-\contentsline {subsubsection}{\numberline {6.2.4}Core-First Strategy Validates Vietnamese Readiness}{30}{}%
-\contentsline {subsubsection}{\numberline {6.2.5}Limitations of Current Results}{30}{}%
-\contentsline {subsection}{\numberline {6.3}Recommendations}{31}{}%
-\contentsline {section}{\numberline {7}Conclusion}{32}{}%
-\contentsline {subsection}{\numberline {7.1}Summary of Contributions}{32}{}%
-\contentsline {subsection}{\numberline {7.2}Achievement of Objectives}{32}{}%
-\contentsline {subsection}{\numberline {7.3}Future Work}{33}{}%
-\contentsline {section}{References}{34}{}%
+\contentsline {section}{\numberline {4}Methodology}{7}{}%
+\contentsline {subsection}{\numberline {4.1}Data}{7}{}%
+\contentsline {subsubsection}{\numberline {4.1.1}Data Collection Pipeline}{7}{}%
+\contentsline {subsubsection}{\numberline {4.1.2}SLM Training Dataset}{8}{}%
+\contentsline {subsubsection}{\numberline {4.1.3}SLM Fine-Tuning Configuration}{8}{}%
+\contentsline {subsection}{\numberline {4.2}Approach}{8}{}%
+\contentsline {subsubsection}{\numberline {4.2.1}Hybrid Neural-VLM Design}{8}{}%
+\contentsline {subsubsection}{\numberline {4.2.2}5-Stage Pipeline Architecture}{9}{}%
+\contentsline {subsubsection}{\numberline {4.2.3}AI Routing with Fallback Chains}{10}{}%
+\contentsline {subsubsection}{\numberline {4.2.4}Configuration-Driven Design}{10}{}%
+\contentsline {subsection}{\numberline {4.3}Vietnamese Language Integration Strategy}{10}{}%
+\contentsline {subsubsection}{\numberline {4.3.1}Localization Architecture}{10}{}%
+\contentsline {subsubsection}{\numberline {4.3.2}Vietnamese Chart Labels and VLM Output}{10}{}%
+\contentsline {subsubsection}{\numberline {4.3.3}VLM Extraction and Vietnamese Chart Labels}{11}{}%
+\contentsline {subsubsection}{\numberline {4.3.4}Vietnamese Prompt Templates and QA Generation}{11}{}%
+\contentsline {subsubsection}{\numberline {4.3.5}SLM Base Model Selection for Vietnamese}{12}{}%
+\contentsline {subsubsection}{\numberline {4.3.6}Deployment Plan for Vietnamese Integration}{12}{}%
+\contentsline {section}{\numberline {5}System Design and Implementation}{13}{}%
+\contentsline {subsection}{\numberline {5.1}Layered Architecture}{13}{}%
+\contentsline {subsection}{\numberline {5.2}Stage 1: Ingestion and Sanitation}{13}{}%
+\contentsline {subsection}{\numberline {5.3}Stage 2: Detection and Localization}{14}{}%
+\contentsline {subsection}{\numberline {5.4}Stage 3: Structural Analysis (Extraction)}{14}{}%
+\contentsline {subsubsection}{\numberline {5.4.1}EfficientNet-B0 Classifier}{14}{}%
+\contentsline {subsubsection}{\numberline {5.4.2}VLM Extractor Backends}{15}{}%
+\contentsline {subsubsection}{\numberline {5.4.3}Processing Flow}{16}{}%
+\contentsline {subsection}{\numberline {5.5}Stage 4: Semantic Reasoning}{16}{}%
+\contentsline {subsection}{\numberline {5.6}Stage 5: Insight and Reporting}{16}{}%
+\contentsline {subsection}{\numberline {5.7}AI Routing Layer}{17}{}%
+\contentsline {subsection}{\numberline {5.8}Error Handling and Extensibility}{17}{}%
+\contentsline {subsection}{\numberline {5.9}Vietnamese Language Implementation}{18}{}%
+\contentsline {subsubsection}{\numberline {5.9.1}Language-Agnostic vs.\ Language-Dependent Components}{18}{}%
+\contentsline {subsubsection}{\numberline {5.9.2}VLM Extractor: Vietnamese Configuration Path}{19}{}%
+\contentsline {subsubsection}{\numberline {5.9.3}Stage 4: Vietnamese Prompt Architecture}{19}{}%
+\contentsline {subsubsection}{\numberline {5.9.4}Data Factory: Vietnamese QA Generation}{19}{}%
+\contentsline {section}{\numberline {6}Results and Discussion}{21}{}%
+\contentsline {subsection}{\numberline {6.1}Results and Analysis}{21}{}%
+\contentsline {subsubsection}{\numberline {6.1.1}Stage 2: Chart Detection (YOLOv8m)}{21}{}%
+\contentsline {subsubsection}{\numberline {6.1.2}Stage 2b: Chart Type Classification (Ablation Study)}{21}{}%
+\contentsline {subsubsection}{\numberline {6.1.3}Stage 3: Structural Extraction}{22}{}%
+\contentsline {subsubsection}{\numberline {6.1.4}End-to-End Pipeline Performance}{22}{}%
+\contentsline {subsubsection}{\numberline {6.1.5}Stage 4: SLM Hyperparameter Ablation Study}{22}{}%
+\contentsline {paragraph}{Token length analysis.}{23}{}%
+\contentsline {paragraph}{Micro dataset.}{23}{}%
+\contentsline {paragraph}{Ablation configurations.}{23}{}%
+\contentsline {paragraph}{Results.}{23}{}%
+\contentsline {paragraph}{Analysis.}{23}{}%
+\contentsline {paragraph}{Pipeline validation.}{24}{}%
+\contentsline {paragraph}{Recommended configuration.}{24}{}%
+\contentsline {subsubsection}{\numberline {6.1.6}Code Quality}{25}{}%
+\contentsline {subsection}{\numberline {6.2}Discussion}{25}{}%
+\contentsline {subsubsection}{\numberline {6.2.1}Hybrid Architecture Validates Core Hypothesis}{25}{}%
+\contentsline {subsubsection}{\numberline {6.2.2}Comparison with Related Work}{25}{}%
+\contentsline {subsubsection}{\numberline {6.2.3}Modularity Enables Iterative Improvement}{26}{}%
+\contentsline {subsubsection}{\numberline {6.2.4}Core-First Strategy Validates Vietnamese Readiness}{26}{}%
+\contentsline {subsubsection}{\numberline {6.2.5}Limitations of Current Results}{27}{}%
+\contentsline {subsection}{\numberline {6.3}Recommendations}{27}{}%
+\contentsline {section}{\numberline {7}Conclusion}{29}{}%
+\contentsline {subsection}{\numberline {7.1}Summary of Contributions}{29}{}%
+\contentsline {subsection}{\numberline {7.2}Achievement of Objectives}{29}{}%
+\contentsline {subsection}{\numberline {7.3}Future Work}{30}{}%
+\contentsline {section}{References}{31}{}%

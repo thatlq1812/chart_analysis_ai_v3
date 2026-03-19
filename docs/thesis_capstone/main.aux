@@ -46,181 +46,181 @@
 \@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Comparison of existing chart understanding methods.}}{6}{}\protected@file@percent }
 \newlabel{tab:related_work}{{1}{6}{Summary and Research Gap}{table.1}{}}
 \newlabel{tab:related_work@cref}{{[table][1][]1}{[1][6][]6}{}{}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4}Methodology}{8}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Data}{8}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.1}Data Collection Pipeline}{8}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Data collection pipeline: from arXiv papers to SLM training dataset. Each stage filters and transforms the data, reducing volume while increasing quality.}}{8}{}\protected@file@percent }
-\newlabel{fig:data_pipeline}{{1}{8}{Data Collection Pipeline}{figure.1}{}}
-\newlabel{fig:data_pipeline@cref}{{[figure][1][]1}{[1][8][]8}{}{}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Data pipeline scale at each processing stage.}}{8}{}\protected@file@percent }
-\newlabel{tab:data_scale}{{2}{8}{Data Collection Pipeline}{table.2}{}}
-\newlabel{tab:data_scale@cref}{{[table][2][]2}{[1][8][]8}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Methodology}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Data}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.1}Data Collection Pipeline}{7}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Data collection pipeline: from arXiv papers to SLM training dataset. Each stage filters and transforms the data, reducing volume while increasing quality.}}{7}{}\protected@file@percent }
+\newlabel{fig:data_pipeline}{{1}{7}{Data Collection Pipeline}{figure.1}{}}
+\newlabel{fig:data_pipeline@cref}{{[figure][1][]1}{[1][7][]7}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Data pipeline scale at each processing stage.}}{7}{}\protected@file@percent }
+\newlabel{tab:data_scale}{{3}{7}{Data Collection Pipeline}{table.3}{}}
+\newlabel{tab:data_scale@cref}{{[table][3][]3}{[1][7][]7}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Chart type distribution in the classified dataset (32,364 charts).}}{7}{}\protected@file@percent }
+\newlabel{tab:chart_dist}{{5}{7}{Data Collection Pipeline}{table.5}{}}
+\newlabel{tab:chart_dist@cref}{{[table][5][]5}{[1][7][]7}{}{}{}}
 \citation{dettmers2024qlora}
 \citation{yang2024qwen2}
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Chart type distribution in the classified dataset (32,364 charts).}}{9}{}\protected@file@percent }
-\newlabel{tab:chart_dist}{{3}{9}{Data Collection Pipeline}{table.3}{}}
-\newlabel{tab:chart_dist@cref}{{[table][3][]3}{[1][8][]9}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.2}SLM Training Dataset}{9}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces SLM training dataset v3 split statistics.}}{9}{}\protected@file@percent }
-\newlabel{tab:splits}{{4}{9}{SLM Training Dataset}{table.4}{}}
-\newlabel{tab:splits@cref}{{[table][4][]4}{[1][9][]9}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.3}SLM Fine-Tuning Configuration}{9}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Data pipeline funnel: volume at each stage from raw PDFs to final dataset.}}{10}{}\protected@file@percent }
-\newlabel{fig:data_funnel}{{2}{10}{SLM Training Dataset}{figure.2}{}}
-\newlabel{fig:data_funnel@cref}{{[figure][2][]2}{[1][9][]10}{}{}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces SLM fine-tuning configuration (QLoRA).}}{10}{}\protected@file@percent }
-\newlabel{tab:slm_config}{{5}{10}{SLM Fine-Tuning Configuration}{table.5}{}}
-\newlabel{tab:slm_config@cref}{{[table][5][]5}{[1][9][]10}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Approach}{11}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.1}Hybrid Neural-VLM Design}{11}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Comparison of traditional end-to-end approach (top) vs.\ Geo-SLM hybrid neuro-symbolic approach (bottom). Geo-SLM uses geometric measurement for precision and SLM reasoning for semantic understanding.}}{11}{}\protected@file@percent }
-\newlabel{fig:approach_cmp}{{3}{11}{Hybrid Neural-VLM Design}{figure.3}{}}
-\newlabel{fig:approach_cmp@cref}{{[figure][3][]3}{[1][11][]11}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.2}5-Stage Pipeline Architecture}{11}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Geo-SLM 5-stage pipeline architecture with input/output types and representative technologies at each stage.}}{12}{}\protected@file@percent }
-\newlabel{fig:pipeline_arch}{{4}{12}{5-Stage Pipeline Architecture}{figure.4}{}}
-\newlabel{fig:pipeline_arch@cref}{{[figure][4][]4}{[1][11][]12}{}{}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Pipeline stages: input, output, and key technologies.}}{12}{}\protected@file@percent }
-\newlabel{tab:stages}{{6}{12}{5-Stage Pipeline Architecture}{table.6}{}}
-\newlabel{tab:stages@cref}{{[table][6][]6}{[1][11][]12}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.3}AI Routing with Fallback Chains}{12}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.4}Configuration-Driven Design}{12}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Vietnamese Language Integration Strategy}{12}{}\protected@file@percent }
-\newlabel{sec:viet_loc}{{4.3}{12}{Vietnamese Language Integration Strategy}{subsection.4.3}{}}
-\newlabel{sec:viet_loc@cref}{{[subsection][3][4]4.3}{[1][12][]12}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.1}Localization Architecture}{13}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Vietnamese localization touchpoints across the pipeline.}}{13}{}\protected@file@percent }
-\newlabel{tab:viet_touchpoints}{{7}{13}{Localization Architecture}{table.7}{}}
-\newlabel{tab:viet_touchpoints@cref}{{[table][7][]7}{[1][13][]13}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.2}Vietnamese Chart Labels and VLM Output}{13}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.3}VLM Extraction and Vietnamese Chart Labels}{13}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.4}Vietnamese Prompt Templates and QA Generation}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.5}SLM Base Model Selection for Vietnamese}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.6}Deployment Plan for Vietnamese Integration}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5}System Design and Implementation}{16}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Layered Architecture}{16}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Geo-SLM 5-layer system architecture. Each layer depends only on layers below it. The Core Engine is independent of the serving layer.}}{16}{}\protected@file@percent }
-\newlabel{fig:layer_arch}{{5}{16}{Layered Architecture}{figure.5}{}}
-\newlabel{fig:layer_arch@cref}{{[figure][5][]5}{[1][16][]16}{}{}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Technology stack overview.}}{16}{}\protected@file@percent }
-\newlabel{tab:tech}{{8}{16}{Layered Architecture}{table.8}{}}
-\newlabel{tab:tech@cref}{{[table][8][]8}{[1][16][]16}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Stage 1: Ingestion and Sanitation}{16}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.2}SLM Training Dataset}{8}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces SLM training dataset v3 split statistics.}}{8}{}\protected@file@percent }
+\newlabel{tab:splits}{{7}{8}{SLM Training Dataset}{table.7}{}}
+\newlabel{tab:splits@cref}{{[table][7][]7}{[1][8][]8}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Data pipeline funnel: volume at each stage from raw PDFs to final dataset.}}{8}{}\protected@file@percent }
+\newlabel{fig:data_funnel}{{2}{8}{SLM Training Dataset}{figure.2}{}}
+\newlabel{fig:data_funnel@cref}{{[figure][2][]2}{[1][8][]8}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.3}SLM Fine-Tuning Configuration}{8}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces SLM fine-tuning configuration (QLoRA).}}{8}{}\protected@file@percent }
+\newlabel{tab:slm_config}{{9}{8}{SLM Fine-Tuning Configuration}{table.9}{}}
+\newlabel{tab:slm_config@cref}{{[table][9][]9}{[1][8][]8}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Approach}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.1}Hybrid Neural-VLM Design}{8}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Comparison of traditional end-to-end approach (top) vs.\ Geo-SLM hybrid neuro-symbolic approach (bottom). Geo-SLM uses geometric measurement for precision and SLM reasoning for semantic understanding.}}{9}{}\protected@file@percent }
+\newlabel{fig:approach_cmp}{{3}{9}{Hybrid Neural-VLM Design}{figure.3}{}}
+\newlabel{fig:approach_cmp@cref}{{[figure][3][]3}{[1][9][]9}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.2}5-Stage Pipeline Architecture}{9}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Geo-SLM 5-stage pipeline architecture with input/output types and representative technologies at each stage.}}{9}{}\protected@file@percent }
+\newlabel{fig:pipeline_arch}{{4}{9}{5-Stage Pipeline Architecture}{figure.4}{}}
+\newlabel{fig:pipeline_arch@cref}{{[figure][4][]4}{[1][9][]9}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Pipeline stages: input, output, and key technologies.}}{9}{}\protected@file@percent }
+\newlabel{tab:stages}{{11}{9}{5-Stage Pipeline Architecture}{table.11}{}}
+\newlabel{tab:stages@cref}{{[table][11][]11}{[1][9][]9}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.3}AI Routing with Fallback Chains}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.4}Configuration-Driven Design}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Vietnamese Language Integration Strategy}{10}{}\protected@file@percent }
+\newlabel{sec:viet_loc}{{4.3}{10}{Vietnamese Language Integration Strategy}{subsection.4.3}{}}
+\newlabel{sec:viet_loc@cref}{{[subsection][3][4]4.3}{[1][10][]10}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.1}Localization Architecture}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.2}Vietnamese Chart Labels and VLM Output}{10}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces Vietnamese localization touchpoints across the pipeline.}}{11}{}\protected@file@percent }
+\newlabel{tab:viet_touchpoints}{{13}{11}{Localization Architecture}{table.13}{}}
+\newlabel{tab:viet_touchpoints@cref}{{[table][13][]13}{[1][10][]11}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.3}VLM Extraction and Vietnamese Chart Labels}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.4}Vietnamese Prompt Templates and QA Generation}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.5}SLM Base Model Selection for Vietnamese}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.6}Deployment Plan for Vietnamese Integration}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}System Design and Implementation}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Layered Architecture}{13}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Geo-SLM 5-layer system architecture. Each layer depends only on layers below it. The Core Engine is independent of the serving layer.}}{13}{}\protected@file@percent }
+\newlabel{fig:layer_arch}{{5}{13}{Layered Architecture}{figure.5}{}}
+\newlabel{fig:layer_arch@cref}{{[figure][5][]5}{[1][13][]13}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces Technology stack overview.}}{13}{}\protected@file@percent }
+\newlabel{tab:tech}{{14}{13}{Layered Architecture}{table.14}{}}
+\newlabel{tab:tech@cref}{{[table][14][]14}{[1][13][]13}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Stage 1: Ingestion and Sanitation}{13}{}\protected@file@percent }
 \citation{jocher2023yolov8}
 \citation{tan2019efficientnet}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Stage 2: Detection and Localization}{17}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Stage 3: Structural Analysis (Extraction)}{17}{}\protected@file@percent }
-\newlabel{sec:system_s3}{{5.4}{17}{Stage 3: Structural Analysis (Extraction)}{subsection.5.4}{}}
-\newlabel{sec:system_s3@cref}{{[subsection][4][5]5.4}{[1][17][]17}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Stage 2: Detection and Localization}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Stage 3: Structural Analysis (Extraction)}{14}{}\protected@file@percent }
+\newlabel{sec:system_s3}{{5.4}{14}{Stage 3: Structural Analysis (Extraction)}{subsection.5.4}{}}
+\newlabel{sec:system_s3@cref}{{[subsection][4][5]5.4}{[1][14][]14}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.1}EfficientNet-B0 Classifier}{14}{}\protected@file@percent }
 \citation{liu2023deplot}
 \citation{lee2023pix2struct}
 \citation{lee2023matcha}
-\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Stage~3 extraction pipeline: EfficientNet-B0 classifies chart type, then the selected VLM backend converts the chart image to a structured data table. Four backends are available for ablation experiments.}}{18}{}\protected@file@percent }
-\newlabel{fig:s3_submodules}{{6}{18}{Stage 3: Structural Analysis (Extraction)}{figure.6}{}}
-\newlabel{fig:s3_submodules@cref}{{[figure][6][]6}{[1][17][]18}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.1}EfficientNet-B0 Classifier}{18}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.2}VLM Extractor Backends}{18}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.3}Processing Flow}{19}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Stage 4: Semantic Reasoning}{19}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Stage 5: Insight and Reporting}{19}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.7}AI Routing Layer}{20}{}\protected@file@percent }
-\newlabel{sec:ai_routing}{{5.7}{20}{AI Routing Layer}{subsection.5.7}{}}
-\newlabel{sec:ai_routing@cref}{{[subsection][7][5]5.7}{[1][20][]20}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces AI Router with Adapter Pattern and per-task fallback chains. Each provider implements the common \texttt  {BaseAIAdapter} interface.}}{20}{}\protected@file@percent }
-\newlabel{fig:ai_router}{{7}{20}{AI Routing Layer}{figure.7}{}}
-\newlabel{fig:ai_router@cref}{{[figure][7][]7}{[1][20][]20}{}{}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces AI provider configuration.}}{20}{}\protected@file@percent }
-\newlabel{tab:ai_providers}{{9}{20}{AI Routing Layer}{table.9}{}}
-\newlabel{tab:ai_providers@cref}{{[table][9][]9}{[1][20][]20}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.8}Error Handling and Extensibility}{21}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.9}Vietnamese Language Implementation}{21}{}\protected@file@percent }
-\newlabel{sec:viet_impl}{{5.9}{21}{Vietnamese Language Implementation}{subsection.5.9}{}}
-\newlabel{sec:viet_impl@cref}{{[subsection][9][5]5.9}{[1][21][]21}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.1}Language-Agnostic vs.\ Language-Dependent Components}{21}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.2}VLM Extractor: Vietnamese Configuration Path}{21}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Language dependency analysis of pipeline components.}}{22}{}\protected@file@percent }
-\newlabel{tab:lang_analysis}{{10}{22}{Language-Agnostic vs.\ Language-Dependent Components}{table.10}{}}
-\newlabel{tab:lang_analysis@cref}{{[table][10][]10}{[1][21][]22}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.3}Stage 4: Vietnamese Prompt Architecture}{22}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.4}Data Factory: Vietnamese QA Generation}{23}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6}Results and Discussion}{24}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Results and Analysis}{24}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.1}Stage 2: Chart Detection (YOLOv8m)}{24}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces YOLOv8m chart detection results.}}{24}{}\protected@file@percent }
-\newlabel{tab:yolo}{{11}{24}{Stage 2: Chart Detection (YOLOv8m)}{table.11}{}}
-\newlabel{tab:yolo@cref}{{[table][11][]11}{[1][24][]24}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.2}Stage 2b: Chart Type Classification (Ablation Study)}{24}{}\protected@file@percent }
-\newlabel{sec:results_classifier}{{6.1.2}{24}{Stage 2b: Chart Type Classification (Ablation Study)}{subsubsection.6.1.2}{}}
-\newlabel{sec:results_classifier@cref}{{[subsubsection][2][6,1]6.1.2}{[1][24][]24}{}{}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Chart classifier ablation: backbone, resolution, and class scope.}}{24}{}\protected@file@percent }
-\newlabel{tab:classifier_ablation}{{12}{24}{Stage 2b: Chart Type Classification (Ablation Study)}{table.12}{}}
-\newlabel{tab:classifier_ablation@cref}{{[table][12][]12}{[1][24][]24}{}{}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces EfficientNet-B0 3-class per-class evaluation (test set, $n=1{,}952$).}}{25}{}\protected@file@percent }
-\newlabel{tab:classifier_final}{{13}{25}{Stage 2b: Chart Type Classification (Ablation Study)}{table.13}{}}
-\newlabel{tab:classifier_final@cref}{{[table][13][]13}{[1][24][]25}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.3}Stage 3: Structural Extraction}{25}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces Stage~3 VLM extraction coverage by chart type (DePlot backend, 32,364 charts).}}{25}{}\protected@file@percent }
-\newlabel{tab:s3_quality}{{14}{25}{Stage 3: Structural Extraction}{table.14}{}}
-\newlabel{tab:s3_quality@cref}{{[table][14][]14}{[1][25][]25}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.4}End-to-End Pipeline Performance}{26}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Estimated processing time per chart by pipeline stage. VLM inference in Stage~3 (DePlot) accounts for the majority of total time.}}{26}{}\protected@file@percent }
-\newlabel{fig:processing_time}{{8}{26}{End-to-End Pipeline Performance}{figure.8}{}}
-\newlabel{fig:processing_time@cref}{{[figure][8][]8}{[1][26][]26}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.5}Stage 4: SLM Hyperparameter Ablation Study}{26}{}\protected@file@percent }
-\newlabel{sec:slm_ablation}{{6.1.5}{26}{Stage 4: SLM Hyperparameter Ablation Study}{subsubsection.6.1.5}{}}
-\newlabel{sec:slm_ablation@cref}{{[subsubsection][5][6,1]6.1.5}{[1][26][]26}{}{}{}}
-\@writefile{toc}{\contentsline {paragraph}{Token length analysis.}{26}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {15}{\ignorespaces Token length distribution of training conversations (228{,}494 samples, Llama-3.2-1B tokenizer). Mean = 224, median = 223, P99 = 412, max = 1{,}576.}}{26}{}\protected@file@percent }
-\newlabel{tab:token_dist}{{15}{26}{Token length analysis.}{table.15}{}}
-\newlabel{tab:token_dist@cref}{{[table][15][]15}{[1][26][]26}{}{}{}}
-\@writefile{toc}{\contentsline {paragraph}{Micro dataset.}{27}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Ablation configurations.}{27}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {16}{\ignorespaces Ablation study configurations. Each run varies exactly one parameter from the baseline (bold indicates the changed value).}}{27}{}\protected@file@percent }
-\newlabel{tab:ablation_configs}{{16}{27}{Ablation configurations.}{table.16}{}}
-\newlabel{tab:ablation_configs@cref}{{[table][16][]16}{[1][27][]27}{}{}{}}
-\@writefile{toc}{\contentsline {paragraph}{Results.}{27}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {17}{\ignorespaces Ablation study results (Llama-3.2-1B, 800 samples, 10 epochs). Bold indicates best value per column.}}{27}{}\protected@file@percent }
-\newlabel{tab:ablation_results}{{17}{27}{Results.}{table.17}{}}
-\newlabel{tab:ablation_results@cref}{{[table][17][]17}{[1][27][]27}{}{}{}}
-\@writefile{toc}{\contentsline {paragraph}{Analysis.}{27}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Pipeline validation.}{27}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {18}{\ignorespaces Overfitting analysis: train--eval loss gap by configuration.}}{28}{}\protected@file@percent }
-\newlabel{tab:ablation_overfit}{{18}{28}{Analysis.}{table.18}{}}
-\newlabel{tab:ablation_overfit@cref}{{[table][18][]18}{[1][27][]28}{}{}{}}
-\@writefile{toc}{\contentsline {paragraph}{Recommended configuration.}{28}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.6}Code Quality}{28}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {19}{\ignorespaces Test suite results by component.}}{28}{}\protected@file@percent }
-\newlabel{tab:tests}{{19}{28}{Code Quality}{table.19}{}}
-\newlabel{tab:tests@cref}{{[table][19][]19}{[1][28][]28}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Discussion}{28}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.1}Hybrid Architecture Validates Core Hypothesis}{28}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Stage~3 extraction pipeline: EfficientNet-B0 classifies chart type, then the selected VLM backend converts the chart image to a structured data table. Four backends are available for ablation experiments.}}{15}{}\protected@file@percent }
+\newlabel{fig:s3_submodules}{{6}{15}{Stage 3: Structural Analysis (Extraction)}{figure.6}{}}
+\newlabel{fig:s3_submodules@cref}{{[figure][6][]6}{[1][14][]15}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.2}VLM Extractor Backends}{15}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.3}Processing Flow}{16}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Stage 4: Semantic Reasoning}{16}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Stage 5: Insight and Reporting}{16}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.7}AI Routing Layer}{17}{}\protected@file@percent }
+\newlabel{sec:ai_routing}{{5.7}{17}{AI Routing Layer}{subsection.5.7}{}}
+\newlabel{sec:ai_routing@cref}{{[subsection][7][5]5.7}{[1][17][]17}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces AI Router with Adapter Pattern and per-task fallback chains. Each provider implements the common \texttt  {BaseAIAdapter} interface.}}{17}{}\protected@file@percent }
+\newlabel{fig:ai_router}{{7}{17}{AI Routing Layer}{figure.7}{}}
+\newlabel{fig:ai_router@cref}{{[figure][7][]7}{[1][17][]17}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {16}{\ignorespaces AI provider configuration.}}{17}{}\protected@file@percent }
+\newlabel{tab:ai_providers}{{16}{17}{AI Routing Layer}{table.16}{}}
+\newlabel{tab:ai_providers@cref}{{[table][16][]16}{[1][17][]17}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.8}Error Handling and Extensibility}{17}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.9}Vietnamese Language Implementation}{18}{}\protected@file@percent }
+\newlabel{sec:viet_impl}{{5.9}{18}{Vietnamese Language Implementation}{subsection.5.9}{}}
+\newlabel{sec:viet_impl@cref}{{[subsection][9][5]5.9}{[1][18][]18}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.1}Language-Agnostic vs.\ Language-Dependent Components}{18}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {18}{\ignorespaces Language dependency analysis of pipeline components.}}{18}{}\protected@file@percent }
+\newlabel{tab:lang_analysis}{{18}{18}{Language-Agnostic vs.\ Language-Dependent Components}{table.18}{}}
+\newlabel{tab:lang_analysis@cref}{{[table][18][]18}{[1][18][]18}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.2}VLM Extractor: Vietnamese Configuration Path}{19}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.3}Stage 4: Vietnamese Prompt Architecture}{19}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.9.4}Data Factory: Vietnamese QA Generation}{19}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Results and Discussion}{21}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Results and Analysis}{21}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.1}Stage 2: Chart Detection (YOLOv8m)}{21}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {19}{\ignorespaces YOLOv8m chart detection results.}}{21}{}\protected@file@percent }
+\newlabel{tab:yolo}{{19}{21}{Stage 2: Chart Detection (YOLOv8m)}{table.19}{}}
+\newlabel{tab:yolo@cref}{{[table][19][]19}{[1][21][]21}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.2}Stage 2b: Chart Type Classification (Ablation Study)}{21}{}\protected@file@percent }
+\newlabel{sec:results_classifier}{{6.1.2}{21}{Stage 2b: Chart Type Classification (Ablation Study)}{subsubsection.6.1.2}{}}
+\newlabel{sec:results_classifier@cref}{{[subsubsection][2][6,1]6.1.2}{[1][21][]21}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {21}{\ignorespaces Chart classifier ablation: backbone, resolution, and class scope.}}{21}{}\protected@file@percent }
+\newlabel{tab:classifier_ablation}{{21}{21}{Stage 2b: Chart Type Classification (Ablation Study)}{table.21}{}}
+\newlabel{tab:classifier_ablation@cref}{{[table][21][]21}{[1][21][]21}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {22}{\ignorespaces EfficientNet-B0 3-class per-class evaluation (test set, $n=1{,}952$).}}{21}{}\protected@file@percent }
+\newlabel{tab:classifier_final}{{22}{21}{Stage 2b: Chart Type Classification (Ablation Study)}{table.22}{}}
+\newlabel{tab:classifier_final@cref}{{[table][22][]22}{[1][21][]21}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.3}Stage 3: Structural Extraction}{22}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {23}{\ignorespaces Stage~3 VLM extraction coverage by chart type (DePlot backend, 32,364 charts).}}{22}{}\protected@file@percent }
+\newlabel{tab:s3_quality}{{23}{22}{Stage 3: Structural Extraction}{table.23}{}}
+\newlabel{tab:s3_quality@cref}{{[table][23][]23}{[1][22][]22}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.4}End-to-End Pipeline Performance}{22}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.5}Stage 4: SLM Hyperparameter Ablation Study}{22}{}\protected@file@percent }
+\newlabel{sec:slm_ablation}{{6.1.5}{22}{Stage 4: SLM Hyperparameter Ablation Study}{subsubsection.6.1.5}{}}
+\newlabel{sec:slm_ablation@cref}{{[subsubsection][5][6,1]6.1.5}{[1][22][]22}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Estimated processing time per chart by pipeline stage. VLM inference in Stage~3 (DePlot) accounts for the majority of total time.}}{23}{}\protected@file@percent }
+\newlabel{fig:processing_time}{{8}{23}{End-to-End Pipeline Performance}{figure.8}{}}
+\newlabel{fig:processing_time@cref}{{[figure][8][]8}{[1][22][]23}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Token length analysis.}{23}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {25}{\ignorespaces Token length distribution of training conversations (228{,}494 samples, Llama-3.2-1B tokenizer). Mean = 224, median = 223, P99 = 412, max = 1{,}576.}}{23}{}\protected@file@percent }
+\newlabel{tab:token_dist}{{25}{23}{Token length analysis.}{table.25}{}}
+\newlabel{tab:token_dist@cref}{{[table][25][]25}{[1][23][]23}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Micro dataset.}{23}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Ablation configurations.}{23}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Results.}{23}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Analysis.}{23}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {26}{\ignorespaces Ablation study configurations. Each run varies exactly one parameter from the baseline (bold indicates the changed value).}}{24}{}\protected@file@percent }
+\newlabel{tab:ablation_configs}{{26}{24}{Ablation configurations.}{table.26}{}}
+\newlabel{tab:ablation_configs@cref}{{[table][26][]26}{[1][23][]24}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {27}{\ignorespaces Ablation study results (Llama-3.2-1B, 800 samples, 10 epochs). Bold indicates best value per column.}}{24}{}\protected@file@percent }
+\newlabel{tab:ablation_results}{{27}{24}{Results.}{table.27}{}}
+\newlabel{tab:ablation_results@cref}{{[table][27][]27}{[1][23][]24}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {28}{\ignorespaces Overfitting analysis: train--eval loss gap by configuration.}}{24}{}\protected@file@percent }
+\newlabel{tab:ablation_overfit}{{28}{24}{Analysis.}{table.28}{}}
+\newlabel{tab:ablation_overfit@cref}{{[table][28][]28}{[1][24][]24}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Pipeline validation.}{24}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Recommended configuration.}{24}{}\protected@file@percent }
 \citation{liu2023deplot}
 \citation{lee2023matcha}
 \citation{chen2022chartreader}
 \citation{savva2011revision}
 \citation{liu2023deplot}
 \citation{lee2023matcha}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.2}Comparison with Related Work}{29}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {20}{\ignorespaces Comparison with related chart understanding methods.}}{29}{}\protected@file@percent }
-\newlabel{tab:related_cmp}{{20}{29}{Comparison with Related Work}{table.20}{}}
-\newlabel{tab:related_cmp@cref}{{[table][20][]20}{[1][29][]29}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.3}Modularity Enables Iterative Improvement}{29}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.6}Code Quality}{25}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {29}{\ignorespaces Test suite results by component.}}{25}{}\protected@file@percent }
+\newlabel{tab:tests}{{29}{25}{Code Quality}{table.29}{}}
+\newlabel{tab:tests@cref}{{[table][29][]29}{[1][24][]25}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Discussion}{25}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.1}Hybrid Architecture Validates Core Hypothesis}{25}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.2}Comparison with Related Work}{25}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {31}{\ignorespaces Comparison with related chart understanding methods.}}{25}{}\protected@file@percent }
+\newlabel{tab:related_cmp}{{31}{25}{Comparison with Related Work}{table.31}{}}
+\newlabel{tab:related_cmp@cref}{{[table][31][]31}{[1][25][]25}{}{}{}}
 \citation{masry2022chartqa}
 \citation{methani2020plotqa}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.4}Core-First Strategy Validates Vietnamese Readiness}{30}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.5}Limitations of Current Results}{30}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Recommendations}{31}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion}{32}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Summary of Contributions}{32}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Achievement of Objectives}{32}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {21}{\ignorespaces Achievement of project objectives.}}{32}{}\protected@file@percent }
-\newlabel{tab:objectives}{{21}{32}{Achievement of Objectives}{table.21}{}}
-\newlabel{tab:objectives@cref}{{[table][21][]21}{[1][32][]32}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.3}Modularity Enables Iterative Improvement}{26}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.4}Core-First Strategy Validates Vietnamese Readiness}{26}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.5}Limitations of Current Results}{27}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Recommendations}{27}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion}{29}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Summary of Contributions}{29}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Achievement of Objectives}{29}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {33}{\ignorespaces Achievement of project objectives.}}{29}{}\protected@file@percent }
+\newlabel{tab:objectives}{{33}{29}{Achievement of Objectives}{table.33}{}}
+\newlabel{tab:objectives@cref}{{[table][33][]33}{[1][29][]29}{}{}{}}
 \citation{masry2022chartqa}
 \citation{methani2020plotqa}
 \citation{liu2023deplot}
 \citation{lee2023matcha}
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Future Work}{33}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Future Work}{30}{}\protected@file@percent }
 \bibstyle{elsarticle-num-names}
 \bibdata{refs}
 \bibcite{liu2023deplot}{{1}{2023}{{Liu et~al.}}{{Liu, Piccinno, Krichene, Pang, Lee, Joshi, Choi, and Eisenschlos}}}
@@ -232,7 +232,7 @@
 \bibcite{yang2024qwen2}{{7}{2024}{{Yang et~al.}}{{Yang, Yang et~al.}}}
 \bibcite{dettmers2024qlora}{{8}{2024}{{Dettmers et~al.}}{{Dettmers, Pagnoni, Holtzman, and Zettlemoyer}}}
 \bibcite{masry2022chartqa}{{9}{2022}{{Masry et~al.}}{{Masry, Long, Tan, Joty, and Hoque}}}
-\@writefile{toc}{\contentsline {section}{References}{34}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{31}{}\protected@file@percent }
 \bibcite{methani2020plotqa}{{10}{2020}{{Methani et~al.}}{{Methani, Ganguly, Khapra, and Kumar}}}
 \bibcite{chen2022chartreader}{{11}{2022}{{Chen et~al.}}{{Chen, Shen, and Ma}}}
 \bibcite{redmon2016yolo}{{12}{2016}{{Redmon et~al.}}{{Redmon, Divvala, Girshick, and Farhadi}}}
@@ -240,4 +240,4 @@
 \bibcite{jaided2020easyocr}{{14}{2020}{{JaidedAI}}{{}}}
 \bibcite{hu2022lora}{{15}{2022}{{Hu et~al.}}{{Hu, Shen, Wallis, Allen-Zhu, Li, Wang, Wang, and Chen}}}
 \bibcite{tan2019efficientnet}{{16}{2019}{{Tan and Le}}{{}}}
-\gdef \@abspage@last{40}
+\gdef \@abspage@last{37}

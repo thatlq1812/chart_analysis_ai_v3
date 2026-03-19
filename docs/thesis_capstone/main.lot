@@ -1,21 +1,21 @@
 \contentsline {table}{\numberline {1}{\ignorespaces Comparison of existing chart understanding methods.}}{6}{}%
-\contentsline {table}{\numberline {2}{\ignorespaces Data pipeline scale at each processing stage.}}{8}{}%
-\contentsline {table}{\numberline {3}{\ignorespaces Chart type distribution in the classified dataset (32,364 charts).}}{9}{}%
-\contentsline {table}{\numberline {4}{\ignorespaces SLM training dataset v3 split statistics.}}{9}{}%
-\contentsline {table}{\numberline {5}{\ignorespaces SLM fine-tuning configuration (QLoRA).}}{10}{}%
-\contentsline {table}{\numberline {6}{\ignorespaces Pipeline stages: input, output, and key technologies.}}{12}{}%
-\contentsline {table}{\numberline {7}{\ignorespaces Vietnamese localization touchpoints across the pipeline.}}{13}{}%
-\contentsline {table}{\numberline {8}{\ignorespaces Technology stack overview.}}{16}{}%
-\contentsline {table}{\numberline {9}{\ignorespaces AI provider configuration.}}{20}{}%
-\contentsline {table}{\numberline {10}{\ignorespaces Language dependency analysis of pipeline components.}}{22}{}%
-\contentsline {table}{\numberline {11}{\ignorespaces YOLOv8m chart detection results.}}{24}{}%
-\contentsline {table}{\numberline {12}{\ignorespaces Chart classifier ablation: backbone, resolution, and class scope.}}{24}{}%
-\contentsline {table}{\numberline {13}{\ignorespaces EfficientNet-B0 3-class per-class evaluation (test set, $n=1{,}952$).}}{25}{}%
-\contentsline {table}{\numberline {14}{\ignorespaces Stage~3 VLM extraction coverage by chart type (DePlot backend, 32,364 charts).}}{25}{}%
-\contentsline {table}{\numberline {15}{\ignorespaces Token length distribution of training conversations (228{,}494 samples, Llama-3.2-1B tokenizer). Mean = 224, median = 223, P99 = 412, max = 1{,}576.}}{26}{}%
-\contentsline {table}{\numberline {16}{\ignorespaces Ablation study configurations. Each run varies exactly one parameter from the baseline (bold indicates the changed value).}}{27}{}%
-\contentsline {table}{\numberline {17}{\ignorespaces Ablation study results (Llama-3.2-1B, 800 samples, 10 epochs). Bold indicates best value per column.}}{27}{}%
-\contentsline {table}{\numberline {18}{\ignorespaces Overfitting analysis: train--eval loss gap by configuration.}}{28}{}%
-\contentsline {table}{\numberline {19}{\ignorespaces Test suite results by component.}}{28}{}%
-\contentsline {table}{\numberline {20}{\ignorespaces Comparison with related chart understanding methods.}}{29}{}%
-\contentsline {table}{\numberline {21}{\ignorespaces Achievement of project objectives.}}{32}{}%
+\contentsline {table}{\numberline {3}{\ignorespaces Data pipeline scale at each processing stage.}}{7}{}%
+\contentsline {table}{\numberline {5}{\ignorespaces Chart type distribution in the classified dataset (32,364 charts).}}{7}{}%
+\contentsline {table}{\numberline {7}{\ignorespaces SLM training dataset v3 split statistics.}}{8}{}%
+\contentsline {table}{\numberline {9}{\ignorespaces SLM fine-tuning configuration (QLoRA).}}{8}{}%
+\contentsline {table}{\numberline {11}{\ignorespaces Pipeline stages: input, output, and key technologies.}}{9}{}%
+\contentsline {table}{\numberline {13}{\ignorespaces Vietnamese localization touchpoints across the pipeline.}}{11}{}%
+\contentsline {table}{\numberline {14}{\ignorespaces Technology stack overview.}}{13}{}%
+\contentsline {table}{\numberline {16}{\ignorespaces AI provider configuration.}}{17}{}%
+\contentsline {table}{\numberline {18}{\ignorespaces Language dependency analysis of pipeline components.}}{18}{}%
+\contentsline {table}{\numberline {19}{\ignorespaces YOLOv8m chart detection results.}}{21}{}%
+\contentsline {table}{\numberline {21}{\ignorespaces Chart classifier ablation: backbone, resolution, and class scope.}}{21}{}%
+\contentsline {table}{\numberline {22}{\ignorespaces EfficientNet-B0 3-class per-class evaluation (test set, $n=1{,}952$).}}{21}{}%
+\contentsline {table}{\numberline {23}{\ignorespaces Stage~3 VLM extraction coverage by chart type (DePlot backend, 32,364 charts).}}{22}{}%
+\contentsline {table}{\numberline {25}{\ignorespaces Token length distribution of training conversations (228{,}494 samples, Llama-3.2-1B tokenizer). Mean = 224, median = 223, P99 = 412, max = 1{,}576.}}{23}{}%
+\contentsline {table}{\numberline {26}{\ignorespaces Ablation study configurations. Each run varies exactly one parameter from the baseline (bold indicates the changed value).}}{24}{}%
+\contentsline {table}{\numberline {27}{\ignorespaces Ablation study results (Llama-3.2-1B, 800 samples, 10 epochs). Bold indicates best value per column.}}{24}{}%
+\contentsline {table}{\numberline {28}{\ignorespaces Overfitting analysis: train--eval loss gap by configuration.}}{24}{}%
+\contentsline {table}{\numberline {29}{\ignorespaces Test suite results by component.}}{25}{}%
+\contentsline {table}{\numberline {31}{\ignorespaces Comparison with related chart understanding methods.}}{25}{}%
+\contentsline {table}{\numberline {33}{\ignorespaces Achievement of project objectives.}}{29}{}%

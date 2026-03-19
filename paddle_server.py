@@ -1,6 +1,19 @@
 """
 PaddleOCR-VL Extraction Server
 
+[DEPRECATED] This file has been migrated to services/ocr/server.py
+for Docker-based isolation. This file is kept as a fallback for local
+development without Docker.
+
+For Docker usage:
+    docker compose up -d ocr-service
+
+For local usage (this file):
+    python paddle_server.py
+
+See: services/ocr/README.md for full documentation.
+---
+
 Standalone FastAPI microservice (port 8001) that loads PaddleOCR-VL and
 exposes a single /extract endpoint.  Must run in a separate venv that has
 transformers>=4.45 (incompatible with Vintern's transformers==4.44.2).

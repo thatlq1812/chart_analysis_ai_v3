@@ -1,0 +1,14 @@
+# PaddleOCR-VL Extraction Server - Dependencies
+# Isolated from main project due to transformers version conflict
+# Main project: transformers==4.44.2
+# This service: transformers>=4.45
+
+# Core
+torch>=2.1.0
+transformers>=4.45.0
+Pillow>=10.0.0
+
+# Server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6

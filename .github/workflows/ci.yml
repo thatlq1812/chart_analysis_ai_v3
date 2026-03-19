@@ -1,0 +1,68 @@
+# CI pipeline for Geo-SLM Chart Analysis
+# Runs linting and tests on push/PR to main
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install linters
+        run: pip install ruff black
+
+      - name: Ruff check
+        run: ruff check src/ tests/ --output-format=github
+
+      - name: Black check
+        run: black --check src/ tests/
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]" --no-deps 2>/dev/null || true
+          pip install pytest pytest-cov pytest-asyncio pydantic omegaconf python-dotenv pillow numpy tqdm
+
+      - name: Run tests
+        run: |
+          pytest tests/ \
+            -x \
+            --ignore=tests/test_s3_extraction/ \
+            --ignore=tests/test_s4_reasoning/ \
+            --tb=short \
+            -q \
+            --no-header
+        env:
+          PYTHONPATH: ${{ github.workspace }}

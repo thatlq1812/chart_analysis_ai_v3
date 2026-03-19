@@ -156,6 +156,31 @@ def parse_args() -> argparse.Namespace:
         help="Max QA pairs per chart for SLM benchmark (default: 5)",
     )
 
+    # Baseline VLM options
+    parser.add_argument(
+        "--baseline-models",
+        nargs="+",
+        default=["gemini"],
+        help="VLM APIs for baseline benchmark (default: gemini). Choices: gemini openai",
+    )
+
+    # E2E pipeline options
+    parser.add_argument(
+        "--extractor-backend",
+        default="deplot",
+        help="VLM extractor backend for e2e/ablation (default: deplot). "
+             "Choices: deplot matcha pix2struct svlm",
+    )
+
+    # Ablation options
+    parser.add_argument(
+        "--ablation-configs",
+        nargs="+",
+        default=["full_pipeline", "no_classifier", "deplot_only", "no_s4_reasoning"],
+        help="Ablation configurations to test (default: full_pipeline no_classifier "
+             "deplot_only no_s4_reasoning)",
+    )
+
     # Utility
     parser.add_argument(
         "--list-runs",
@@ -210,6 +235,12 @@ def main() -> None:
         print(f"OCR engines: {args.ocr_engines}")
     if "slm_reasoning" in suite_names:
         print(f"SLM model  : {args.slm_model or 'NOT SET'}")
+    if "baseline_vlm" in suite_names:
+        print(f"Baseline   : {args.baseline_models}")
+    if "e2e_pipeline" in suite_names:
+        print(f"Extractor  : {args.extractor_backend}")
+    if "ablation" in suite_names:
+        print(f"Ablation   : {args.ablation_configs}")
     print(f"{'='*60}\n")
 
     if args.dry_run:
@@ -240,6 +271,16 @@ def main() -> None:
             kwargs["model_path"] = args.slm_model
             kwargs["max_new_tokens"] = args.max_new_tokens
             kwargs["n_questions_per_chart"] = args.n_questions
+
+        elif suite_name == "baseline_vlm":
+            kwargs["models"] = args.baseline_models
+
+        elif suite_name == "e2e_pipeline":
+            kwargs["extractor_backend"] = args.extractor_backend
+
+        elif suite_name == "ablation":
+            kwargs["configs"] = args.ablation_configs
+            kwargs["extractor_backend"] = args.extractor_backend
 
         runner.run_suite(suite_name, **kwargs)
 

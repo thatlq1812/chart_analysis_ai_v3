@@ -1,7 +1,7 @@
 # Makefile for Geo-SLM Chart Analysis
 # Common development commands
 
-.PHONY: help install install-dev install-api test lint format clean run-demo serve serve-dev
+.PHONY: help install install-dev install-api test lint format clean run-demo serve serve-dev ocr-build ocr-up ocr-down ocr-logs demo data-audit gcp-train gcp-sync-up gcp-pull-model thesis-update
 
 # Default target
 help:
@@ -16,6 +16,14 @@ help:
 	@echo "  make run-demo     Run Streamlit demo"
 	@echo "  make serve        Start API server (production mode)"
 	@echo "  make serve-dev    Start API server with hot-reload (dev mode)"
+	@echo "  make ocr-build    Build OCR Docker service"
+	@echo "  make ocr-up       Start OCR Docker service"
+	@echo "  make ocr-down     Stop all Docker services"
+	@echo "  make ocr-logs     Follow OCR service logs"
+	@echo "  make demo         Start Gradio demo app"
+	@echo "  make data-audit   Run data audit and generate manifest"
+	@echo "  make gcp-train    Submit GCP training job"
+	@echo "  make thesis-update Generate thesis tables and figures"
 
 # Installation
 install:
@@ -69,6 +77,10 @@ clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 
+# Demo
+demo:
+	.venv\Scripts\python.exe interface/demo_app.py
+
 # Running
 run-demo:
 	streamlit run interface/demo/app.py
@@ -80,9 +92,45 @@ run-cli:
 dev-setup: install-dev
 	pre-commit install
 
+# OCR Service (Docker)
+ocr-build:
+	docker compose build ocr-service
+
+ocr-up:
+	docker compose up -d ocr-service
+
+ocr-down:
+	docker compose down
+
+ocr-logs:
+	docker compose logs -f ocr-service
+
+# Data Audit
+data-audit:
+	.venv\Scripts\python.exe scripts/data_management/audit.py --output output/data_manifest.json
+
 # Documentation
 docs-serve:
 	mkdocs serve
 
 docs-build:
 	mkdocs build
+
+# GCP Training
+GCS_BUCKET ?= chart-analysis-data
+
+gcp-train:
+	gcloud ai custom-jobs create --region=asia-southeast1 \
+		--display-name=slm-training-$$(date +%Y%m%d) \
+		--config=config/gcp/training_job.yaml
+
+gcp-sync-up:
+	gcloud storage cp -r data/slm_training_v3/ gs://$(GCS_BUCKET)/data/slm_training_v3/
+
+gcp-pull-model:
+	gcloud storage cp -r gs://$(GCS_BUCKET)/models/slm/latest/ models/slm/
+
+# Thesis
+thesis-update:
+	.venv\Scripts\python.exe scripts/utils/generate_thesis_tables.py
+	.venv\Scripts\python.exe scripts/utils/generate_thesis_figures.py
